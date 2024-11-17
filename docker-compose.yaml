@@ -3,12 +3,10 @@ version: '3.8'
 services:
   react-app:
     build:
-      context: ./desktop-app
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: desktop-app/Dockerfile
     ports:
       - "3000:3000" # Пробрасываем порт для React
-    environment:
-      - CHOKIDAR_USEPOLLING=true # Для корректной работы hot-reload в Docker
     volumes:
-      - ./desktop-app:/app
-      - /app/node_modules
+      - ./desktop-app:/usr/desktop-app
+    restart: always

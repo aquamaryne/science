@@ -1,27 +1,47 @@
 import * as React from 'react';
-import { Button, Grid2 } from '@mui/material';
+import { Button, Grid } from '@mui/material';
 import { Link } from 'react-router-dom';
 
 const Navbar: React.FC = () => {
-    return(
-        <Grid2>
-            <Link to='/'>
-                <Button>Instructions</Button>
-            </Link>
-            <Link to='/pages/page_three'>
-                <Button>page 3</Button>
-            </Link>
-            <Link to='/pages/page_four'>
-                <Button>page 4</Button>
-            </Link>
-            <Link to='/pages/page_five'>
-                <Button>page 5</Button>
-            </Link>
-            <Link to='/pages/page_six'>
-                <Button>page 6</Button>
-            </Link>
-        </Grid2>
-    )
+    return (
+        <Grid container justifyContent="center" spacing={2} sx={{ padding: 2 }}>
+            <Grid item>
+                <Link to='/'>
+                    <Button variant="contained" sx={{ boxShadow: 3, '&:active': { boxShadow: 1 } }}>
+                        Документація
+                    </Button>
+                </Link>
+            </Grid>
+            <Grid item>
+                <Link to='/pages/page_three'>
+                    <Button variant="contained" sx={{ boxShadow: 3, '&:active': { boxShadow: 1 } }}>
+                        Сторінка 3
+                    </Button>
+                </Link>
+            </Grid>
+            <Grid item>
+                <Link to='/pages/page_four'>
+                    <Button variant="contained" sx={{ boxShadow: 3, '&:active': { boxShadow: 1 } }}>
+                        Сторінка 4
+                    </Button>
+                </Link>
+            </Grid>
+            <Grid item>
+                <Link to='/pages/page_five'>
+                    <Button variant="contained" sx={{ boxShadow: 3, '&:active': { boxShadow: 1 } }}>
+                        Сторінка 5
+                    </Button>
+                </Link>
+            </Grid>
+            <Grid item>
+                <Link to='/pages/page_six'>
+                    <Button variant="contained" sx={{ boxShadow: 3, '&:active': { boxShadow: 1 } }}>
+                        Сторінка 6
+                    </Button>
+                </Link>
+            </Grid>
+        </Grid>
+    );
 };
 
 export default Navbar;

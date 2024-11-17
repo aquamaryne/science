@@ -1,0 +1,61 @@
+{
+  "name": "desktop",
+  "productName": "desktop",
+  "version": "1.0.0",
+  "description": "My Electron application description",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "electron-forge start",
+    "build": "react-scripts build",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "publish": "electron-forge publish",
+    "lint": "echo \"No linting configured\""
+  },
+  "build": {
+    "appId": "com.electron.react",
+    "productName": "ElectronReactApp", 
+    "directories": {
+      "output": "dist" 
+    },
+    "files": [
+      "../../desktop-app/build/**/*",
+      "src/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+
+  "devDependencies": {
+    "@electron-forge/cli": "^7.5.0",
+    "@electron-forge/maker-deb": "^7.5.0",
+    "@electron-forge/maker-rpm": "^7.5.0",
+    "@electron-forge/maker-squirrel": "^7.5.0",
+    "@electron-forge/maker-zip": "^7.5.0",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.5.0",
+    "@electron-forge/plugin-fuses": "^7.5.0",
+    "@electron/fuses": "^1.8.0",
+    "electron": "33.2.0"
+  },
+  "keywords": [],
+  "author": {
+    "name": "aquamaryne",
+    "email": "67910638+aquamaryne@users.noreply.github.com"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "electron-packager": "^17.1.2",
+    "electron-squirrel-startup": "^1.0.1",
+    "react-scripts": "^5.0.1",
+    "wait-on": "^8.0.1"
+  }
+}

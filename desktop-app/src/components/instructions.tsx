@@ -1,65 +1,81 @@
 import React from "react";
-import { Typography, Box, Grid } from "@mui/material";
+import { Typography, Box, Grid, Paper } from "@mui/material";
 
 const Instructions: React.FC = () => {
   return (
-    <Box p={3}>
-      <Typography variant="h5" gutterBottom>
+    <Box p={4}>
+      <Typography variant="h4" gutterBottom align="center">
         Інструкція користувача
       </Typography>
-      <Grid container spacing={3} direction="column">
+
+      <Grid container spacing={4} direction="column">
         {/* Overview */}
         <Grid item>
-          <Typography variant="h6" gutterBottom>
-            1. Огляд
-          </Typography>
-          <Typography variant="body1">
-            Даний інтерфейс дозволяє користувачам розраховувати бюджет для
-            утримання доріг місцевого і державного значення. Ви можете
-            використовувати різні секції для внесення даних, отримання
-            результатів і детального розрахунку.
-          </Typography>
+          <Paper elevation={2} style={{ padding: "16px" }}>
+            <Typography variant="h5" gutterBottom>
+              1. Огляд
+            </Typography>
+            <Typography variant="body1">
+              Цей додаток дозволяє розрахувати витрати на утримання доріг різних
+              категорій. Інструмент містить кілька секцій для введення даних,
+              виконання розрахунків і отримання докладних результатів.
+            </Typography>
+          </Paper>
         </Grid>
 
         {/* Getting Started */}
         <Grid item>
-          <Typography variant="h6" gutterBottom>
-            2. Початок роботи
-          </Typography>
-          <Typography variant="body1">
-            Спочатку виберіть тип дороги, категорію, індекс інфляції та область
-            у верхньому розділі. Потім, у розділі "Розрахунок бюджету для
-            місцевих доріг", внесіть протяжність ділянок для кожної категорії
-            доріг та загальну протяжність доріг у вашій області.
-          </Typography>
+          <Paper elevation={2} style={{ padding: "16px" }}>
+            <Typography variant="h5" gutterBottom>
+              2. Початок роботи
+            </Typography>
+            <Typography variant="body1">
+              Виконуйте наступні кроки, щоб почати:
+            </Typography>
+            <ul>
+              <li>
+                У верхньому розділі виберіть тип дороги, категорію, впишіть індекс
+                інфляції та оберіть область.
+              </li>
+              <li>
+                У розділі "Розрахунок бюджету для місцевих доріг" заповніть
+                дані про протяжність доріг по категоріях.
+              </li>
+              <li>Натисніть кнопку "Розрахувати", щоб отримати результат.</li>
+            </ul>       
+          </Paper>
         </Grid>
 
         {/* Usage Instructions */}
         <Grid item>
-          <Typography variant="h6" gutterBottom>
-            3. Інструкція з використання
-          </Typography>
-          <Typography variant="body1">
+          <Paper elevation={2} style={{ padding: "16px" }}>
+            <Typography variant="h5" gutterBottom>
+              3. Інструкція з використання
+            </Typography>
+            <Typography variant="body1">
+              У додатку доступні наступні функції:
+            </Typography>
             <ol>
               <li>
-                <strong>Розрахунок Наведеного нормативу витрат:</strong> Заповніть
-                всі необхідні поля (тип дороги, категорія, інфляція, область) і
-                натисніть кнопку "Розрахувати", щоб отримати результат у
-                гривнях на кілометр.
+                <strong>Розрахунок Наведеного нормативу витрат:</strong> Виберіть
+                параметри дороги (тип, категорія, інфляція, область), потім
+                натисніть "Розрахувати", щоб отримати норматив витрат у
+                гривнях/км.
               </li>
               <li>
-                <strong>Розрахунок бюджету для місцевих доріг:</strong> Виберіть
-                область, внесіть протяжність доріг по кожній категорії і
-                загальну довжину доріг. Натисніть "Розрахувати", щоб отримати
+                <strong>Розрахунок бюджету для місцевих доріг:</strong> Уведіть
+                протяжність доріг по кожній категорії, загальну протяжність і
+                коефіцієнт інтенсивності. Натисніть "Розрахувати", щоб отримати
                 підсумковий бюджет.
               </li>
               <li>
-                <strong>Комплекс робіт:</strong> У таблиці з роботами для кожного
-                типу завдання внесіть обсяг виконання. Підсумкові витрати
-                автоматично розрахуються на основі вартості за одиницю.
+                <strong>Комплекс робіт:</strong> У розділі "Комплекс робіт"
+                введіть обсяги виконання для кожного виду завдання. Система
+                автоматично розрахує підсумкові витрати на основі вартості за
+                одиницю.
               </li>
             </ol>
-          </Typography>
+          </Paper>
         </Grid>
       </Grid>
     </Box>
@@ -67,3 +83,4 @@ const Instructions: React.FC = () => {
 };
 
 export default Instructions;
+

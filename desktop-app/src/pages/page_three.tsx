@@ -127,7 +127,7 @@ const PageThree: React.FC = () => {
     <div>
 
       <Box p={3}>
-        <Typography variant="h5" mb={2}>
+        <Typography variant="h4" mb={3} textAlign="center" color="primary">
           Розрахунок Наведеного нормативу витрат
         </Typography>
 

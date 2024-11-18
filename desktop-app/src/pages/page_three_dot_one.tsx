@@ -199,10 +199,19 @@ const BudgetCalculates: React.FC = () => {
 
       {/* Результат */}
       {result !== null && (
-        <Box mt={4} textAlign="center">
-          <Typography variant="h5" color="primary">
-            Обсяг бюджету: <strong>{result.toFixed(2)}</strong> грн
-          </Typography>
+        <Box mt={2} display="flex" justifyContent="center">
+          <Box
+            p={2}
+            border="1px solid #1976d2"
+            borderRadius="8px"
+            bgcolor="#e3f2fd"
+            display="inline-block"
+            boxShadow="0 4px 8px rgba(0, 0, 0, 0.1)"
+          >
+            <Typography variant="h5" color="primary">
+              Обсяг бюджету: <strong>{result.toFixed(2)}</strong> грн
+            </Typography>          
+          </Box>
         </Box>
       )}
     </Box>

@@ -1,6 +1,6 @@
 import Navbar from './components/navbar';
 import { BrowserRouter as Router, Routes, Route, HashRouter } from 'react-router-dom';
-import PageThree from './pages/page_three';
+import PageThree from './pages/pagr1';
 import Instructions from './components/instructions';
 
 function App() {

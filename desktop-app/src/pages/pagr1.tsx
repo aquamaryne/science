@@ -20,10 +20,12 @@ import {
   Checkbox,
   FormControlLabel,
 } from '@mui/material';
+import jsPDF from 'jspdf'; // Для генерации PDF
 
 // Типы данных
 type RoadCategory = 'I' | 'II' | 'III' | 'IV' | 'V';
 type Region = 'Київська' | 'Івано-Франківська' | 'Закарпатська' | 'Львівська' | 'Інші';
+type Conditions = 'default' | 'mountain' | 'winter' | 'tourist';
 
 // Коэффициенты из приложений методики
 const MOUNTAIN_COEFFICIENTS: Record<Region, number> = {
@@ -51,7 +53,14 @@ const CRITICAL_INFRASTRUCTURE_COEFFICIENTS = [
   { min: 10, max: Infinity, value: 1.05 }
 ];
 
-export default function PageThree() {
+const CONDITIONS_COEFFICIENTS: Record<Conditions, number> = {
+  default: 1.0,
+  mountain: 1.16, // Коефіцієнт для гірської місцевості
+  winter: 1.2,   // Коефіцієнт для складного зимового утримання
+  tourist: 1.1   // Коефіцієнт для туристичних маршрутів
+};
+
+export default function RoadMaintenanceCalculator() {
   const [region, setRegion] = useState<Region>('Київська');
   const [roadType, setRoadType] = useState<'state' | 'local'>('state');
   const [category, setCategory] = useState<RoadCategory>('II');
@@ -61,6 +70,8 @@ export default function PageThree() {
   const [criticalObjects, setCriticalObjects] = useState<string>('');
   const [recentRepairs, setRecentRepairs] = useState<boolean>(false);
   const [nearBorderCheckpoint, setNearBorderCheckpoint] = useState<boolean>(false);
+  const [conditions, setConditions] = useState<Conditions>('default');
+  const [inflation, setInflation] = useState<string>('1.05'); // Індекс інфляції (5% за замовчуванням)
   const [results, setResults] = useState<number[]>([]);
 
   // Расчет норматива
@@ -106,6 +117,16 @@ export default function PageThree() {
     return nearBorderCheckpoint ? 1.5 : 1.0;
   };
 
+  // Расчет коэффициента условий эксплуатации
+  const calculateConditionsCoeff = () => {
+    return CONDITIONS_COEFFICIENTS[conditions];
+  };
+
+  // Расчет с учетом инфляции
+  const calculateInflationCoeff = () => {
+    return parseFloat(inflation) || 1.0;
+  };
+
   const handleCalculate = () => {
     const normative = calculateNormative();
     const intensityCoeff = calculateIntensityCoeff();
@@ -113,12 +134,35 @@ export default function PageThree() {
     const lightingCoeff = calculateLightingCoeff();
     const repairCoeff = calculateRepairCoeff();
     const borderCheckpointCoeff = calculateBorderCheckpointCoeff();
+    const conditionsCoeff = calculateConditionsCoeff();
+    const inflationCoeff = calculateInflationCoeff();
     const mountainCoeff = MOUNTAIN_COEFFICIENTS[region];
 
     const total = normative * (parseFloat(length) || 0) * intensityCoeff * criticalCoeff * 
-      lightingCoeff * repairCoeff * borderCheckpointCoeff * mountainCoeff;
+      lightingCoeff * repairCoeff * borderCheckpointCoeff * conditionsCoeff * 
+      inflationCoeff * mountainCoeff;
     
     setResults([...results, total]);
+  };
+
+  // Функция для сохранения в PDF
+  const saveToPDF = () => {
+    const doc = new jsPDF();
+
+    // Заголовок
+    doc.setFontSize(18);
+    doc.text("Результати розрахунку експлуатаційного утримання доріг", 10, 10);
+
+    // Таблица с результатами
+    doc.setFontSize(12);
+    let y = 20;
+    results.forEach((result, index) => {
+      doc.text(`Розрахунок ${index + 1}: ${result.toFixed(2)} тис. грн`, 10, y);
+      y += 10;
+    });
+
+    // Сохранение PDF
+    doc.save("road_maintenance_calculation.pdf");
   };
 
   return (
@@ -186,6 +230,26 @@ export default function PageThree() {
             onChange={(e) => setCriticalObjects(e.target.value)}
           />
 
+          <FormControl fullWidth>
+            <InputLabel>Умови експлуатації</InputLabel>
+            <Select
+              value={conditions}
+              onChange={(e: SelectChangeEvent<Conditions>) => setConditions(e.target.value as Conditions)}
+            >
+              <MenuItem value="default">Стандартні</MenuItem>
+              <MenuItem value="mountain">Гірська місцевість</MenuItem>
+              <MenuItem value="winter">Складне зимове утримання</MenuItem>
+              <MenuItem value="tourist">Туристичні маршрути</MenuItem>
+            </Select>
+          </FormControl>
+
+          <TextField
+            label="Індекс інфляції (%)"
+            type="number"
+            value={inflation}
+            onChange={(e) => setInflation(e.target.value)}
+          />
+
           <FormControlLabel
             control={
               <Checkbox
@@ -223,6 +287,16 @@ export default function PageThree() {
           >
             Розрахувати
           </Button>
+
+          {results.length > 0 && (
+            <Button 
+              variant="contained" 
+              onClick={saveToPDF}
+              sx={{ mt: 2 }}
+            >
+              Зберегти в PDF
+            </Button>
+          )}
         </Box>
 
         {results.length > 0 && (

@@ -26,7 +26,7 @@ import {
 import { SelectChangeEvent } from '@mui/material/Select';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
-// Constants (hidden from UI)
+// Constants
 const REGIONS = [
   "1-Крим", "2-Вінницька", "3-Волинська", "4-Дніпропетровська", 
   "5-Донецька", "6-Житомирська", "7-Закарпатська", "8-Запорізька", 
@@ -43,11 +43,20 @@ interface RoadCategory {
   length: number;
 }
 
+// Section interface to simplify data structure
+interface Section {
+  id: number;
+  length: number;
+  value: number;
+}
+
 const RoadFundingCalculator: React.FC = () => {
+  // Basic inputs
   const [hDz, setHDz] = useState<number>(604.761);
   const [hMz, setHMz] = useState<number>(360.544);
   const [kI, setKI] = useState<number>(1);
 
+  // Coefficient arrays - now used in calculations
   const kD = [1.8, 1, 0.89, 0.61, 0.39];
   const kM = [1.71, 1, 0.85, 0.64, 0.4];
   const kk2 = [1.15, 1.15, 1.11, 1.04, 1];
@@ -55,7 +64,10 @@ const RoadFundingCalculator: React.FC = () => {
   const k4 = [2.3, 3.5, 3.9];
   const k5 = [1.01, 1.03, 1.05];
 
+  // Region selection
   const [selectedRegion, setSelectedRegion] = useState<number>(1);
+
+  // Road categories
   const [roadCategories, setRoadCategories] = useState<RoadCategory[]>([
     { id: 1, length: 28000 },
     { id: 2, length: 15300 },
@@ -63,40 +75,57 @@ const RoadFundingCalculator: React.FC = () => {
     { id: 4, length: 22000 },
     { id: 5, length: 12000 }
   ]);
-
-  // Calculated values
   const [totalLength, setTotalLength] = useState<number>(0);
+
+  // Traffic sections - simplified structure
   const [sectionCount, setSectionCount] = useState<number>(4);
   const [categoryId, setCategoryId] = useState<number>(1);
-  const [sectionCounts, setSectionCounts] = useState<number[][]>([
-    [0, 0, 5000],
-    [0, 2100, 0],
-    [1100, 0, 0],
-    [0, 1000, 0]
-  ]);
-  const [trafficIntensity, setTrafficIntensity] = useState<number[][]>([
-    [17000, 0, 0],
-    [0, 19500, 0],
-    [16000, 15500, 0],
-    [16000, 30001, 0]
+  const [traffics, setTraffics] = useState<Section[]>([
+    { id: 1, length: 5000, value: 17000 },
+    { id: 2, length: 2100, value: 19500 },
+    { id: 3, length: 1100, value: 16000 },
+    { id: 4, length: 1000, value: 30000 }
   ]);
   
+  // EU Network roads
   const [euNetworkCount, setEuNetworkCount] = useState<number>(5);
-  const [euNetworkLengths, setEuNetworkLengths] = useState<number[]>([350, 1500, 220, 1500, 800]);
+  const [euNetworks, setEuNetworks] = useState<Section[]>([
+    { id: 1, length: 350, value: 0 },
+    { id: 2, length: 1500, value: 0 },
+    { id: 3, length: 220, value: 0 },
+    { id: 4, length: 1500, value: 0 },
+    { id: 5, length: 800, value: 0 }
+  ]);
   const [euCoefficient, setEuCoefficient] = useState<number>(1.5);
   
+  // Border crossing roads
   const [borderCrossingCount, setBorderCrossingCount] = useState<number>(2);
-  const [borderCrossingLengths, setBorderCrossingLengths] = useState<number[]>([18, 11]);
+  const [borderCrossings, setBorderCrossings] = useState<Section[]>([
+    { id: 1, length: 18, value: 0 },
+    { id: 2, length: 11, value: 0 }
+  ]);
   const [borderCoefficient, setBorderCoefficient] = useState<number>(1.5);
   
+  // Roads with lighting
   const [lightingCount, setLightingCount] = useState<number>(2);
-  const [lightingLengths, setLightingLengths] = useState<number[]>([26, 21]);
+  const [lightings, setLightings] = useState<Section[]>([
+    { id: 1, length: 26, value: 0 },
+    { id: 2, length: 21, value: 0 }
+  ]);
   const [lightingCoefficient, setLightingCoefficient] = useState<number>(2);
   
+  // Repaired roads
   const [repairedCount, setRepairedCount] = useState<number>(5);
-  const [repairedLengths, setRepairedLengths] = useState<number[]>([24, 19, 7, 32, 15]);
+  const [repaired, setRepaired] = useState<Section[]>([
+    { id: 1, length: 24, value: 0 },
+    { id: 2, length: 19, value: 0 },
+    { id: 3, length: 7, value: 0 },
+    { id: 4, length: 32, value: 0 },
+    { id: 5, length: 15, value: 0 }
+  ]);
   const [repairCoefficient, setRepairCoefficient] = useState<number>(0.5);
   
+  // Results
   const [kidResult, setKidResult] = useState<number | null>(null);
   const [kdeResult, setKdeResult] = useState<number | null>(null);
   const [kdmResult, setKdmResult] = useState<number | null>(null);
@@ -106,15 +135,18 @@ const RoadFundingCalculator: React.FC = () => {
   const [calculating, setCalculating] = useState<boolean>(false);
   const [resultsAvailable, setResultsAvailable] = useState<boolean>(false);
 
+  // Calculate total road length
   useEffect(() => {
     const sum = roadCategories.reduce((acc, category) => acc + category.length, 0);
     setTotalLength(sum);
   }, [roadCategories]);
 
+  // Region selection handler
   const handleRegionChange = (event: SelectChangeEvent) => {
     setSelectedRegion(Number(event.target.value));
   };
 
+  // Road category change handler
   const handleRoadCategoryChange = (id: number, value: number) => {
     setRoadCategories(prevCategories => 
       prevCategories.map(category => 
@@ -128,141 +160,55 @@ const RoadFundingCalculator: React.FC = () => {
     if (value > 0 && value <= 10) {
       setSectionCount(value);
       
-      // Resize arrays if needed
-      if (value > sectionCounts.length) {
-        const newSections = [...sectionCounts];
-        const newTraffic = [...trafficIntensity];
-        
-        for (let i = sectionCounts.length; i < value; i++) {
-          newSections.push([0, 0, 0]);
-          newTraffic.push([0, 0, 0]);
+      // Resize array if needed
+      if (value > traffics.length) {
+        const newSections = [...traffics];
+        for (let i = traffics.length; i < value; i++) {
+          newSections.push({ id: i + 1, length: 0, value: 0 });
         }
-        
-        setSectionCounts(newSections);
-        setTrafficIntensity(newTraffic);
+        setTraffics(newSections);
       } else {
-        setSectionCounts(sectionCounts.slice(0, value));
-        setTrafficIntensity(trafficIntensity.slice(0, value));
+        setTraffics(traffics.slice(0, value));
       }
     }
   };
 
-  // Update section count value
-  const handleSectionValueChange = (row: number, col: number, value: number) => {
-    const newSections = [...sectionCounts];
-    if (newSections[row]) {
-      newSections[row][col] = value;
-      setSectionCounts(newSections);
-    }
+  // Generic section handler for all section types
+  const handleSectionChange = (
+    sections: Section[], 
+    setSections: React.Dispatch<React.SetStateAction<Section[]>>, 
+    id: number, 
+    field: 'length' | 'value', 
+    value: number
+  ) => {
+    setSections(prevSections => 
+      prevSections.map(section => 
+        section.id === id ? { ...section, [field]: value } : section
+      )
+    );
   };
 
-  // Update traffic intensity value
-  const handleTrafficValueChange = (row: number, col: number, value: number) => {
-    const newTraffic = [...trafficIntensity];
-    if (newTraffic[row]) {
-      newTraffic[row][col] = value;
-      setTrafficIntensity(newTraffic);
-    }
-  };
-
-  // Handle EU network road count change
-  const handleEuNetworkCountChange = (value: number) => {
-    if (value > 0 && value <= 10) {
-      setEuNetworkCount(value);
+  // Handle section count changes for all section types
+  const handleGenericCountChange = (
+    count: number,
+    setCount: React.Dispatch<React.SetStateAction<number>>,
+    sections: Section[],
+    setSections: React.Dispatch<React.SetStateAction<Section[]>>
+  ) => {
+    if (count > 0 && count <= 10) {
+      setCount(count);
       
       // Resize array if needed
-      if (value > euNetworkLengths.length) {
-        const newLengths = [...euNetworkLengths];
-        for (let i = euNetworkLengths.length; i < value; i++) {
-          newLengths.push(0);
+      if (count > sections.length) {
+        const newSections = [...sections];
+        for (let i = sections.length; i < count; i++) {
+          newSections.push({ id: i + 1, length: 0, value: 0 });
         }
-        setEuNetworkLengths(newLengths);
+        setSections(newSections);
       } else {
-        setEuNetworkLengths(euNetworkLengths.slice(0, value));
+        setSections(sections.slice(0, count));
       }
     }
-  };
-
-  // Update EU network length
-  const handleEuNetworkLengthChange = (index: number, value: number) => {
-    const newLengths = [...euNetworkLengths];
-    newLengths[index] = value;
-    setEuNetworkLengths(newLengths);
-  };
-
-  // Handle border crossing count change
-  const handleBorderCrossingCountChange = (value: number) => {
-    if (value > 0 && value <= 10) {
-      setBorderCrossingCount(value);
-      
-      // Resize array if needed
-      if (value > borderCrossingLengths.length) {
-        const newLengths = [...borderCrossingLengths];
-        for (let i = borderCrossingLengths.length; i < value; i++) {
-          newLengths.push(0);
-        }
-        setBorderCrossingLengths(newLengths);
-      } else {
-        setBorderCrossingLengths(borderCrossingLengths.slice(0, value));
-      }
-    }
-  };
-
-  // Update border crossing length
-  const handleBorderCrossingLengthChange = (index: number, value: number) => {
-    const newLengths = [...borderCrossingLengths];
-    newLengths[index] = value;
-    setBorderCrossingLengths(newLengths);
-  };
-
-  // Handle lighting count change
-  const handleLightingCountChange = (value: number) => {
-    if (value > 0 && value <= 10) {
-      setLightingCount(value);
-      
-      // Resize array if needed
-      if (value > lightingLengths.length) {
-        const newLengths = [...lightingLengths];
-        for (let i = lightingLengths.length; i < value; i++) {
-          newLengths.push(0);
-        }
-        setLightingLengths(newLengths);
-      } else {
-        setLightingLengths(lightingLengths.slice(0, value));
-      }
-    }
-  };
-
-  // Update lighting length
-  const handleLightingLengthChange = (index: number, value: number) => {
-    const newLengths = [...lightingLengths];
-    newLengths[index] = value;
-    setLightingLengths(newLengths);
-  };
-
-  // Handle repaired count change
-  const handleRepairedCountChange = (value: number) => {
-    if (value > 0 && value <= 10) {
-      setRepairedCount(value);
-      
-      // Resize array if needed
-      if (value > repairedLengths.length) {
-        const newLengths = [...repairedLengths];
-        for (let i = repairedLengths.length; i < value; i++) {
-          newLengths.push(0);
-        }
-        setRepairedLengths(newLengths);
-      } else {
-        setRepairedLengths(repairedLengths.slice(0, value));
-      }
-    }
-  };
-
-  // Update repaired length
-  const handleRepairedLengthChange = (index: number, value: number) => {
-    const newLengths = [...repairedLengths];
-    newLengths[index] = value;
-    setRepairedLengths(newLengths);
   };
 
   // Calculate all coefficients and results
@@ -270,29 +216,67 @@ const RoadFundingCalculator: React.FC = () => {
     setCalculating(true);
     
     setTimeout(() => {
-      // Calculate Kid
-      const totalSections = sectionCounts.flat().reduce((acc, val) => acc + val, 0);
-      const weightedSum = sectionCounts.flat().reduce((acc, val) => acc + val, 0);
-      const kidValue = (weightedSum + (totalLength - totalSections)) / totalLength;
+      // Calculate Kid - now using the coefficient arrays
+      let weightedSectionLength = 0;
+      let totalTrafficLength = 0;
+      
+      // Apply traffic intensity and road category coefficients
+      traffics.forEach(traffic => {
+        if (traffic.length > 0) {
+          // Get intensity coefficient based on traffic value
+          let intensityCoef = 1;
+          if (traffic.value > 25000) {
+            intensityCoef = k4[2]; // High intensity
+          } else if (traffic.value > 15000) {
+            intensityCoef = k4[1]; // Medium intensity
+          } else if (traffic.value > 5000) {
+            intensityCoef = k4[0]; // Low intensity
+          }
+          
+          // Apply category coefficient based on road type
+          const categoryIndex = Math.min(categoryId - 1, 4);
+          const categoryCoef = categoryId <= 2 ? kD[categoryIndex] : kM[categoryIndex];
+          
+          weightedSectionLength += traffic.length * intensityCoef * categoryCoef;
+          totalTrafficLength += traffic.length;
+        }
+      });
+      
+      // Apply region climate coefficient
+      const climateCoef = k5[selectedRegion % 3];
+      
+      // Apply structure coefficient based on road category
+      const structureCoef = kk2[Math.min(categoryId - 1, 4)];
+      
+      // Apply region-specific coefficient
+      const regionCoef = kk3[Math.min(selectedRegion % 5, 4)];
+      
+      // For the remaining length, apply base coefficients
+      const remainingLength = totalLength - totalTrafficLength;
+      const baseCoef = categoryId <= 2 ? kD[0] : kM[0];
+      
+      const kidValue = ((weightedSectionLength + (remainingLength * baseCoef)) / totalLength) * 
+                      climateCoef * structureCoef * regionCoef * kI;
+                      
       setKidResult(Number(kidValue.toFixed(3)));
   
-      // Calculate Kde
-      const totalEuLength = euNetworkLengths.reduce((acc, val) => acc + val, 0);
+      // Calculate Kde - EU network coefficient
+      const totalEuLength = euNetworks.reduce((acc, section) => acc + section.length, 0);
       const kdeValue = (totalEuLength * euCoefficient + (totalLength - totalEuLength)) / totalLength;
       setKdeResult(Number(kdeValue.toFixed(6)));
   
-      // Calculate Kdm
-      const totalBorderLength = borderCrossingLengths.reduce((acc, val) => acc + val, 0);
+      // Calculate Kdm - Border crossing coefficient
+      const totalBorderLength = borderCrossings.reduce((acc, section) => acc + section.length, 0);
       const kdmValue = (totalBorderLength * borderCoefficient + (totalLength - totalBorderLength)) / totalLength;
       setKdmResult(Number(kdmValue.toFixed(6)));
   
-      // Calculate Kdo
-      const totalLightingLength = lightingLengths.reduce((acc, val) => acc + val, 0);
+      // Calculate Kdo - Lighting coefficient
+      const totalLightingLength = lightings.reduce((acc, section) => acc + section.length, 0);
       const kdoValue = (totalLightingLength * lightingCoefficient + (totalLength - totalLightingLength)) / totalLength;
       setKdoResult(Number(kdoValue.toFixed(6)));
   
-      // Calculate Kdr
-      const totalRepairedLength = repairedLengths.reduce((acc, val) => acc + val, 0);
+      // Calculate Kdr - Repair coefficient
+      const totalRepairedLength = repaired.reduce((acc, section) => acc + section.length, 0);
       const kdrValue = (totalRepairedLength * repairCoefficient + (totalLength - totalRepairedLength)) / totalLength;
       setKdrResult(Number(kdrValue.toFixed(5)));
       
@@ -420,7 +404,7 @@ const RoadFundingCalculator: React.FC = () => {
           </AccordionDetails>
         </Accordion>
 
-        {/* Traffic sections */}
+        {/* Traffic sections - now with proper handlers */}
         <Accordion sx={{ mb: 3 }}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="h6">
@@ -457,17 +441,40 @@ const RoadFundingCalculator: React.FC = () => {
                   <TableRow>
                     <TableCell>Ділянка</TableCell>
                     <TableCell>Довжина (км)</TableCell>
+                    <TableCell>Інтенсивність руху (авто/добу)</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {repairedLengths.map((length, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{index + 1}</TableCell>
+                  {traffics.map((section) => (
+                    <TableRow key={section.id}>
+                      <TableCell>{section.id}</TableCell>
                       <TableCell>
                         <TextField
                           type="number"
-                          value={length}
-                          onChange={(e) => handleRepairedLengthChange(index, Number(e.target.value))}
+                          value={section.length}
+                          onChange={(e) => handleSectionChange(
+                            traffics, 
+                            setTraffics, 
+                            section.id, 
+                            'length', 
+                            Number(e.target.value)
+                          )}
+                          fullWidth
+                          variant="outlined"
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          type="number"
+                          value={section.value}
+                          onChange={(e) => handleSectionChange(
+                            traffics, 
+                            setTraffics, 
+                            section.id, 
+                            'value', 
+                            Number(e.target.value)
+                          )}
                           fullWidth
                           variant="outlined"
                           size="small"
@@ -481,7 +488,7 @@ const RoadFundingCalculator: React.FC = () => {
             
             <Box sx={{ mt: 2 }}>
               <Typography variant="body1">
-                Загальна довжина: {repairedLengths.reduce((acc, val) => acc + val, 0)} км
+                Загальна довжина відремонтованих доріг: {repaired.reduce((acc, section) => acc + section.length, 0)} км
               </Typography>
             </Box>
           </AccordionDetails>
@@ -569,7 +576,7 @@ const RoadFundingCalculator: React.FC = () => {
                   </TableHead>
                   <TableBody>
                     {roadCategories.map((category, index) => {
-                      const baseNorm = index === 0 ? hDz : hMz;
+                      const baseNorm = category.id <= 2 ? hDz : hMz;
                       const totalCoeff = kidResult! * kdeResult! * kdmResult! * kdoResult! * kdrResult!;
                       const funding = baseNorm * category.length * totalCoeff;
                       
@@ -588,8 +595,8 @@ const RoadFundingCalculator: React.FC = () => {
                     <TableRow>
                       <TableCell colSpan={4} align="right"><strong>Загальна сума фінансування:</strong></TableCell>
                       <TableCell>
-                        {roadCategories.reduce((sum, category, index) => {
-                          const baseNorm = index === 0 ? hDz : hMz;
+                        {roadCategories.reduce((sum, category) => {
+                          const baseNorm = category.id <= 2 ? hDz : hMz;
                           const totalCoeff = kidResult! * kdeResult! * kdmResult! * kdoResult! * kdrResult!;
                           return sum + (baseNorm * category.length * totalCoeff);
                         }, 0).toFixed(2)} тис. грн

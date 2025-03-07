@@ -1,485 +1,806 @@
-import { useState, useMemo } from 'react';
-import {
-  Box,
-  Button,
-  Container,
+import React, { useState } from 'react';
+import { 
+  Container, 
+  Typography, 
+  Box, 
+  TextField, 
+  Button, 
+  Paper, 
+  Stepper, 
+  Step, 
+  StepLabel, 
   Grid,
-  Paper,
-  Stepper,
-  Step,
-  StepLabel,
-  TextField,
-  Typography,
-  Select,
-  MenuItem,
   FormControl,
   InputLabel,
+  Select,
+  MenuItem,
   Table,
-  TableContainer,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
-  TableRow
+  TableRow,
+  Alert,
+  AlertTitle,
+  Divider,
+  Card,
+  CardContent,
+  FormControlLabel,
+  RadioGroup,
+  Radio
 } from '@mui/material';
-import { GoogleMap, Marker, LoadScript } from '@react-google-maps/api';
-import { PDFDownloadLink, Document, Page, Text, View } from '@react-pdf/renderer';
 
-// Types and interfaces
-interface RoadSection {
+// Types
+interface RoadSegment {
   id: string;
   name: string;
-  category: keyof typeof CATEGORY_COEFFICIENTS;
   length: number;
-  intensity: number;
-  strengthCoeff: number;
+  category: string;
+  trafficIntensity: number;
+  currentCondition: RoadCondition;
+  constructionYear?: number;
+  lastRepairYear?: number;
+}
+
+interface RoadCondition {
+  trafficIntensityCoefficient: number;
+  pavementStrengthCoefficient: number;
   evenness: number;
-  rutDepth: number;
+  rutting: number;
   adhesion: number;
-  criticalObjects: number;
-  isInternational: boolean;
-  lat: number;
-  lng: number;
+  actualEvenness?: number; // IRI value (m/km)
+  actualRutting?: number;  // in mm
 }
 
-interface CalculationResult {
-  id: string;
-  name: string;
-  repairTypes: string[];
-  cost: number;
-  enpv: number;
-  priority: number;
+interface AssessmentResult {
+  segment: RoadSegment;
+  recommendedWork: 'reconstruction' | 'capital-repair' | 'current-repair' | 'none';
+  priorityScore: number;
+  economicENPV: number;
+  explanation: string;
 }
 
-// Constants and coefficients
-const CATEGORY_COEFFICIENTS = {
-  'I': 1.8,
-  'II': 1.0,
-  'III': 0.89
+// Constants
+const ROAD_CATEGORIES = ['І', 'ІІ', 'ІІІ', 'IV', 'V'];
+
+// Pavement strength minimum coefficients for different categories (from DBN V.2.3-4:2015 Table 8.2)
+const MIN_PAVEMENT_STRENGTH_COEFFICIENTS = {
+  'І': 1.50,
+  'ІІ': 1.30,
+  'ІІІ': 1.20,
+  'IV': 1.10,
+  'V': 1.05
 };
 
-const BASE_COST_II_CATEGORY = 604761;
-const DISCOUNT_RATE = 0.05;
+const MIN_ADHESION_COEFFICIENT = 0.35;
 
-// PDF Document component
-const PDFDocument = ({ results }: { results: CalculationResult[] }) => (
-  <Document>
-    <Page size="A4" style={{ padding: 30 }}>
-      <View style={{ marginBottom: 20 }}>
-        <Text style={{ fontSize: 18, marginBottom: 10 }}>Звіт про фінансування</Text>
-      </View>
-      {results.map(result => (
-        <View key={result.id} style={{ marginBottom: 10 }}>
-          <Text>
-            {result.name}: {result.cost.toLocaleString()} грн (Пріоритет: {result.priority.toFixed(1)})
-          </Text>
-          <Text style={{ fontSize: 12, color: '#666666', marginTop: 5 }}>
-            Види робіт: {result.repairTypes.join(', ')}
-          </Text>
-        </View>
-      ))}
-      <View style={{ marginTop: 20 }}>
-        <Text style={{ fontSize: 14 }}>
-          Загальна вартість: {results.reduce((sum, r) => sum + r.cost, 0).toLocaleString()} грн
-        </Text>
-      </View>
-    </Page>
-  </Document>
-);
+// Condition thresholds from Table 9.2 and 9.3
+const EVENNESS_THRESHOLDS = {
+  '1': 2.7, // Level 1 requirements
+  '2': 3.1, // Level 2 requirements
+  '3': 3.5, // Level 3 requirements
+  '4': 4.1  // Level 4 requirements
+};
 
-// Main application component
-export default function RoadFinanceCalculator() {
+const RUTTING_THRESHOLDS = {
+  '1': 20, // Level 1 requirements (mm)
+  '2': 25, // Level 2 requirements (mm)
+  '3': 30, // Level 3 requirements (mm)
+  '4': 40  // Level 4 requirements (mm)
+};
+
+// Level requirements based on road significance and traffic volume
+const ROAD_REQUIREMENT_LEVELS = {
+  'international_high': '1', // International roads with traffic > 7000 vehicles/day
+  'international_low': '2',  // International roads with traffic <= 7000 vehicles/day
+  'regional_high': '2',      // Regional roads with traffic > 3000 vehicles/day
+  'regional_low': '3',       // Regional roads with traffic <= 3000 vehicles/day
+  'oblast_high': '3',        // Oblast roads with traffic > 1000 vehicles/day
+  'other': '4'               // All other roads
+};
+
+// Expert assessment levels from Table 11.1 and 11.2
+const EXPERT_ASSESSMENT_LEVELS = [
+  { value: 10, label: "Відмінний стан - без пошкоджень і деформацій" },
+  { value: 9, label: "Дуже добрий стан - окремі ізольовані тріщини" },
+  { value: 8, label: "Добрий стан - деякі тріщини усунуті при ямковому ремонті" },
+  { value: 7, label: "Задовільна рівність, деяке зношення та ізольовані деформації" },
+  { value: 6, label: "Колійність до 15мм, 1% площі з пошкодженнями" },
+  { value: 5, label: "Деяке спотворення профілю, ізольовані осідання, 2% площі пошкоджень" },
+  { value: 4, label: "Часті спотворення профілю, часті осідання, 3% площі пошкоджень" },
+  { value: 3, label: "Спотворення профілю на значній протяжності, 4% площі пошкоджень" },
+  { value: 2, label: "Спотворення профілю на великій протяжності, колійність, мости в поганому стані" },
+  { value: 1, label: "Сильно спотворений профіль, деформації, мости в аварійному стані" }
+];
+
+const REPAIR_BASED_ON_EXPERT_ASSESSMENT = {
+  'high': 'Ремонт не потрібен',
+  'medium': 'Потрібен поточний ремонт',
+  'low': 'Потрібен капітальний ремонт'
+};
+
+// Function to determine repair type based on expert assessment (Table 11.2)
+const determineRepairByExpertAssessment = (index: number): string => {
+  if (index >= 8) return REPAIR_BASED_ON_EXPERT_ASSESSMENT.high;
+  if (index >= 5 && index <= 7) return REPAIR_BASED_ON_EXPERT_ASSESSMENT.medium;
+  return REPAIR_BASED_ON_EXPERT_ASSESSMENT.low;
+};
+
+// Function to determine the requirement level for a road segment
+const determineRequirementLevel = (segment: RoadSegment): string => {
+  if (segment.category === 'І' || segment.category === 'ІІ') {
+    return segment.trafficIntensity > 7000 ? 
+      ROAD_REQUIREMENT_LEVELS.international_high : 
+      ROAD_REQUIREMENT_LEVELS.international_low;
+  } else if (segment.category === 'ІІІ') {
+    return segment.trafficIntensity > 3000 ? 
+      ROAD_REQUIREMENT_LEVELS.regional_high : 
+      ROAD_REQUIREMENT_LEVELS.regional_low;
+  } else if (segment.category === 'IV') {
+    return segment.trafficIntensity > 1000 ? 
+      ROAD_REQUIREMENT_LEVELS.oblast_high : 
+      ROAD_REQUIREMENT_LEVELS.other;
+  }
+  return ROAD_REQUIREMENT_LEVELS.other;
+};
+
+// Function to determine recommended work based on road condition (Section 4.2.3)
+const determineRequiredWork = (segment: RoadSegment): 'reconstruction' | 'capital-repair' | 'current-repair' | 'none' => {
+  const condition = segment.currentCondition;
+  const requirementLevel = determineRequirementLevel(segment);
+  
+  // 4.2.3.1 - If traffic intensity coefficient is less than 1, reconstruction is needed
+  if (condition.trafficIntensityCoefficient < 1) {
+    return 'reconstruction';
+  }
+  
+  // 4.2.3.2 - If pavement strength coefficient is less than minimum allowed for this category, capital repair is needed
+  const minStrengthCoefficient = MIN_PAVEMENT_STRENGTH_COEFFICIENTS[segment.category as keyof typeof MIN_PAVEMENT_STRENGTH_COEFFICIENTS] || 1.0;
+  if (condition.pavementStrengthCoefficient < minStrengthCoefficient) {
+    return 'capital-repair';
+  }
+  
+  // 4.2.3.3 - Check evenness
+  const evennessThreshold = EVENNESS_THRESHOLDS[requirementLevel as keyof typeof EVENNESS_THRESHOLDS];
+  const hasEvennessProblem = condition.actualEvenness ? condition.actualEvenness > evennessThreshold : condition.evenness < 1;
+  
+  // 4.2.3.4 - Check rutting
+  const ruttingThreshold = RUTTING_THRESHOLDS[requirementLevel as keyof typeof RUTTING_THRESHOLDS];
+  const hasRuttingProblem = condition.actualRutting ? condition.actualRutting > ruttingThreshold : condition.rutting < 1;
+  
+  // 4.2.3.5 - Check adhesion
+  const hasAdhesionProblem = condition.adhesion < MIN_ADHESION_COEFFICIENT;
+  
+  // If any problem with road surface, current repair is needed
+  if (hasEvennessProblem || hasRuttingProblem || hasAdhesionProblem) {
+    return 'current-repair';
+  }
+  
+  return 'none';
+};
+
+// Function to calculate ENPV (Economic Net Present Value) from section 10.2
+const calculateENPV = (segment: RoadSegment, workType: string): number => {
+  // Get base costs for different types of work (simplified)
+  const workCosts = {
+    'reconstruction': 15000000, // UAH per km
+    'capital-repair': 8000000,  // UAH per km
+    'current-repair': 3000000,  // UAH per km
+    'none': 0
+  };
+  
+  // Base cost of the work
+  const totalCost = (workCosts[workType as keyof typeof workCosts] || 0) * segment.length;
+  
+  // Calculate benefits (simplified calculation based on section 10.1)
+  // 1. Benefit from reduced vehicle operating costs
+  const trafficBenefit = segment.trafficIntensity * 365 * segment.length * 5; // 5 UAH per vehicle-km saved
+  
+  // 2. Benefit from reduced travel time
+  const timeBenefit = segment.trafficIntensity * 365 * segment.length * 2; // 2 UAH per vehicle-km saved
+  
+  // 3. Benefit from reduced accidents
+  const safetyBenefit = segment.trafficIntensity * 365 * segment.length * 0.5; // 0.5 UAH per vehicle-km saved
+  
+  // 4. Environmental benefits (marginal)
+  const envBenefit = segment.trafficIntensity * 365 * segment.length * 0.1; // 0.1 UAH per vehicle-km saved
+  
+  // Total annual benefit
+  const annualBenefit = trafficBenefit + timeBenefit + safetyBenefit + envBenefit;
+  
+  // Calculate NPV for 10 years with 5% discount rate
+  const discountRate = 0.05;
+  const years = 10;
+  
+  let npv = -totalCost; // Initial investment
+  
+  for (let t = 1; t <= years; t++) {
+    npv += annualBenefit / Math.pow(1 + discountRate, t);
+  }
+  
+  return npv;
+};
+
+// Application component
+const RoadAssessmentApp: React.FC = () => {
+  // State for the multi-step form
   const [activeStep, setActiveStep] = useState(0);
-  const [sections, setSections] = useState<RoadSection[]>([]);
-  const [currentSection, setCurrentSection] = useState<RoadSection>({
+  const [segments, setSegments] = useState<RoadSegment[]>([]);
+  const [currentSegment, setCurrentSegment] = useState<RoadSegment>({
     id: '',
     name: '',
-    category: 'II',
     length: 0,
-    intensity: 0,
-    strengthCoeff: 1.0,
-    evenness: 0,
-    rutDepth: 0,
-    adhesion: 0.35,
-    criticalObjects: 0,
-    isInternational: false,
-    lat: 49.0,
-    lng: 31.0
-  });
-
-  // Calculation of results
-  const results = useMemo<CalculationResult[]>(() => {
-    return sections.map(section => {
-      const cost = calculateCost(section);
-      const enpv = calculateENPV(section);
-      return {
-        id: section.id,
-        name: section.name,
-        repairTypes: determineRepairTypes(section),
-        cost,
-        enpv,
-        priority: calculatePriority(section, enpv)
-      };
-    });
-  }, [sections]);
-
-  // Calculation logic
-  const calculateCost = (section: RoadSection): number => {
-    return (
-      BASE_COST_II_CATEGORY *
-      CATEGORY_COEFFICIENTS[section.category] *
-      section.length *
-      (1 + section.criticalObjects * 0.01)
-    );
-  };
-
-  const calculateENPV = (section: RoadSection): number => {
-    const benefits = section.intensity * 0.15 * section.length * 365;
-    const cost = calculateCost(section);
-    return benefits - cost;
-  };
-
-  const determineRepairTypes = (section: RoadSection): string[] => {
-    const repairs = [];
-    if (section.intensity < 1) repairs.push('Реконструкція');
-    if (section.strengthCoeff < 0.9) repairs.push('Капітальний ремонт');
-    if (section.evenness < 1 || section.rutDepth < 1 || section.adhesion < 1) {
-      repairs.push('Поточний ремонт');
+    category: '',
+    trafficIntensity: 0,
+    constructionYear: new Date().getFullYear() - 10,
+    lastRepairYear: new Date().getFullYear() - 3,
+    currentCondition: {
+      trafficIntensityCoefficient: 1,
+      pavementStrengthCoefficient: 1,
+      evenness: 1,
+      rutting: 1,
+      adhesion: 1,
+      actualEvenness: 2.5,  // IRI value (m/km)
+      actualRutting: 15     // in mm
     }
-    return repairs.length > 0 ? repairs : ['Експлуатаційне утримання'];
+  });
+  const [assessmentResults, setAssessmentResults] = useState<AssessmentResult[]>([]);
+  const [assessmentMethod, setAssessmentMethod] = useState<'instrumental' | 'expert'>('instrumental');
+  const [expertAssessmentValue, setExpertAssessmentValue] = useState<number>(8);
+
+  // Step definitions
+  const steps = ['Деталі ділянки дороги', 'Оцінка стану', 'Результати'];
+
+  // Handle moving to the next step
+  const handleNext = () => {
+    if (activeStep === 1) {
+      performAssessment();
+    }
+    setActiveStep((prevActiveStep) => prevActiveStep + 1);
   };
 
-  const calculatePriority = (section: RoadSection, enpv: number): number => {
-    let priority = enpv * 0.7;
-    if (section.isInternational) priority += 30;
-    if (section.criticalObjects > 5) priority += 20;
-    return priority;
+  // Handle moving to the previous step
+  const handleBack = () => {
+    setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
 
-  // Event handlers
-  const handleAddSection = () => {
-    // Use a more reliable way to generate IDs if crypto.randomUUID is not available
-    const newId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+  // Handle input changes for road segment details
+  const handleSegmentChange = (field: keyof RoadSegment, value: any) => {
+    setCurrentSegment({
+      ...currentSegment,
+      [field]: value
+    });
+  };
+
+  // Handle input changes for road condition details
+  const handleConditionChange = (field: keyof RoadCondition, value: number) => {
+    setCurrentSegment({
+      ...currentSegment,
+      currentCondition: {
+        ...currentSegment.currentCondition,
+        [field]: value
+      }
+    });
+  };
+
+  // Add a new segment and reset form
+  const handleAddSegment = () => {
+    const newSegment = {
+      ...currentSegment,
+      id: Date.now().toString() // Simple unique ID generation
+    };
     
-    setSections([...sections, { ...currentSection, id: newId }]);
-    setCurrentSection({
-      ...currentSection,
+    setSegments([...segments, newSegment]);
+    
+    // Reset form for new segment
+    setCurrentSegment({
       id: '',
       name: '',
       length: 0,
-      intensity: 0
+      category: '',
+      trafficIntensity: 0,
+      constructionYear: new Date().getFullYear() - 10,
+      lastRepairYear: new Date().getFullYear() - 3,
+      currentCondition: {
+        trafficIntensityCoefficient: 1,
+        pavementStrengthCoefficient: 1,
+        evenness: 1,
+        rutting: 1,
+        adhesion: 1,
+        actualEvenness: 2.5,
+        actualRutting: 15
+      }
     });
+    
+    setActiveStep(0);
   };
 
-  const handleNextStep = () => {
-    setActiveStep(prevStep => Math.min(prevStep + 1, 2));
+  // Perform assessment on all segments
+  const performAssessment = () => {
+    const results: AssessmentResult[] = [];
+    
+    for (const segment of segments) {
+      let recommendedWork: 'reconstruction' | 'capital-repair' | 'current-repair' | 'none';
+      let explanation = '';
+      
+      if (assessmentMethod === 'expert') {
+        // Using expert assessment method (section 4.4.3.1)
+        const repairRecommendation = determineRepairByExpertAssessment(expertAssessmentValue);
+        
+        if (repairRecommendation === REPAIR_BASED_ON_EXPERT_ASSESSMENT.high) {
+          recommendedWork = 'none';
+        } else if (repairRecommendation === REPAIR_BASED_ON_EXPERT_ASSESSMENT.medium) {
+          recommendedWork = 'current-repair';
+        } else {
+          recommendedWork = 'capital-repair';
+        }
+        
+        explanation = `На основі експертної оцінки ${expertAssessmentValue}, рекомендований вид робіт: ${recommendedWork}.`;
+      } else {
+        // Using instrumental assessment method (sections 4.2.2 and 4.2.3)
+        recommendedWork = determineRequiredWork(segment);
+        
+        if (recommendedWork === 'reconstruction') {
+          explanation = 'Коефіцієнт інтенсивності руху менше 1, що вказує на невідповідність дороги вимогам пропускної здатності.';
+        } else if (recommendedWork === 'capital-repair') {
+          const minStrengthCoefficient = MIN_PAVEMENT_STRENGTH_COEFFICIENTS[segment.category as keyof typeof MIN_PAVEMENT_STRENGTH_COEFFICIENTS] || 1.0;
+          explanation = `Коефіцієнт міцності дорожнього одягу (${segment.currentCondition.pavementStrengthCoefficient.toFixed(2)}) нижче мінімальних вимог для категорії ${segment.category} (${minStrengthCoefficient}).`;
+        } else if (recommendedWork === 'current-repair') {
+          explanation = 'Проблеми з рівністю дороги, колійністю або зчепленням вимагають поточного ремонту.';
+        } else {
+          explanation = 'Усі показники в межах допустимих норм. Негайний ремонт не потрібен.';
+        }
+      }
+      
+      // Calculate economic ENPV
+      const economicENPV = calculateENPV(segment, recommendedWork);
+      
+      // Calculate priority score according to section 4.2.6
+      let priorityScore = economicENPV / (segment.length * 1000000); // ENPV per million cost per km
+      
+      results.push({
+        segment,
+        recommendedWork,
+        priorityScore,
+        economicENPV,
+        explanation
+      });
+    }
+    
+    // Sort results by priority score (descending) - section 4.2.6
+    results.sort((a, b) => b.priorityScore - a.priorityScore);
+    
+    setAssessmentResults(results);
   };
 
-  const handlePrevStep = () => {
-    setActiveStep(prevStep => Math.max(prevStep - 1, 0));
-  };
-
-  // Render appropriate step content
-  const renderStepContent = () => {
-    switch (activeStep) {
-      case 0:
-        return (
-          <Grid container spacing={3}>
+  // Form for road segment details
+  const renderSegmentDetailsForm = () => (
+    <Box>
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <Typography variant="h6">Додати ділянку дороги</Typography>
+        </Grid>
+        
+        <Grid item xs={12} md={6}>
+          <TextField
+            required
+            label="Назва/ідентифікатор ділянки"
+            fullWidth
+            value={currentSegment.name}
+            onChange={(e) => handleSegmentChange('name', e.target.value)}
+          />
+        </Grid>
+        
+        <Grid item xs={12} md={6}>
+          <TextField
+            required
+            label="Довжина (км)"
+            type="number"
+            fullWidth
+            value={currentSegment.length || ''}
+            onChange={(e) => handleSegmentChange('length', Number(e.target.value))}
+          />
+        </Grid>
+        
+        <Grid item xs={12} md={6}>
+          <FormControl fullWidth required>
+            <InputLabel>Категорія дороги</InputLabel>
+            <Select
+              value={currentSegment.category}
+              label="Категорія дороги"
+              onChange={(e) => handleSegmentChange('category', e.target.value)}
+            >
+              {ROAD_CATEGORIES.map((category) => (
+                <MenuItem key={category} value={category}>
+                  Категорія {category}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+        
+        <Grid item xs={12} md={6}>
+          <TextField
+            required
+            label="Інтенсивність руху (авт./добу)"
+            type="number"
+            fullWidth
+            value={currentSegment.trafficIntensity || ''}
+            onChange={(e) => handleSegmentChange('trafficIntensity', Number(e.target.value))}
+          />
+        </Grid>
+        
+        <Grid item xs={12} md={6}>
+          <TextField
+            required
+            label="Рік будівництва"
+            type="number"
+            fullWidth
+            value={currentSegment.constructionYear || ''}
+            onChange={(e) => handleSegmentChange('constructionYear', Number(e.target.value))}
+            inputProps={{ min: 1950, max: new Date().getFullYear() }}
+          />
+        </Grid>
+        
+        <Grid item xs={12} md={6}>
+          <TextField
+            required
+            label="Рік останнього ремонту"
+            type="number"
+            fullWidth
+            value={currentSegment.lastRepairYear || ''}
+            onChange={(e) => handleSegmentChange('lastRepairYear', Number(e.target.value))}
+            inputProps={{ min: 1950, max: new Date().getFullYear() }}
+          />
+        </Grid>
+      </Grid>
+      
+      {segments.length > 0 && (
+        <Box mt={4}>
+          <Typography variant="h6">Додані ділянки</Typography>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Назва/ідентифікатор</TableCell>
+                  <TableCell>Довжина (км)</TableCell>
+                  <TableCell>Категорія</TableCell>
+                  <TableCell>Рух (авт./добу)</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {segments.map((segment) => (
+                  <TableRow key={segment.id}>
+                    <TableCell>{segment.name}</TableCell>
+                    <TableCell>{segment.length}</TableCell>
+                    <TableCell>{segment.category}</TableCell>
+                    <TableCell>{segment.trafficIntensity}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      )}
+    </Box>
+  );
+  
+  const renderConditionAssessmentForm = () => (
+    <Box>
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <FormControl component="fieldset">
+            <RadioGroup
+              row
+              value={assessmentMethod}
+              onChange={(e) => setAssessmentMethod(e.target.value as 'instrumental' | 'expert')}
+            >
+              <FormControlLabel 
+                value="instrumental" 
+                control={<Radio />} 
+                label="Інструментальна оцінка (Розділ 4.2.2)" 
+              />
+              <FormControlLabel 
+                value="expert" 
+                control={<Radio />} 
+                label="Експертна оцінка (Розділ 4.4.3.1)" 
+              />
+            </RadioGroup>
+          </FormControl>
+        </Grid>
+        
+        {assessmentMethod === 'instrumental' ? (
+          <>
+            <Grid item xs={12}>
+              <Typography variant="h6">Інструментальна оцінка стану</Typography>
+              <Alert severity="info">
+                <AlertTitle>Інформація</AlertTitle>
+                Введіть коефіцієнти на основі польових вимірювань. Значення менше 1 вказують на стан нижче прийнятних стандартів.
+              </Alert>
+            </Grid>
+            
             <Grid item xs={12} md={6}>
               <TextField
+                required
+                label="Коефіцієнт інтенсивності руху"
+                type="number"
                 fullWidth
-                label="Назва ділянки"
-                value={currentSection.name}
-                onChange={e => setCurrentSection({...currentSection, name: e.target.value})}
+                helperText="Менше 1 вказує на недостатню пропускну здатність для поточного трафіку"
+                value={currentSegment.currentCondition.trafficIntensityCoefficient}
+                onChange={(e) => handleConditionChange('trafficIntensityCoefficient', Number(e.target.value))}
+                inputProps={{ step: 0.1, min: 0 }}
               />
             </Grid>
             
-            <Grid item xs={6} md={3}>
-              <FormControl fullWidth>
-                <InputLabel>Категорія</InputLabel>
-                <Select
-                  value={currentSection.category}
-                  onChange={e => setCurrentSection({
-                    ...currentSection, 
-                    category: e.target.value as keyof typeof CATEGORY_COEFFICIENTS
-                  })}
-                >
-                  <MenuItem value="I">I</MenuItem>
-                  <MenuItem value="II">II</MenuItem>
-                  <MenuItem value="III">III</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={6} md={3}>
-              <TextField
-                fullWidth
-                label="Довжина (км)"
-                type="number"
-                value={currentSection.length || ''}
-                onChange={e => setCurrentSection({...currentSection, length: Number(e.target.value)})}
-              />
-            </Grid>
-
             <Grid item xs={12} md={6}>
               <TextField
-                fullWidth
-                label="Інтенсивність руху (авт/добу)"
+                required
+                label="Коефіцієнт міцності дорожнього одягу"
                 type="number"
-                value={currentSection.intensity || ''}
-                onChange={e => setCurrentSection({...currentSection, intensity: Number(e.target.value)})}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Міжнародна дорога</InputLabel>
-                <Select
-                  value={currentSection.isInternational ? 'yes' : 'no'}
-                  onChange={e => setCurrentSection({
-                    ...currentSection, 
-                    isInternational: e.target.value === 'yes'
-                  })}
-                >
-                  <MenuItem value="yes">Так</MenuItem>
-                  <MenuItem value="no">Ні</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-          </Grid>
-        );
-      case 1:
-        return (
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <TextField
                 fullWidth
-                label="Коефіцієнт міцності"
-                type="number"
-                inputProps={{ step: 0.1, min: 0, max: 2 }}
-                value={currentSection.strengthCoeff}
-                onChange={e => setCurrentSection({...currentSection, strengthCoeff: Number(e.target.value)})}
+                helperText={`Мінімальний коефіцієнт для категорії ${currentSegment.category || 'не вибрано'}: ${
+                  currentSegment.category 
+                    ? MIN_PAVEMENT_STRENGTH_COEFFICIENTS[currentSegment.category as keyof typeof MIN_PAVEMENT_STRENGTH_COEFFICIENTS] 
+                    : '?'
+                }`}
+                value={currentSegment.currentCondition.pavementStrengthCoefficient}
+                onChange={(e) => handleConditionChange('pavementStrengthCoefficient', Number(e.target.value))}
+                inputProps={{ step: 0.1, min: 0 }}
               />
             </Grid>
             
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <TextField
-                fullWidth
-                label="Коефіцієнт рівності"
+                required
+                label="Фактична рівність (IRI, м/км)"
                 type="number"
-                inputProps={{ step: 0.1, min: 0, max: 1 }}
-                value={currentSection.evenness}
-                onChange={e => setCurrentSection({...currentSection, evenness: Number(e.target.value)})}
+                fullWidth
+                helperText={`Граничне значення: ${
+                  currentSegment.category 
+                    ? EVENNESS_THRESHOLDS[determineRequirementLevel(currentSegment) as keyof typeof EVENNESS_THRESHOLDS] 
+                    : '?'
+                } м/км`}
+                value={currentSegment.currentCondition.actualEvenness || ''}
+                onChange={(e) => {
+                  const actualEvenness = Number(e.target.value);
+                  const requirementLevel = determineRequirementLevel(currentSegment);
+                  const evennessThreshold = EVENNESS_THRESHOLDS[requirementLevel as keyof typeof EVENNESS_THRESHOLDS];
+                  // Evenness coefficient is 1 when actual evenness is below threshold, otherwise it's below 1
+                  const evennessCoefficient = actualEvenness <= evennessThreshold ? 1 : evennessThreshold / actualEvenness;
+                  
+                  handleConditionChange('actualEvenness', actualEvenness);
+                  handleConditionChange('evenness', evennessCoefficient);
+                }}
+                inputProps={{ step: 0.1, min: 0 }}
               />
             </Grid>
-
-            <Grid item xs={12} md={6}>
+            
+            <Grid item xs={12} md={4}>
               <TextField
-                fullWidth
-                label="Глибина колії (мм)"
+                required
+                label="Фактична колійність (мм)"
                 type="number"
-                value={currentSection.rutDepth}
-                onChange={e => setCurrentSection({...currentSection, rutDepth: Number(e.target.value)})}
+                fullWidth
+                helperText={`Граничне значення: ${
+                  currentSegment.category 
+                    ? RUTTING_THRESHOLDS[determineRequirementLevel(currentSegment) as keyof typeof RUTTING_THRESHOLDS] 
+                    : '?'
+                } мм`}
+                value={currentSegment.currentCondition.actualRutting || ''}
+                onChange={(e) => {
+                  const actualRutting = Number(e.target.value);
+                  const requirementLevel = determineRequirementLevel(currentSegment);
+                  const ruttingThreshold = RUTTING_THRESHOLDS[requirementLevel as keyof typeof RUTTING_THRESHOLDS];
+                  // Rutting coefficient is 1 when actual rutting is below threshold, otherwise it's below 1
+                  const ruttingCoefficient = actualRutting <= ruttingThreshold ? 1 : ruttingThreshold / actualRutting;
+                  
+                  handleConditionChange('actualRutting', actualRutting);
+                  handleConditionChange('rutting', ruttingCoefficient);
+                }}
+                inputProps={{ step: 1, min: 0 }}
               />
             </Grid>
-
-            <Grid item xs={12} md={6}>
+            
+            <Grid item xs={12} md={4}>
               <TextField
-                fullWidth
+                required
                 label="Коефіцієнт зчеплення"
                 type="number"
+                fullWidth
+                helperText={`Мінімальний коефіцієнт: ${MIN_ADHESION_COEFFICIENT}`}
+                value={currentSegment.currentCondition.adhesion}
+                onChange={(e) => handleConditionChange('adhesion', Number(e.target.value))}
                 inputProps={{ step: 0.05, min: 0, max: 1 }}
-                value={currentSection.adhesion}
-                onChange={e => setCurrentSection({...currentSection, adhesion: Number(e.target.value)})}
               />
             </Grid>
-
+          </>
+        ) : (
+          <>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Кількість об'єктів критичної інфраструктури"
-                type="number"
-                value={currentSection.criticalObjects}
-                onChange={e => setCurrentSection({...currentSection, criticalObjects: Number(e.target.value)})}
-              />
-            </Grid>
-          </Grid>
-        );
-      case 2:
-        return (
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Широта"
-                type="number"
-                inputProps={{ step: 0.000001 }}
-                value={currentSection.lat}
-                onChange={e => setCurrentSection({...currentSection, lat: Number(e.target.value)})}
-              />
+              <Typography variant="h6">Експертна оцінка (Таблиця 11.1)</Typography>
+              <Alert severity="info">
+                <AlertTitle>Інформація</AlertTitle>
+                Виберіть рівень стану, який найкраще відповідає поточному стану ділянки дороги.
+              </Alert>
             </Grid>
             
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Довгота"
-                type="number"
-                inputProps={{ step: 0.000001 }}
-                value={currentSection.lng}
-                onChange={e => setCurrentSection({...currentSection, lng: Number(e.target.value)})}
-              />
-            </Grid>
-
             <Grid item xs={12}>
-              <Box sx={{ height: 200, width: '100%', mt: 2 }}>
-                <LoadScript googleMapsApiKey="YOUR_GOOGLE_MAPS_API_KEY">
-                  <GoogleMap
-                    mapContainerStyle={{ height: '100%', width: '100%' }}
-                    center={{ lat: currentSection.lat, lng: currentSection.lng }}
-                    zoom={8}
-                  >
-                    <Marker
-                      position={{ lat: currentSection.lat, lng: currentSection.lng }}
-                      draggable={true}
-                      onDragEnd={(e) => {
-                        if (e.latLng) {
-                          setCurrentSection({
-                            ...currentSection,
-                            lat: e.latLng.lat(),
-                            lng: e.latLng.lng()
-                          });
-                        }
-                      }}
-                    />
-                  </GoogleMap>
-                </LoadScript>
-              </Box>
+              <FormControl fullWidth>
+                <InputLabel>Оцінка стану дороги</InputLabel>
+                <Select
+                  value={expertAssessmentValue}
+                  label="Оцінка стану дороги"
+                  onChange={(e) => setExpertAssessmentValue(Number(e.target.value))}
+                >
+                  {EXPERT_ASSESSMENT_LEVELS.map((level) => (
+                    <MenuItem key={level.value} value={level.value}>
+                      {level.value}: {level.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
+            
+            <Grid item xs={12}>
+              <Paper sx={{ p: 2, backgroundColor: '#f5f5f5' }}>
+                <Typography variant="subtitle1">Результат оцінки:</Typography>
+                <Typography variant="body1">
+                  {determineRepairByExpertAssessment(expertAssessmentValue)}
+                </Typography>
+              </Paper>
+            </Grid>
+          </>
+        )}
+      </Grid>
+    </Box>
+  );
+
+  // Display assessment results
+  const renderResults = () => (
+    <Box>
+        <Typography variant="h6" gutterBottom>
+          Результати оцінки
+        </Typography>
+        
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <AlertTitle>Пріоритетний рейтинг</AlertTitle>
+          Ділянки ранжуються за пріоритетністю на основі економічної ефективності (ENPV на кілометр).
+        </Alert>
+        
+        {assessmentResults.length === 0 ? (
+          <Alert severity="warning">
+            Жодна ділянка не була оцінена. Будь ласка, додайте ділянки доріг та завершіть оцінку.
+          </Alert>
+        ) : (
+          <Grid container spacing={3}>
+            {assessmentResults.map((result, index) => (
+              <Grid item xs={12} key={result.segment.id}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      {index + 1}. {result.segment.name}
+                    </Typography>
+                    
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="subtitle2">Деталі дороги:</Typography>
+                        <Typography variant="body2">
+                          Категорія: {result.segment.category}, Довжина: {result.segment.length} км, 
+                          Рух: {result.segment.trafficIntensity} авт./добу
+                        </Typography>
+                        <Typography variant="body2">
+                          Рік будівництва: {result.segment.constructionYear || 'Не вказано'},
+                          Останній ремонт: {result.segment.lastRepairYear || 'Не вказано'}
+                        </Typography>
+                      </Grid>
+                      
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="subtitle2">Рекомендовані роботи:</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 'bold', color: 
+                          result.recommendedWork === 'none' ? 'green' :
+                          result.recommendedWork === 'current-repair' ? 'orange' :
+                          result.recommendedWork === 'capital-repair' ? 'orangered' : 'red'
+                        }}>
+                          {result.recommendedWork === 'none' ? 'Ремонт не потрібен' :
+                          result.recommendedWork === 'current-repair' ? 'Поточний ремонт' :
+                          result.recommendedWork === 'capital-repair' ? 'Капітальний ремонт' : 'Реконструкція'}
+                        </Typography>
+                        <Typography variant="body2">
+                          {result.explanation}
+                        </Typography>
+                      </Grid>
+                      
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="subtitle2">Економічна ефективність:</Typography>
+                        <Typography variant="body2">
+                          ENPV: {result.economicENPV.toLocaleString()} грн
+                        </Typography>
+                        <Typography variant="body2">
+                          Пріоритетність: {result.priorityScore.toFixed(2)}
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
-        );
-      default:
-        return null;
-    }
-  };
+        )
+      }
+    </Box>
+  )
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Input form */}
       <Paper sx={{ p: 3, mb: 4 }}>
-        <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
-          <Step><StepLabel>Основні параметри</StepLabel></Step>
-          <Step><StepLabel>Технічні показники</StepLabel></Step>
-          <Step><StepLabel>Розташування</StepLabel></Step>
+        <Typography variant="h4" gutterBottom>
+          Система оцінки стану доріг
+        </Typography>
+        <Typography variant="subtitle1" gutterBottom>
+          Відповідно до вимог ДБН В.2.3-4:2015 та ДСТУ Б B.2.3-42:2016
+        </Typography>
+      </Paper>
+      
+      <Paper sx={{ p: 3 }}>
+        <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+          {steps.map((label) => (
+            <Step key={label}>
+              <StepLabel>{label}</StepLabel>
+            </Step>
+          ))}
         </Stepper>
-
-        {renderStepContent()}
-
-        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
-          <Button 
-            variant="outlined" 
-            onClick={handlePrevStep}
+        
+        <Box sx={{ mt: 2, mb: 2 }}>
+          {activeStep === 0 && renderSegmentDetailsForm()}
+          {activeStep === 1 && renderConditionAssessmentForm()}
+          {activeStep === 2 && renderResults()}
+        </Box>
+        
+        <Divider sx={{ my: 2 }} />
+        
+        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Button
             disabled={activeStep === 0}
+            onClick={handleBack}
           >
             Назад
           </Button>
           
           <Box>
-            {activeStep === 2 ? (
+            {activeStep === 0 && (
               <Button 
-                variant="contained" 
-                onClick={handleAddSection}
-                disabled={!currentSection.name || !currentSection.length}
-                sx={{ ml: 1 }}
+                variant="contained"
+                color="primary"
+                onClick={handleAddSegment}
+                disabled={!currentSegment.name || !currentSegment.length || !currentSegment.category || !currentSegment.trafficIntensity}
+                sx={{ mr: 1 }}
               >
                 Додати ділянку
               </Button>
-            ) : (
-              <Button 
-                variant="contained" 
-                onClick={handleNextStep}
+            )}
+            
+            {activeStep < steps.length - 1 ? (
+              <Button
+                variant="contained"
+                onClick={handleNext}
+                disabled={activeStep === 0 && segments.length === 0}
               >
                 Далі
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                color="success"
+                onClick={() => setActiveStep(0)}
+              >
+                Нова оцінка
               </Button>
             )}
           </Box>
         </Box>
       </Paper>
-
-      {/* Calculation results */}
-      {sections.length > 0 && (
-        <Paper sx={{ p: 3, mb: 4 }}>
-          <Typography variant="h6" gutterBottom>Результати розрахунків</Typography>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Ділянка</TableCell>
-                  <TableCell>Вид робіт</TableCell>
-                  <TableCell>Вартість</TableCell>
-                  <TableCell>ENPV</TableCell>
-                  <TableCell>Пріоритет</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {results.map(result => (
-                  <TableRow key={result.id}>
-                    <TableCell>{result.name}</TableCell>
-                    <TableCell>{result.repairTypes.join(', ')}</TableCell>
-                    <TableCell>{result.cost.toLocaleString()} грн</TableCell>
-                    <TableCell>{result.enpv.toLocaleString()}</TableCell>
-                    <TableCell>{result.priority.toFixed(1)}</TableCell>
-                  </TableRow>
-                ))}
-                <TableRow>
-                  <TableCell colSpan={2} align="right"><strong>Загалом:</strong></TableCell>
-                  <TableCell><strong>{results.reduce((sum, r) => sum + r.cost, 0).toLocaleString()} грн</strong></TableCell>
-                  <TableCell colSpan={2}></TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-      )}
-
-      {/* Map */}
-      {sections.length > 0 && (
-        <Paper sx={{ p: 3, mb: 4, height: 400 }}>
-          <Typography variant="h6" gutterBottom>Карта ділянок</Typography>
-          <LoadScript googleMapsApiKey="YOUR_GOOGLE_MAPS_API_KEY">
-            <GoogleMap
-              mapContainerStyle={{ height: '90%', width: '100%' }}
-              center={{ lat: 49.0, lng: 31.0 }}
-              zoom={6}
-            >
-              {sections.map(section => (
-                <Marker
-                  key={section.id}
-                  position={{ lat: section.lat, lng: section.lng }}
-                  label={section.name.substring(0, 2)}
-                />
-              ))}
-            </GoogleMap>
-          </LoadScript>
-        </Paper>
-      )}
-
-      {/* Export to PDF */}
-      {sections.length > 0 && (
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <PDFDownloadLink
-            document={<PDFDocument results={results} />}
-            fileName="road_report.pdf"
-            style={{
-              textDecoration: 'none'
-            }}
-          >
-            {({ loading }) => (
-              <Button variant="contained" color="secondary" disabled={loading}>
-                {loading ? 'Генерація звіту...' : 'Завантажити PDF'}
-              </Button>
-            )}
-          </PDFDownloadLink>
-        </Box>
-      )}
     </Container>
   );
-}
+}  
+
+export default RoadAssessmentApp;

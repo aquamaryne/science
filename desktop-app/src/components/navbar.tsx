@@ -33,20 +33,6 @@ const Navbar: React.FC = () => {
                     </Button>
                 </Link>
             </Grid>
-            <Grid item>
-                <Link to='/pages/page_six'>
-                    <Button variant="contained" sx={{ boxShadow: 3, '&:active': { boxShadow: 1 } }}>
-                        Сторінка 6
-                    </Button>
-                </Link>
-            </Grid>
-            <Grid item>
-                <Link to='/pages/test'>
-                    <Button variant="contained" sx={{ boxShadow: 3, '&:active': { boxShadow: 1 } }}>
-                        Тест
-                    </Button>
-                </Link>
-            </Grid>
         </Grid>
     );
 };

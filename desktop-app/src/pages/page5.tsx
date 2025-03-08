@@ -1,300 +1,766 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
-  Box,
+  Container,
+  Typography,
+  Paper,
+  Grid,
   TextField,
   Select,
   MenuItem,
-  InputLabel,
   FormControl,
+  InputLabel,
+  Checkbox,
+  FormControlLabel,
   Button,
-  Typography,
+  Box,
+  Alert,
+  AlertTitle,
+  IconButton,
+  Stack,
   Table,
   TableBody,
   TableCell,
+  TableContainer,
+  TableHead,
   TableRow,
-  Container,
-  CssBaseline,
-  FormControlLabel,
-  Checkbox,
-  Alert
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Divider
 } from '@mui/material';
+import {
+  ExpandMore as ExpandMoreIcon,
+  Calculate as CalculateIcon,
+  Add as AddIcon,
+  Remove as RemoveIcon,
+  ArrowRight as ArrowRightIcon,
+  Warning as WarningIcon,
+  CheckCircle as CheckCircleIcon
+} from '@mui/icons-material';
 
-// Constants from all methodology applications
-const CATEGORY_COEFFICIENTS = {
-  'I': { state: 1.80, local: 1.71 },
-  'II': { state: 1.00, local: 1.00 },
-  'III': { state: 0.89, local: 0.85 },
-  'IV': { state: 0.61, local: 0.64 },
-  'V': { state: 0.39, local: 0.40 }
-};
-
-// Add 'Київська' to the region coefficients to match your usage
-const MOUNTAIN_COEFFICIENTS = {
-  'Автономна Республіка Крим': 1.15,
-  'Івано-Франківська': 1.13,
-  'Закарпатська': 1.11,
-  'Львівська': 1.04,
-  'Чернівецька': 1.04,
-  'Київська': 1.00, // Added this entry
-  'Інші': 1.00
-};
-
-// Ensure this constant has the same keys as MOUNTAIN_COEFFICIENTS
-const OPERATION_CONDITIONS_COEFF = {
-  'Автономна Республіка Крим': 1.15,
-  'Київська': 1.15, // This entry already existed
-  'Івано-Франківська': 1.13,
-  'Закарпатська': 1.11,
-  'Львівська': 1.04,
-  'Чернівецька': 1.04,
-  'Інші': 1.00
-};
-
-const INTENSITY_COEFFICIENTS = [
-  { min: 15000, max: 20000, value: 2.3 },
-  { min: 20001, max: 30000, value: 3.5 },
-  { min: 30001, value: 3.9 }
-];
-
-const CRITICAL_INFRASTRUCTURE_COEFF = [
-  { objects: 1, value: 1.01 },
-  { objects: 5, value: 1.03 },
-  { objects: 10, value: 1.05 }
-];
-
-// Update the type definition to ensure consistency
-type Region = keyof typeof MOUNTAIN_COEFFICIENTS;
-
-interface ProjectData {
-  category: keyof typeof CATEGORY_COEFFICIENTS;
-  length: number;
-  region: Region;
-  intensity: number;
-  criticalObjects: number;
-  isInternational: boolean;
-  isPresidentialOrder: boolean;
-  isDefense: boolean;
+// TypeScript interfaces
+interface Vehicle {
+  type: string;
+  count: number;
+  before: number;
+  after: number;
 }
 
-export default function PageFive() {
-  const [project, setProject] = useState<ProjectData>({
-    category: 'II',
-    length: 0,
-    region: 'Київська', // Now this is valid
-    intensity: 0,
-    criticalObjects: 0,
-    isInternational: false,
-    isPresidentialOrder: false,
-    isDefense: false
+interface Criterion {
+  name: string;
+  checked: boolean;
+  weight: number;
+}
+
+interface Benefit {
+  vehicleType: string;
+  annualBenefit: number;
+}
+
+interface Cost {
+  year: number;
+  cost: number;
+  type: string;
+}
+
+interface Results {
+  enpv: number;
+  eirr: number;
+  bcr: number;
+  priorityScore: number;
+  isViable: boolean;
+  priority: number;
+  benefits: Benefit[];
+  costs: Cost[];
+}
+
+const RoadFundingDistribution: React.FC = () => {
+  // Project state
+  const [projectName, setProjectName] = useState<string>('');
+  const [projectType, setProjectType] = useState<string>('state'); // 'state' or 'local'
+  const [projectLength, setProjectLength] = useState<number>(0);
+  const [projectCost, setProjectCost] = useState<number>(0);
+  const [constructionPeriod, setConstructionPeriod] = useState<number>(2);
+  const [socialDiscountRate, setSocialDiscountRate] = useState<number>(5);
+  
+  // Traffic data
+  const [vehicles, setVehicles] = useState<Vehicle[]>([
+    { type: 'Легкові автомобілі', count: 2000, before: 80, after: 100 },
+    { type: 'Вантажні автомобілі', count: 500, before: 60, after: 75 },
+    { type: 'Автобуси', count: 200, before: 70, after: 85 }
+  ]);
+  
+  // Criteria
+  const [criteria, setCriteria] = useState<Criterion[]>([
+    { name: 'Міжнародний транспортний коридор', checked: false, weight: 5 },
+    { name: 'Дорога оборонного значення', checked: false, weight: 10 },
+    { name: 'Ліквідація місць концентрації ДТП', checked: false, weight: 8 },
+    { name: 'Затверджена проектна документація', checked: false, weight: 3 },
+    { name: 'Високий ступінь готовності (>70%)', checked: false, weight: 4 },
+    { name: 'Обхід великого міста', checked: false, weight: 6 }
+  ]);
+  
+  // Results
+  const [results, setResults] = useState<Results>({
+    enpv: 0,
+    eirr: 0,
+    bcr: 0,
+    priorityScore: 0,
+    isViable: false,
+    priority: 0,
+    benefits: [],
+    costs: []
   });
 
-  const [result, setResult] = useState<{
-    funding: number;
-    coefficients: Record<string, number>;
-    priority: number;
-    errors: string[];
-  } | null>(null);
-
-  const calculateFunding = () => {
-    const errors = [];
-    if (project.length <= 0) errors.push('Некоректна довжина дороги');
-    if (project.intensity < 0) errors.push('Некоректна інтенсивність');
-    if (errors.length > 0) return setResult({ funding: 0, coefficients: {}, priority: 0, errors });
-
-    // Base calculation based on formula from section III
-    const baseRate = 604761; // Standard rate for category II (UAH/km)
+  const [showResults, setShowResults] = useState<boolean>(false);
+  const [expandedDetails, setExpandedDetails] = useState<boolean>(false);
+  
+  // Add vehicle type
+  const addVehicleType = (): void => {
+    setVehicles([...vehicles, { type: 'Новий тип', count: 0, before: 60, after: 70 }]);
+  };
+  
+  // Remove vehicle type
+  const removeVehicleType = (index: number): void => {
+    const newVehicles = [...vehicles];
+    newVehicles.splice(index, 1);
+    setVehicles(newVehicles);
+  };
+  
+  // Update vehicle data
+  const updateVehicleData = (index: number, field: keyof Vehicle, value: number | string): void => {
+    const newVehicles = [...vehicles];
+    newVehicles[index][field] = value as never; // Type assertion to handle both string and number
+    setVehicles(newVehicles);
+  };
+  
+  // Update criteria
+  const updateCriteria = (index: number, checked: boolean): void => {
+    const newCriteria = [...criteria];
+    newCriteria[index].checked = checked;
+    setCriteria(newCriteria);
+  };
+  
+  // Calculate results
+  const calculateResults = (): void => {
+    // Calculate annual benefits from time savings
+    const calculateAnnualBenefits = (): Benefit[] => {
+      // Value of time (грн per hour)
+      const valueOfTime = 150;
+      
+      // Calculate time savings for each vehicle type
+      const benefits = vehicles.map(vehicle => {
+        // Time before (hours) = length / speed before
+        const timeBefore = projectLength / vehicle.before;
+        
+        // Time after (hours) = length / speed after
+        const timeAfter = projectLength / vehicle.after;
+        
+        // Time savings (hours)
+        const timeSavings = timeBefore - timeAfter;
+        
+        // Annual time savings (hours) = time savings * count * 365
+        const annualTimeSavings = timeSavings * vehicle.count * 365;
+        
+        // Annual benefits (грн) = annual time savings * value of time
+        const annualBenefit = annualTimeSavings * valueOfTime;
+        
+        return {
+          vehicleType: vehicle.type,
+          annualBenefit
+        };
+      });
+      
+      // Add other benefits (accident reduction, environmental benefits, etc.)
+      // For simplicity, assume 10% of time savings
+      const additionalBenefits = benefits.reduce((sum, b) => sum + b.annualBenefit, 0) * 0.1;
+      
+      benefits.push({
+        vehicleType: 'Додаткові переваги',
+        annualBenefit: additionalBenefits
+      });
+      
+      return benefits;
+    };
     
-    const categoryCoeff = CATEGORY_COEFFICIENTS[project.category].state;
-    const mountainCoeff = MOUNTAIN_COEFFICIENTS[project.region];
-    const operationCoeff = OPERATION_CONDITIONS_COEFF[project.region];
+    // Calculate annual costs
+    const calculateAnnualCosts = (): Cost[] => {
+      // Distribute construction costs over the construction period
+      const annualConstructionCost = projectCost / constructionPeriod;
+      
+      // Annual maintenance costs (assumed to be 2% of construction costs)
+      const annualMaintenanceCost = projectCost * 0.02;
+      
+      // Create cost array for the evaluation period (20 years)
+      const costs: Cost[] = [];
+      
+      for (let year = 0; year < 20; year++) {
+        if (year < constructionPeriod) {
+          costs.push({
+            year,
+            cost: annualConstructionCost,
+            type: 'Будівництво'
+          });
+        } else {
+          costs.push({
+            year,
+            cost: annualMaintenanceCost,
+            type: 'Утримання'
+          });
+        }
+      }
+      
+      return costs;
+    };
     
-    // Intensity adjustment (Appendix 7)
-    const intensityCoeff = INTENSITY_COEFFICIENTS.find(c => 
-      project.intensity >= c.min && (!c.max || project.intensity <= c.max)
-    )?.value || 1;
-
-    // Critical infrastructure adjustment (Appendix 8)
-    const infraCoeff = CRITICAL_INFRASTRUCTURE_COEFF.reduce((acc, curr) => 
-      project.criticalObjects >= curr.objects ? curr.value : acc, 1);
-
-    // Priorities from section V
-    let priorityMultiplier = 1;
-    if (project.isPresidentialOrder) priorityMultiplier *= 1.5;
-    if (project.isInternational) priorityMultiplier *= 1.3;
-    if (project.isDefense) priorityMultiplier *= 1.2;
-
-    const funding = baseRate *
-      categoryCoeff *
-      mountainCoeff *
-      operationCoeff *
-      intensityCoeff *
-      infraCoeff *
-      priorityMultiplier *
-      project.length;
-
-    // Priority calculation
+    // Calculate ENPV, EIRR, BCR
+    const calculateEconomicIndicators = (benefits: Benefit[], costs: Cost[]) => {
+      // Calculate PV of benefits
+      let pvBenefits = 0;
+      
+      // Annual benefit (sum of all vehicle types)
+      const annualBenefit = benefits.reduce((sum, b) => sum + b.annualBenefit, 0);
+      
+      // Calculate PV of benefits for 20 years
+      for (let year = constructionPeriod; year < 20; year++) {
+        pvBenefits += annualBenefit / Math.pow(1 + socialDiscountRate/100, year);
+      }
+      
+      // Calculate PV of costs
+      let pvCosts = 0;
+      
+      costs.forEach(c => {
+        pvCosts += c.cost / Math.pow(1 + socialDiscountRate/100, c.year);
+      });
+      
+      // Calculate ENPV
+      const enpv = pvBenefits - pvCosts;
+      
+      // Calculate BCR
+      const bcr = pvBenefits / pvCosts;
+      
+      // Calculate EIRR
+      // Simple approximation for EIRR (iterative search for discount rate that makes ENPV = 0)
+      let eirr = socialDiscountRate;
+      let step = 5;
+      let test_enpv = enpv;
+      
+      // 10 iterations maximum to approximate EIRR
+      for (let i = 0; i < 10 && Math.abs(test_enpv) > 1000; i++) {
+        if (test_enpv > 0) {
+          eirr += step;
+        } else {
+          eirr -= step;
+          step /= 2;
+        }
+        
+        let test_pvBenefits = 0;
+        for (let year = constructionPeriod; year < 20; year++) {
+          test_pvBenefits += annualBenefit / Math.pow(1 + eirr/100, year);
+        }
+        
+        let test_pvCosts = 0;
+        costs.forEach(c => {
+          test_pvCosts += c.cost / Math.pow(1 + eirr/100, c.year);
+        });
+        
+        test_enpv = test_pvBenefits - test_pvCosts;
+      }
+      
+      return {
+        enpv,
+        eirr,
+        bcr,
+        isViable: enpv > 0 && eirr > socialDiscountRate
+      };
+    };
+    
+    // Calculate priority score based on criteria
+    const calculatePriorityScore = (): number => {
+      return criteria
+        .filter(c => c.checked)
+        .reduce((score, c) => score + c.weight, 0);
+    };
+    
+    // Get benefits and costs
+    const benefits = calculateAnnualBenefits();
+    const costs = calculateAnnualCosts();
+    
+    // Calculate economic indicators
+    const indicators = calculateEconomicIndicators(benefits, costs);
+    
+    // Calculate priority score
+    const priorityScore = calculatePriorityScore();
+    
+    // Determine priority level
     let priority = 0;
-    if (project.isPresidentialOrder) priority += 4;
-    if (project.isInternational) priority += 3;
-    if (project.intensity > 10000) priority += 2;
-    if (project.region === 'Київська') priority += 1; // Now this comparison is valid
-
-    setResult({
-      funding: Math.round(funding),
-      coefficients: {
-        categoryCoeff,
-        mountainCoeff,
-        operationCoeff,
-        intensityCoeff,
-        infraCoeff,
-        priorityMultiplier
-      },
-      priority: Math.min(10, priority),
-      errors: []
+    if (indicators.isViable) {
+      if (priorityScore >= 15) {
+        priority = 1; // Highest priority
+      } else if (priorityScore >= 10) {
+        priority = 2;
+      } else if (priorityScore >= 5) {
+        priority = 3;
+      } else {
+        priority = 4;
+      }
+    }
+    
+    // Update results
+    setResults({
+      ...indicators,
+      priorityScore,
+      priority,
+      benefits,
+      costs
     });
+    
+    setShowResults(true);
   };
 
   return (
-    <Container component="main" maxWidth="md">
-      <CssBaseline />
-      <Box sx={{ mt: 4, p: 3, boxShadow: 3, borderRadius: 2 }}>
-        <Typography variant="h4" gutterBottom>
-          Розрахунок фінансування доріг
-        </Typography>
-
-        {/* Input form */}
-        <Box component="form" sx={{ display: 'grid', gap: 3 }}>
-          <FormControl fullWidth>
-            <InputLabel>Категорія дороги</InputLabel>
-            <Select
-              value={project.category}
-              onChange={e => setProject({...project, category: e.target.value as any})}
-            >
-              {Object.keys(CATEGORY_COEFFICIENTS).map(cat => (
-                <MenuItem key={cat} value={cat}>Категорія {cat}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <TextField
-            label="Протяжність (км)"
-            type="number"
-            value={project.length}
-            onChange={e => setProject({...project, length: Number(e.target.value)})}
-          />
-
-          <FormControl fullWidth>
-            <InputLabel>Регіон</InputLabel>
-            <Select
-              value={project.region}
-              onChange={e => setProject({...project, region: e.target.value as Region})}
-            >
-              {Object.keys(MOUNTAIN_COEFFICIENTS).map(region => (
-                <MenuItem key={region} value={region}>{region}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <TextField
-            label="Інтенсивність руху (авт/добу)"
-            type="number"
-            value={project.intensity}
-            onChange={e => setProject({...project, intensity: Number(e.target.value)})}
-          />
-
-          <TextField
-            label="Кількість критичних об'єктів"
-            type="number"
-            value={project.criticalObjects}
-            onChange={e => setProject({...project, criticalObjects: Number(e.target.value)})}
-          />
-
-          <Box sx={{ display: 'flex', gap: 3 }}>
-            <FormControlLabel
-              control={<Checkbox 
-                checked={project.isInternational}
-                onChange={e => setProject({...project, isInternational: e.target.checked})}
-              />}
-              label="Міжнародна дорога"
-            />
-            <FormControlLabel
-              control={<Checkbox 
-                checked={project.isPresidentialOrder}
-                onChange={e => setProject({...project, isPresidentialOrder: e.target.checked})}
-              />}
-              label="Президентський указ"
-            />
-            <FormControlLabel
-              control={<Checkbox 
-                checked={project.isDefense}
-                onChange={e => setProject({...project, isDefense: e.target.checked})}
-              />}
-              label="Оборонне значення"
-            />
-          </Box>
-
-          <Button 
-            variant="contained" 
-            size="large" 
-            onClick={calculateFunding}
-            sx={{ py: 2 }}
-          >
-            Розрахувати
-          </Button>
-        </Box>
-
-        {/* Results */}
-        {result && (
-          <Box sx={{ mt: 4 }}>
-            {result.errors.length > 0 && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {result.errors.join(', ')}
-              </Alert>
-            )}
-
+    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      <Typography variant="h4" component="h1" align="center" gutterBottom>
+        Калькулятор розподілу коштів на будівництво автомобільних доріг загального користування
+      </Typography>
+      
+      <Grid container spacing={3}>
+        {/* Left side - Data Input */}
+        <Grid item xs={12} md={6}>
+          <Alert severity="info" sx={{ mb: 3 }}>
+            <AlertTitle>Введення даних для оцінки проекту</AlertTitle>
+            Введіть необхідні дані для розрахунку показників соціально-економічної ефективності та визначення пріоритетності проекту.
+          </Alert>
+          
+          {/* Basic project information */}
+          <Paper sx={{ p: 3, mb: 3 }} elevation={2}>
             <Typography variant="h6" gutterBottom>
-              Результати розрахунків:
+              Основна інформація про проект
             </Typography>
-
-            <Table sx={{ mb: 3 }}>
-              <TableBody>
-                <TableRow>
-                  <TableCell>Категорія (коеф.)</TableCell>
-                  <TableCell>{project.category} ({result.coefficients.categoryCoeff})</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Гірський коеф.</TableCell>
-                  <TableCell>{result.coefficients.mountainCoeff}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Умови експлуатації</TableCell>
-                  <TableCell>{result.coefficients.operationCoeff}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Коеф. інтенсивності</TableCell>
-                  <TableCell>{result.coefficients.intensityCoeff}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Критична інфраструктура</TableCell>
-                  <TableCell>{result.coefficients.infraCoeff}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Пріоритетний множник</TableCell>
-                  <TableCell>{result.coefficients.priorityMultiplier}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell><b>Загальний обсяг</b></TableCell>
-                  <TableCell><b>{result.funding.toLocaleString()} грн</b></TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Рівень пріоритетності</TableCell>
-                  <TableCell>{result.priority}/10</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+            
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Назва проекту"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  variant="outlined"
+                  placeholder="Введіть назву проекту"
+                  margin="normal"
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <FormControl fullWidth margin="normal">
+                  <InputLabel>Тип дороги</InputLabel>
+                  <Select
+                    value={projectType}
+                    onChange={(e) => setProjectType(e.target.value)}
+                    label="Тип дороги"
+                  >
+                    <MenuItem value="state">Дорога державного значення</MenuItem>
+                    <MenuItem value="local">Дорога місцевого значення</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Протяжність ділянки (км)"
+                  type="number"
+                  value={projectLength}
+                  onChange={(e) => setProjectLength(Number(e.target.value))}
+                  variant="outlined"
+                  inputProps={{ min: 0, step: 0.1 }}
+                  margin="normal"
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Вартість проекту (тис. грн)"
+                  type="number"
+                  value={projectCost}
+                  onChange={(e) => setProjectCost(Number(e.target.value))}
+                  variant="outlined"
+                  inputProps={{ min: 0, step: 1000 }}
+                  margin="normal"
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Період будівництва (років)"
+                  type="number"
+                  value={constructionPeriod}
+                  onChange={(e) => setConstructionPeriod(Number(e.target.value))}
+                  variant="outlined"
+                  inputProps={{ min: 1, max: 5 }}
+                  margin="normal"
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Соціальна ставка дисконтування (%)"
+                  type="number"
+                  value={socialDiscountRate}
+                  onChange={(e) => setSocialDiscountRate(Number(e.target.value))}
+                  variant="outlined"
+                  inputProps={{ min: 1, max: 15, step: 0.5 }}
+                  margin="normal"
+                />
+              </Grid>
+            </Grid>
+          </Paper>
+          
+          {/* Traffic information */}
+          <Paper sx={{ p: 3, mb: 3 }} elevation={2}>
+            <Typography variant="h6" gutterBottom>
+              Інформація про транспортні потоки
+            </Typography>
+            
+            {vehicles.map((vehicle, index) => (
+              <Paper key={index} sx={{ p: 2, mb: 2, bgcolor: 'background.default' }} elevation={1}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                  <Typography variant="subtitle1">{vehicle.type}</Typography>
+                  <IconButton 
+                    color="error" 
+                    size="small" 
+                    onClick={() => removeVehicleType(index)}
+                  >
+                    <RemoveIcon />
+                  </IconButton>
+                </Box>
+                
+                <Grid container spacing={2}>
+                  <Grid item xs={4}>
+                    <TextField
+                      fullWidth
+                      label="Кількість (авт./добу)"
+                      type="number"
+                      value={vehicle.count}
+                      onChange={(e) => updateVehicleData(index, 'count', Number(e.target.value))}
+                      variant="outlined"
+                      size="small"
+                      inputProps={{ min: 0 }}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={4}>
+                    <TextField
+                      fullWidth
+                      label="Швидкість до (км/год)"
+                      type="number"
+                      value={vehicle.before}
+                      onChange={(e) => updateVehicleData(index, 'before', Number(e.target.value))}
+                      variant="outlined"
+                      size="small"
+                      inputProps={{ min: 10, max: 130 }}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={4}>
+                    <TextField
+                      fullWidth
+                      label="Швидкість після (км/год)"
+                      type="number"
+                      value={vehicle.after}
+                      onChange={(e) => updateVehicleData(index, 'after', Number(e.target.value))}
+                      variant="outlined"
+                      size="small"
+                      inputProps={{ min: 10, max: 130 }}
+                    />
+                  </Grid>
+                </Grid>
+              </Paper>
+            ))}
+            
+            <Button 
+              startIcon={<AddIcon />} 
+              onClick={addVehicleType}
+              color="primary"
+            >
+              Додати тип транспорту
+            </Button>
+          </Paper>
+          
+          {/* Criteria */}
+          <Paper sx={{ p: 3, mb: 3 }} elevation={2}>
+            <Typography variant="h6" gutterBottom>
+              Критерії пріоритетності
+            </Typography>
+            
+            <Grid container>
+              {criteria.map((criterion, index) => (
+                <Grid item xs={12} sm={6} key={index}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={criterion.checked}
+                        onChange={(e) => updateCriteria(index, e.target.checked)}
+                        color="primary"
+                      />
+                    }
+                    label={`${criterion.name} (вага: ${criterion.weight})`}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          </Paper>
+          
+          <Box display="flex" justifyContent="center">
+            <Button
+              variant="contained"
+              color="primary"
+              size="large"
+              startIcon={<CalculateIcon />}
+              onClick={calculateResults}
+              sx={{ px: 4, py: 1.5 }}
+            >
+              Розрахувати показники
+            </Button>
           </Box>
-        )}
-      </Box>
+        </Grid>
+        
+        {/* Right side - Results */}
+        <Grid item xs={12} md={6}>
+          {showResults ? (
+            <>
+              <Alert severity="success" sx={{ mb: 3 }}>
+                <AlertTitle>Результати оцінки проекту</AlertTitle>
+                Проект: {projectName} ({projectType === 'state' ? 'дорога державного значення' : 'дорога місцевого значення'})
+              </Alert>
+              
+              <Paper sx={{ p: 3, mb: 3 }} elevation={2}>
+                <Typography variant="h6" gutterBottom>
+                  Економічні показники
+                </Typography>
+                
+                <Table>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>ENPV (тис. грн):</TableCell>
+                      <TableCell align="right">
+                        <Typography 
+                          fontWeight="bold" 
+                          color={results.enpv > 0 ? 'success.main' : 'error.main'}
+                        >
+                          {results.enpv.toLocaleString('uk-UA', { maximumFractionDigits: 0 })}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                    
+                    <TableRow>
+                      <TableCell>EIRR (%):</TableCell>
+                      <TableCell align="right">
+                        <Typography 
+                          fontWeight="bold" 
+                          color={results.eirr > socialDiscountRate ? 'success.main' : 'error.main'}
+                        >
+                          {results.eirr.toLocaleString('uk-UA', { maximumFractionDigits: 1 })}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                    
+                    <TableRow>
+                      <TableCell>BCR:</TableCell>
+                      <TableCell align="right">
+                        <Typography 
+                          fontWeight="bold" 
+                          color={results.bcr > 1 ? 'success.main' : 'error.main'}
+                        >
+                          {results.bcr.toLocaleString('uk-UA', { maximumFractionDigits: 2 })}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                    
+                    <TableRow>
+                      <TableCell>Бал пріоритетності:</TableCell>
+                      <TableCell align="right">
+                        <Typography fontWeight="bold">
+                          {results.priorityScore}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                    
+                    <TableRow>
+                      <TableCell>Економічна доцільність:</TableCell>
+                      <TableCell align="right">
+                        <Typography 
+                          fontWeight="bold" 
+                          color={results.isViable ? 'success.main' : 'error.main'}
+                        >
+                          {results.isViable ? 'Так' : 'Ні'}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </Paper>
+              
+              <Paper sx={{ p: 3, mb: 3 }} elevation={2}>
+                <Typography variant="h6" gutterBottom>
+                  Оцінка пріоритетності
+                </Typography>
+                
+                {results.isViable ? (
+                  <>
+                    <Box textAlign="center" mb={2}>
+                      <Typography variant="h3" color="primary" fontWeight="bold">
+                        {results.priority}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Пріоритет ({results.priority === 1 ? 'найвищий' : results.priority === 2 ? 'високий' : results.priority === 3 ? 'середній' : 'низький'})
+                      </Typography>
+                    </Box>
+                    
+                    <Alert severity="info">
+                      <AlertTitle>Відповідає критеріям розділу 5.{projectType === 'state' ? '1' : '2'} Методики:</AlertTitle>
+                      <List>
+                        {criteria
+                          .filter(c => c.checked)
+                          .map((c, index) => (
+                            <ListItem key={index} disableGutters>
+                              <ListItemIcon sx={{ minWidth: 30 }}>
+                                <ArrowRightIcon fontSize="small" />
+                              </ListItemIcon>
+                              <ListItemText primary={c.name} primaryTypographyProps={{ variant: 'body2' }} />
+                            </ListItem>
+                          ))}
+                      </List>
+                    </Alert>
+                  </>
+                ) : (
+                  <Alert severity="warning">
+                    <AlertTitle>Проект економічно недоцільний</AlertTitle>
+                    <Typography variant="body2">
+                      Проект не відповідає критеріям економічної ефективності згідно з пунктом 5.3 Методики.
+                      Рекомендується переглянути параметри проекту або розглянути альтернативні варіанти.
+                    </Typography>
+                  </Alert>
+                )}
+              </Paper>
+              
+              <Accordion 
+                expanded={expandedDetails}
+                onChange={() => setExpandedDetails(!expandedDetails)}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle1" fontWeight="medium">
+                    Детальна інформація про розрахунки
+                  </Typography>
+                </AccordionSummary>
+                
+                <AccordionDetails>
+                  <Stack spacing={3}>
+                    {/* Benefits */}
+                    <div>
+                      <Typography variant="subtitle2" gutterBottom>
+                        Щорічні вигоди
+                      </Typography>
+                      
+                      <TableContainer>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Тип транспорту</TableCell>
+                              <TableCell align="right">Сума (тис. грн/рік)</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {results.benefits.map((benefit, index) => (
+                              <TableRow key={index}>
+                                <TableCell>{benefit.vehicleType}</TableCell>
+                                <TableCell align="right">
+                                  {(benefit.annualBenefit / 1000).toLocaleString('uk-UA', { maximumFractionDigits: 0 })}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            <TableRow sx={{ bgcolor: 'action.hover' }}>
+                              <TableCell><Typography fontWeight="bold">Всього</Typography></TableCell>
+                              <TableCell align="right">
+                                <Typography fontWeight="bold">
+                                  {(results.benefits.reduce((sum, b) => sum + b.annualBenefit, 0) / 1000).toLocaleString('uk-UA', { maximumFractionDigits: 0 })}
+                                </Typography>
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </div>
+                    
+                    <Divider />
+                    
+                    {/* Costs */}
+                    <div>
+                      <Typography variant="subtitle2" gutterBottom>
+                        Витрати за роками
+                      </Typography>
+                      
+                      <TableContainer sx={{ maxHeight: 300 }}>
+                        <Table size="small" stickyHeader>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Рік</TableCell>
+                              <TableCell>Тип витрат</TableCell>
+                              <TableCell align="right">Сума (тис. грн)</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {results.costs.map((cost, index) => (
+                              <TableRow key={index}>
+                                <TableCell>{cost.year + 1}</TableCell>
+                                <TableCell>{cost.type}</TableCell>
+                                <TableCell align="right">
+                                  {(cost.cost / 1000).toLocaleString('uk-UA', { maximumFractionDigits: 0 })}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </div>
+                  </Stack>
+                </AccordionDetails>
+              </Accordion>
+            </>
+          ) : (
+            <Paper 
+              sx={{ 
+                p: 6, 
+                height: '100%', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                bgcolor: 'grey.50' 
+              }}
+            >
+              <Box textAlign="center">
+                <CalculateIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                <Typography variant="h6" gutterBottom>
+                  Результати розрахунку
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Заповніть форму зліва та натисніть кнопку "Розрахувати показники", 
+                  щоб побачити результати аналізу проекту.
+                </Typography>
+              </Box>
+            </Paper>
+          )}
+        </Grid>
+      </Grid>
     </Container>
   );
-}
+};
+
+export default RoadFundingDistribution;

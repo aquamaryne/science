@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   Container, 
   Typography, 
@@ -9,6 +9,7 @@ import {
   Stepper, 
   Step, 
   StepLabel, 
+  StepButton,
   Grid,
   FormControl,
   InputLabel,
@@ -22,13 +23,18 @@ import {
   TableRow,
   Alert,
   AlertTitle,
-  Divider,
   Card,
   CardContent,
   FormControlLabel,
   RadioGroup,
-  Radio
+  Radio,
+  SelectChangeEvent
 } from '@mui/material';
+import {
+  AddRoadOutlined as RoadIcon,
+  AnalyticsOutlined as AnalyticsIcon,
+  AssessmentOutlined as ResultsIcon
+} from '@mui/icons-material';
 
 // Types
 interface RoadSegment {
@@ -58,6 +64,12 @@ interface AssessmentResult {
   priorityScore: number;
   economicENPV: number;
   explanation: string;
+}
+
+// Step definition interface
+interface StepInfo {
+  label: string;
+  icon: React.ReactNode;
 }
 
 // Constants
@@ -222,11 +234,11 @@ const calculateENPV = (segment: RoadSegment, workType: string): number => {
 };
 
 // Application component
-const RoadAssessmentApp: React.FC = () => {
+const RoadAssessmentApp = (): JSX.Element => {
   // State for the multi-step form
-  const [activeStep, setActiveStep] = useState(0);
-  const [segments, setSegments] = useState<RoadSegment[]>([]);
-  const [currentSegment, setCurrentSegment] = useState<RoadSegment>({
+  const [activeStep, setActiveStep] = React.useState<number>(0);
+  const [segments, setSegments] = React.useState<RoadSegment[]>([]);
+  const [currentSegment, setCurrentSegment] = React.useState<RoadSegment>({
     id: '',
     name: '',
     length: 0,
@@ -244,28 +256,45 @@ const RoadAssessmentApp: React.FC = () => {
       actualRutting: 15     // in mm
     }
   });
-  const [assessmentResults, setAssessmentResults] = useState<AssessmentResult[]>([]);
-  const [assessmentMethod, setAssessmentMethod] = useState<'instrumental' | 'expert'>('instrumental');
-  const [expertAssessmentValue, setExpertAssessmentValue] = useState<number>(8);
+  const [assessmentResults, setAssessmentResults] = React.useState<AssessmentResult[]>([]);
+  const [assessmentMethod, setAssessmentMethod] = React.useState<'instrumental' | 'expert'>('instrumental');
+  const [expertAssessmentValue, setExpertAssessmentValue] = React.useState<number>(8);
 
-  // Step definitions
-  const steps = ['Деталі ділянки дороги', 'Оцінка стану', 'Результати'];
+  // Step definitions with icons for improved stepper
+  const steps: StepInfo[] = [
+    { label: 'Деталі ділянки дороги', icon: <RoadIcon /> },
+    { label: 'Оцінка стану', icon: <AnalyticsIcon /> },
+    { label: 'Результати', icon: <ResultsIcon /> }
+  ];
+
+  // Handle moving to a specific step directly
+  const handleStepChange = (step: number): void => {
+    // Only allow moving to assessment step if we have at least one segment
+    if (step === 1 && segments.length === 0) return;
+    
+    // Only allow moving to results step after performing assessment
+    if (step === 2 && assessmentResults.length === 0) {
+      performAssessment();
+    }
+    
+    setActiveStep(step);
+  };
 
   // Handle moving to the next step
-  const handleNext = () => {
-    if (activeStep === 1) {
+  const handleNext = (): void => {
+    if (activeStep === 1 && assessmentResults.length === 0) {
       performAssessment();
     }
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
   };
 
   // Handle moving to the previous step
-  const handleBack = () => {
+  const handleBack = (): void => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
 
   // Handle input changes for road segment details
-  const handleSegmentChange = (field: keyof RoadSegment, value: any) => {
+  const handleSegmentChange = (field: keyof RoadSegment, value: any): void => {
     setCurrentSegment({
       ...currentSegment,
       [field]: value
@@ -273,7 +302,7 @@ const RoadAssessmentApp: React.FC = () => {
   };
 
   // Handle input changes for road condition details
-  const handleConditionChange = (field: keyof RoadCondition, value: number) => {
+  const handleConditionChange = (field: keyof RoadCondition, value: number): void => {
     setCurrentSegment({
       ...currentSegment,
       currentCondition: {
@@ -284,7 +313,7 @@ const RoadAssessmentApp: React.FC = () => {
   };
 
   // Add a new segment and reset form
-  const handleAddSegment = () => {
+  const handleAddSegment = (): void => {
     const newSegment = {
       ...currentSegment,
       id: Date.now().toString() // Simple unique ID generation
@@ -311,12 +340,10 @@ const RoadAssessmentApp: React.FC = () => {
         actualRutting: 15
       }
     });
-    
-    setActiveStep(0);
   };
 
   // Perform assessment on all segments
-  const performAssessment = () => {
+  const performAssessment = (): void => {
     const results: AssessmentResult[] = [];
     
     for (const segment of segments) {
@@ -408,7 +435,7 @@ const RoadAssessmentApp: React.FC = () => {
             <Select
               value={currentSegment.category}
               label="Категорія дороги"
-              onChange={(e) => handleSegmentChange('category', e.target.value)}
+              onChange={(e: SelectChangeEvent) => handleSegmentChange('category', e.target.value)}
             >
               {ROAD_CATEGORIES.map((category) => (
                 <MenuItem key={category} value={category}>
@@ -482,9 +509,33 @@ const RoadAssessmentApp: React.FC = () => {
           </TableContainer>
         </Box>
       )}
+      
+      <Box mt={3} display="flex" justifyContent="space-between">
+        <Box></Box> {/* Empty box for alignment */}
+        <Box>
+          <Button 
+            variant="contained"
+            color="primary"
+            onClick={handleAddSegment}
+            disabled={!currentSegment.name || !currentSegment.length || !currentSegment.category || !currentSegment.trafficIntensity}
+            sx={{ mr: 1 }}
+          >
+            Додати ділянку
+          </Button>
+          
+          <Button
+            variant="contained"
+            onClick={handleNext}
+            disabled={segments.length === 0}
+          >
+            Далі
+          </Button>
+        </Box>
+      </Box>
     </Box>
   );
   
+  // Form for road condition assessment
   const renderConditionAssessmentForm = () => (
     <Box>
       <Grid container spacing={3}>
@@ -652,83 +703,128 @@ const RoadAssessmentApp: React.FC = () => {
           </>
         )}
       </Grid>
+      
+      <Box mt={3} display="flex" justifyContent="space-between">
+        <Button
+          onClick={handleBack}
+        >
+          Назад
+        </Button>
+        
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleNext}
+        >
+          Перейти до результатів
+        </Button>
+      </Box>
     </Box>
   );
 
   // Display assessment results
   const renderResults = () => (
     <Box>
-        <Typography variant="h6" gutterBottom>
-          Результати оцінки
-        </Typography>
-        
-        <Alert severity="info" sx={{ mb: 2 }}>
-          <AlertTitle>Пріоритетний рейтинг</AlertTitle>
-          Ділянки ранжуються за пріоритетністю на основі економічної ефективності (ENPV на кілометр).
+      <Typography variant="h6" gutterBottom>
+        Результати оцінки
+      </Typography>
+      
+      <Alert severity="info" sx={{ mb: 2 }}>
+        <AlertTitle>Пріоритетний рейтинг</AlertTitle>
+        Ділянки ранжуються за пріоритетністю на основі економічної ефективності (ENPV на кілометр).
+      </Alert>
+      
+      {assessmentResults.length === 0 ? (
+        <Alert severity="warning">
+          Жодна ділянка не була оцінена. Будь ласка, додайте ділянки доріг та завершіть оцінку.
         </Alert>
-        
-        {assessmentResults.length === 0 ? (
-          <Alert severity="warning">
-            Жодна ділянка не була оцінена. Будь ласка, додайте ділянки доріг та завершіть оцінку.
-          </Alert>
-        ) : (
-          <Grid container spacing={3}>
-            {assessmentResults.map((result, index) => (
-              <Grid item xs={12} key={result.segment.id}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      {index + 1}. {result.segment.name}
-                    </Typography>
-                    
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} md={4}>
-                        <Typography variant="subtitle2">Деталі дороги:</Typography>
-                        <Typography variant="body2">
-                          Категорія: {result.segment.category}, Довжина: {result.segment.length} км, 
-                          Рух: {result.segment.trafficIntensity} авт./добу
-                        </Typography>
-                        <Typography variant="body2">
-                          Рік будівництва: {result.segment.constructionYear || 'Не вказано'},
-                          Останній ремонт: {result.segment.lastRepairYear || 'Не вказано'}
-                        </Typography>
-                      </Grid>
-                      
-                      <Grid item xs={12} md={4}>
-                        <Typography variant="subtitle2">Рекомендовані роботи:</Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 'bold', color: 
-                          result.recommendedWork === 'none' ? 'green' :
-                          result.recommendedWork === 'current-repair' ? 'orange' :
-                          result.recommendedWork === 'capital-repair' ? 'orangered' : 'red'
-                        }}>
-                          {result.recommendedWork === 'none' ? 'Ремонт не потрібен' :
-                          result.recommendedWork === 'current-repair' ? 'Поточний ремонт' :
-                          result.recommendedWork === 'capital-repair' ? 'Капітальний ремонт' : 'Реконструкція'}
-                        </Typography>
-                        <Typography variant="body2">
-                          {result.explanation}
-                        </Typography>
-                      </Grid>
-                      
-                      <Grid item xs={12} md={4}>
-                        <Typography variant="subtitle2">Економічна ефективність:</Typography>
-                        <Typography variant="body2">
-                          ENPV: {result.economicENPV.toLocaleString()} грн
-                        </Typography>
-                        <Typography variant="body2">
-                          Пріоритетність: {result.priorityScore.toFixed(2)}
-                        </Typography>
-                      </Grid>
+      ) : (
+        <Grid container spacing={3}>
+          {assessmentResults.map((result, index) => (
+            <Grid item xs={12} key={result.segment.id}>
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    {index + 1}. {result.segment.name}
+                  </Typography>
+                  
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={4}>
+                      <Typography variant="subtitle2">Деталі дороги:</Typography>
+                      <Typography variant="body2">
+                        Категорія: {result.segment.category}, Довжина: {result.segment.length} км, 
+                        Рух: {result.segment.trafficIntensity} авт./добу
+                      </Typography>
+                      <Typography variant="body2">
+                        Рік будівництва: {result.segment.constructionYear || 'Не вказано'},
+                        Останній ремонт: {result.segment.lastRepairYear || 'Не вказано'}
+                      </Typography>
                     </Grid>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        )
-      }
+                    
+                    <Grid item xs={12} md={4}>
+                      <Typography variant="subtitle2">Рекомендовані роботи:</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 'bold', color: 
+                        result.recommendedWork === 'none' ? 'green' :
+                        result.recommendedWork === 'current-repair' ? 'orange' :
+                        result.recommendedWork === 'capital-repair' ? 'orangered' : 'red'
+                      }}>
+                        {result.recommendedWork === 'none' ? 'Ремонт не потрібен' :
+                        result.recommendedWork === 'current-repair' ? 'Поточний ремонт' :
+                        result.recommendedWork === 'capital-repair' ? 'Капітальний ремонт' : 'Реконструкція'}
+                      </Typography>
+                      <Typography variant="body2">
+                        {result.explanation}
+                      </Typography>
+                    </Grid>
+                    
+                    <Grid item xs={12} md={4}>
+                      <Typography variant="subtitle2">Економічна ефективність:</Typography>
+                      <Typography variant="body2">
+                        ENPV: {result.economicENPV.toLocaleString()} грн
+                      </Typography>
+                      <Typography variant="body2">
+                        Пріоритетність: {result.priorityScore.toFixed(2)}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+      
+      <Box mt={3} display="flex" justifyContent="space-between">
+        <Button
+          onClick={handleBack}
+        >
+          Назад
+        </Button>
+        
+        <Button
+          variant="contained"
+          color="success"
+          onClick={() => setActiveStep(0)}
+        >
+          Нова оцінка
+        </Button>
+      </Box>
     </Box>
-  )
+  );
+
+  // Render step content based on active step
+  const renderStepContent = () => {
+    switch(activeStep) {
+      case 0:
+        return renderSegmentDetailsForm();
+      case 1:
+        return renderConditionAssessmentForm();
+      case 2:
+        return renderResults();
+      default:
+        return null;
+    }
+  };
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -741,66 +837,29 @@ const RoadAssessmentApp: React.FC = () => {
         </Typography>
       </Paper>
       
-      <Paper sx={{ p: 3 }}>
-        <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-          {steps.map((label) => (
-            <Step key={label}>
-              <StepLabel>{label}</StepLabel>
+      {/* Improved Stepper with icons */}
+      <Paper sx={{ mb: 4, py: 2, px: 3 }} elevation={3}>
+        <Stepper activeStep={activeStep} alternativeLabel>
+          {steps.map((step, index) => (
+            <Step key={index}>
+              <StepButton 
+                onClick={() => handleStepChange(index)}
+                icon={step.icon}
+              >
+                <StepLabel>{step.label}</StepLabel>
+              </StepButton>
             </Step>
           ))}
         </Stepper>
-        
+      </Paper>
+      
+      <Paper sx={{ p: 3 }}>
         <Box sx={{ mt: 2, mb: 2 }}>
-          {activeStep === 0 && renderSegmentDetailsForm()}
-          {activeStep === 1 && renderConditionAssessmentForm()}
-          {activeStep === 2 && renderResults()}
-        </Box>
-        
-        <Divider sx={{ my: 2 }} />
-        
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Button
-            disabled={activeStep === 0}
-            onClick={handleBack}
-          >
-            Назад
-          </Button>
-          
-          <Box>
-            {activeStep === 0 && (
-              <Button 
-                variant="contained"
-                color="primary"
-                onClick={handleAddSegment}
-                disabled={!currentSegment.name || !currentSegment.length || !currentSegment.category || !currentSegment.trafficIntensity}
-                sx={{ mr: 1 }}
-              >
-                Додати ділянку
-              </Button>
-            )}
-            
-            {activeStep < steps.length - 1 ? (
-              <Button
-                variant="contained"
-                onClick={handleNext}
-                disabled={activeStep === 0 && segments.length === 0}
-              >
-                Далі
-              </Button>
-            ) : (
-              <Button
-                variant="contained"
-                color="success"
-                onClick={() => setActiveStep(0)}
-              >
-                Нова оцінка
-              </Button>
-            )}
-          </Box>
+          {renderStepContent()}
         </Box>
       </Paper>
     </Container>
   );
-}  
+};
 
 export default RoadAssessmentApp;

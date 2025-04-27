@@ -26,7 +26,6 @@ import {
 import { SelectChangeEvent } from '@mui/material/Select';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
-// Constants
 const REGIONS = [
   "1-Крим", "2-Вінницька", "3-Волинська", "4-Дніпропетровська", 
   "5-Донецька", "6-Житомирська", "7-Закарпатська", "8-Запорізька", 
@@ -37,13 +36,11 @@ const REGIONS = [
   "25-Чернівецька"
 ];
 
-// Road category interface
 interface RoadCategory {
   id: number;
   length: number;
 }
 
-// Section interface to simplify data structure
 interface Section {
   id: number;
   length: number;
@@ -135,18 +132,15 @@ const RoadFundingCalculator: React.FC = () => {
   const [calculating, setCalculating] = useState<boolean>(false);
   const [resultsAvailable, setResultsAvailable] = useState<boolean>(false);
 
-  // Calculate total road length
   useEffect(() => {
     const sum = roadCategories.reduce((acc, category) => acc + category.length, 0);
     setTotalLength(sum);
   }, [roadCategories]);
 
-  // Region selection handler
   const handleRegionChange = (event: SelectChangeEvent) => {
     setSelectedRegion(Number(event.target.value));
   };
 
-  // Road category change handler
   const handleRoadCategoryChange = (id: number, value: number) => {
     setRoadCategories(prevCategories => 
       prevCategories.map(category => 
@@ -155,12 +149,10 @@ const RoadFundingCalculator: React.FC = () => {
     );
   };
 
-  // Update traffic section count
   const handleSectionCountChange = (value: number) => {
     if (value > 0 && value <= 10) {
       setSectionCount(value);
       
-      // Resize array if needed
       if (value > traffics.length) {
         const newSections = [...traffics];
         for (let i = traffics.length; i < value; i++) {
@@ -173,7 +165,6 @@ const RoadFundingCalculator: React.FC = () => {
     }
   };
 
-  // Generic section handler for all section types
   const handleSectionChange = (
     sections: Section[], 
     setSections: React.Dispatch<React.SetStateAction<Section[]>>, 
@@ -188,7 +179,6 @@ const RoadFundingCalculator: React.FC = () => {
     );
   };
 
-  // Handle section count changes for all section types
   const handleGenericCountChange = (
     count: number,
     setCount: React.Dispatch<React.SetStateAction<number>>,
@@ -198,7 +188,6 @@ const RoadFundingCalculator: React.FC = () => {
     if (count > 0 && count <= 10) {
       setCount(count);
       
-      // Resize array if needed
       if (count > sections.length) {
         const newSections = [...sections];
         for (let i = sections.length; i < count; i++) {
@@ -211,29 +200,24 @@ const RoadFundingCalculator: React.FC = () => {
     }
   };
 
-  // Calculate all coefficients and results
   const calculateCoefficients = () => {
     setCalculating(true);
     
     setTimeout(() => {
-      // Calculate Kid - now using the coefficient arrays
       let weightedSectionLength = 0;
       let totalTrafficLength = 0;
       
-      // Apply traffic intensity and road category coefficients
       traffics.forEach(traffic => {
         if (traffic.length > 0) {
-          // Get intensity coefficient based on traffic value
           let intensityCoef = 1;
           if (traffic.value > 25000) {
-            intensityCoef = k4[2]; // High intensity
+            intensityCoef = k4[2]; 
           } else if (traffic.value > 15000) {
-            intensityCoef = k4[1]; // Medium intensity
+            intensityCoef = k4[1]; 
           } else if (traffic.value > 5000) {
-            intensityCoef = k4[0]; // Low intensity
+            intensityCoef = k4[0]; 
           }
           
-          // Apply category coefficient based on road type
           const categoryIndex = Math.min(categoryId - 1, 4);
           const categoryCoef = categoryId <= 2 ? kD[categoryIndex] : kM[categoryIndex];
           
@@ -242,16 +226,9 @@ const RoadFundingCalculator: React.FC = () => {
         }
       });
       
-      // Apply region climate coefficient
       const climateCoef = k5[selectedRegion % 3];
-      
-      // Apply structure coefficient based on road category
       const structureCoef = kk2[Math.min(categoryId - 1, 4)];
-      
-      // Apply region-specific coefficient
       const regionCoef = kk3[Math.min(selectedRegion % 5, 4)];
-      
-      // For the remaining length, apply base coefficients
       const remainingLength = totalLength - totalTrafficLength;
       const baseCoef = categoryId <= 2 ? kD[0] : kM[0];
       
@@ -260,22 +237,18 @@ const RoadFundingCalculator: React.FC = () => {
                       
       setKidResult(Number(kidValue.toFixed(3)));
   
-      // Calculate Kde - EU network coefficient
       const totalEuLength = euNetworks.reduce((acc, section) => acc + section.length, 0);
       const kdeValue = (totalEuLength * euCoefficient + (totalLength - totalEuLength)) / totalLength;
       setKdeResult(Number(kdeValue.toFixed(6)));
   
-      // Calculate Kdm - Border crossing coefficient
       const totalBorderLength = borderCrossings.reduce((acc, section) => acc + section.length, 0);
       const kdmValue = (totalBorderLength * borderCoefficient + (totalLength - totalBorderLength)) / totalLength;
       setKdmResult(Number(kdmValue.toFixed(6)));
   
-      // Calculate Kdo - Lighting coefficient
       const totalLightingLength = lightings.reduce((acc, section) => acc + section.length, 0);
       const kdoValue = (totalLightingLength * lightingCoefficient + (totalLength - totalLightingLength)) / totalLength;
       setKdoResult(Number(kdoValue.toFixed(6)));
   
-      // Calculate Kdr - Repair coefficient
       const totalRepairedLength = repaired.reduce((acc, section) => acc + section.length, 0);
       const kdrValue = (totalRepairedLength * repairCoefficient + (totalLength - totalRepairedLength)) / totalLength;
       setKdrResult(Number(kdrValue.toFixed(5)));
@@ -283,14 +256,13 @@ const RoadFundingCalculator: React.FC = () => {
       setResultsAvailable(true);
       setCalculating(false);
       
-      // Scroll to results
       setTimeout(() => {
         const resultsElement = document.getElementById('results-section');
         if (resultsElement) {
           resultsElement.scrollIntoView({ behavior: 'smooth' });
         }
       }, 100);
-    }, 500); // Simulate calculation time
+    }, 500); 
   };
 
   return (
@@ -304,7 +276,6 @@ const RoadFundingCalculator: React.FC = () => {
           Розрахунок фінансування будівництва, поточного ремонту та експлуатаційного утримання
         </Typography>
 
-        {/* Initial data entry */}
         <Accordion defaultExpanded sx={{ mb: 3 }}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="h6">
@@ -347,7 +318,6 @@ const RoadFundingCalculator: React.FC = () => {
           </AccordionDetails>
         </Accordion>
 
-        {/* Region selection */}
         <Accordion defaultExpanded sx={{ mb: 3 }}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="h6">
@@ -374,7 +344,6 @@ const RoadFundingCalculator: React.FC = () => {
           </AccordionDetails>
         </Accordion>
 
-        {/* Road categories */}
         <Accordion defaultExpanded sx={{ mb: 3 }}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="h6">
@@ -404,7 +373,6 @@ const RoadFundingCalculator: React.FC = () => {
           </AccordionDetails>
         </Accordion>
 
-        {/* Traffic sections - now with proper handlers */}
         <Accordion sx={{ mb: 3 }}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="h6">
@@ -494,7 +462,6 @@ const RoadFundingCalculator: React.FC = () => {
           </AccordionDetails>
         </Accordion>
 
-        {/* Calculate button */}
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 4 }}>
           <Button 
             variant="contained" 
@@ -508,7 +475,6 @@ const RoadFundingCalculator: React.FC = () => {
           </Button>
         </Box>
 
-        {/* Results section - only shown after calculation */}
         {resultsAvailable && (
           <Paper elevation={3} sx={{ p: 3, mb: 4 }} id="results-section">
             <Typography variant="h5" gutterBottom align="center">

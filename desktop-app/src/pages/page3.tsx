@@ -150,7 +150,7 @@ const RoadFundingCalculator: React.FC = () => {
   };
 
   const handleSectionCountChange = (value: number) => {
-    if (value > 0 && value <= 10) {
+    if (value > 0 && value <= 2000) {
       setSectionCount(value);
       
       if (value > traffics.length) {

@@ -1,614 +1,334 @@
-import React, { useState} from "react";
+import React, { useState } from 'react';
 import {
-    calculateLocalMaintenanceNorms,
-    calculateLocalRoadFunding,
-    calculateStateMaintenanceNorms,
-    calculateStateRoadFunding,
-    type StateRoadData,
-    type LocalRoadData,
-    type MaintenanceNorm,
-    type NormByCategory,
-    type REGIONS
+  type BudgetItem,
+  initialStateRoadItems,
+  initialLocalRoadItems,
+  calculateQ1,
+  calculateQ2
 } from '../../modules/block_one';
 
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { ScrollArea } from "../ui/scroll-area";
-import { Separator } from "../ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Card, CardContent, CardHeader, CardFooter, CardTitle, CardDescription } from "../ui/card";
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { Table, TableBody, TableCell, TableHeader, TableFooter,  TableRow, TableHead } from "../ui/table";
+// shadcn/ui components
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { InfoCircledIcon } from "@radix-ui/react-icons";
 
-const RoadFundingCalculator: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<string>("block1");
-    const [stateRoadData, setStateRoadData] = useState<StateRoadData>({
-        Qdz: 0,
-        Qpp: 0,
-        Qminzhn: 0,
-        QIAS: 0,
-        Qn: 0,
-        Qlik: 0,
-        Qvp: 0,
-        Qupr: 0,
-        QDPP: 0,
+// Модифицированные данные с переносом на новую строку
+const modifyItemsWithLineBreak = (items: BudgetItem[]): BudgetItem[] => {
+  return items.map(item => {
+    // Делим название на части, учитывая специфические места разделения
+    let modifiedName = item.name;
+
+    if (item.id === "Qдз") {
+      modifiedName = "Обсяг бюджетних коштів, що спрямовується на фінансове забезпечення нового будівництва, реконструкції, капітального та поточного ремонтів\nі утримання автомобільних доріг загального користування державного значення";
+    } 
+    else if (item.id === "Qпп") {
+      modifiedName = "Обсяг бюджетних коштів, що спрямовується на фінансове забезпечення заходів з розвитку, будівництва, ремонту, облаштування, модернізації\nта утримання пунктів пропуску через державний кордон для автомобільного сполучення";
+    } 
+    else if (item.id === "Qміжн") {
+      modifiedName = "Обсяг бюджетних коштів, що спрямовується на фінансове забезпечення проведення конкурсів і підготовку договорів щодо виконання робіт з нового будівництва, реконструкції, ремонту\nі утримання автомобільних доріг загального користування за рахунок коштів міжнародних фінансових організацій, інших кредиторів та інвесторів, співфінансування зазначених робіт згідно з відповідними договорами, здійснення контролю за їх виконанням і прийняття автомобільних доріг в експлуатацію";
+    }
+    else if (item.id === "QІАС") {
+      modifiedName = "Обсяг бюджетних коштів, що спрямовується на фінансове забезпечення заходів зі створення та функціонування інформаційно-аналітичної системи дорожнього господарства,\nу тому числі утримання відповідних бюджетних установ, що забезпечують її функціонування";
+    }
+    else if (item.id === "QДПП") {
+      modifiedName = "Обсяг бюджетних коштів, що спрямовується на здійснення виплат приватному партнеру/концесіонеру плати за експлуатаційну готовність автомобільної дороги загального користування державного значення\nта інших виплат у порядку та на умовах, передбачених договором, укладеним у рамках державно-приватного партнерства, у тому числі концесійним договором";
+    }
+
+    return {
+      ...item,
+      name: modifiedName
+    };
+  });
+};
+
+// Компонент для блока 1: Расчет объема финансирования дорог государственного значения
+const StateRoadFundingBlock = () => {
+  const [stateRoadBudget, setStateRoadBudget] = useState<BudgetItem[]>(modifyItemsWithLineBreak(initialStateRoadItems));
+  const [q1Result, setQ1Result] = useState<number | null>(null);
+
+  // Обработчик изменения значений полей ввода
+  const handleInputChange = (id: string, value: string) => {
+    const newValue = value === "" ? null : parseFloat(value);
+    setStateRoadBudget(prev => 
+      prev.map(item => 
+        item.id === id ? { ...item, value: newValue } : item
+      )
+    );
+  };
+
+  // Обработчик изменения нормативного документа
+  const handleDocumentChange = (id: string, document: string) => {
+    setStateRoadBudget(prev => 
+      prev.map(item => 
+        item.id === id ? { ...item, normativeDocument: document } : item
+      )
+    );
+  };
+
+  // Функция расчета
+  const handleCalculate = () => {
+    // Передаем исходные данные без переноса строк для расчета
+    const originalStateRoadItems = initialStateRoadItems.map((original, index) => {
+      return {
+        ...original,
+        value: stateRoadBudget[index].value,
+        normativeDocument: stateRoadBudget[index].normativeDocument
+      };
     });
 
-    const [localRoadData, setLocalRoadData] = useState<LocalRoadData>({
-        Qmz: 0,
-        Qkred: 0,
-        Qn2: 0,
-        QDPP2: 0,
-        Qkom: 0,
-    });
-
-    const [maintenanceNorms, setMaintenanceNorms] = useState<MaintenanceNorm>({
-        stateValue: 604.761,
-        localValue: 360.544,
-        year: 2023,
-        inflationIndices: [1.0],
-    });
-
-    const [calculatedStateNorms, setCalculatedStateNorms] = useState<NormByCategory | null>(null);
-    const [calculatedLocalNorms, setCalculatedLocalNorms] = useState<NormByCategory | null>(null);
-
-    const handleStateRoadInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setStateRoadData(prev => ({
-            ...prev,
-            [name]: parseFloat(value) || 0,
-        }));
-    };
-
-    const handleLocalRoadInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setLocalRoadData(prev => ({
-            ...prev,
-            [name]: parseFloat(value) || 0,
-        }));
-    };
-
-    const handleInflationIndicesChange  = (index: number, value: number) => {
-        const newIndices = [...maintenanceNorms.inflationIndices];
-        newIndices[index] = value;
-        setMaintenanceNorms(prev => ({
-            ...prev,
-            inflationIndices: newIndices,
-        }));
-    };
-
-    const handleMaintenanceNormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value} = e.target;
-        setMaintenanceNorms(prev => ({
-            ...prev,
-            [name]: parseFloat(value) || 0,
-        }));
+    const qdzValue = originalStateRoadItems.find(item => item.id === "Qдз")?.value;
+    
+    if (qdzValue === null || qdzValue === undefined) {
+      alert("Необхідно заповнити значення Qдз!");
+      return;
     }
 
-    const addInflationIndex = () => {
-        setMaintenanceNorms(prev => ({
-            ...prev,
-            inflationIndices: [...prev.inflationIndices, 1.0],
-        }));
-    };
+    const result = calculateQ1(originalStateRoadItems);
+    setQ1Result(result);
+  };
 
-    const performStateRoadFundingCalculation = () => {
-        const updatedDate = calculateStateRoadFunding(stateRoadData);
-        setStateRoadData(updatedDate);
-    }
-
-    const performLocalRoadFundingCalculation = () => {
-        const updatedData = calculateLocalRoadFunding(localRoadData);
-        setLocalRoadData(updatedData);
-    };
-
-    const performStateMaintenanceNormsCalculation = () => {
-        const normsByCategory = calculateStateMaintenanceNorms(maintenanceNorms);
-        setCalculatedStateNorms(normsByCategory);
-    }
-
-    const performLocalMaintenanceNormsCalculation = () => {
-        const normsByCategory = calculateLocalMaintenanceNorms(maintenanceNorms);
-        setCalculatedLocalNorms(normsByCategory);
-    }
-
-    const renderStateRoadFundingCalculation = () => (
-        <Card className="mb-6">
-        <CardHeader>
-            <CardTitle>Block 1 - Step 1.1</CardTitle>
-            <CardDescription>Determination of total budget for state road development and maintenance</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <h4 className="text-sm font-medium mb-3">Budget indicators for state roads (thousand UAH)</h4>
-                
-                <div className="space-y-4">
-                <div className="grid gap-2">
-                    <Label htmlFor="Qdz">Total budget for state road construction, reconstruction, repairs and maintenance</Label>
-                    <Input
-                    id="Qdz"
-                    name="Qdz"
-                    value={stateRoadData.Qdz}
-                    onChange={handleStateRoadInputChange}
-                    type="number"
+  return (
+    <Card className="mb-8 w-full border-gray-300 shadow-sm">
+      <CardHeader className="bg-gray-100 border-b border-gray-200">
+        <CardTitle className="text-xl font-bold text-gray-800">
+          Етап 1.1 Блоку 1 Визначення загального обсягу бюджетних коштів Q<sub>1</sub>, що спрямовується на фінансове забезпечення заходів з розвитку та утримання автомобільних доріг загального користування державного значення (п.2.1.1 Методики)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-6">
+        <div className="w-full overflow-x-auto">
+          <Table className="w-full">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-3/5 bg-gray-100">*Назва показника нехай підсвічується при наведені на сам показник</TableHead>
+                <TableHead className="w-16 bg-gray-100">Показник</TableHead>
+                <TableHead className="w-32 bg-gray-100">Обсяг, тис.грн.</TableHead>
+                <TableHead className="bg-gray-100">Нормативний документ, з якого взяті дані</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {stateRoadBudget.map((item) => (
+                <TableRow key={item.id} className="hover:bg-gray-50">
+                  <TableCell className="font-medium">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-start">
+                            <div style={{ whiteSpace: 'pre-line' }}>{item.name}</div>
+                            <InfoCircledIcon className="ml-2 h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md bg-gray-800 text-white">
+                          <p>{item.tooltip}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </TableCell>
+                  <TableCell className="text-center font-medium py-3">{item.id}</TableCell>
+                  <TableCell>
+                    <Input 
+                      type="number" 
+                      value={item.value === null ? "" : item.value.toString()}
+                      onChange={(e) => handleInputChange(item.id, e.target.value)}
+                      placeholder="0"
+                      className="w-full border-gray-300"
                     />
-                </div>
-                
-                <div className="grid gap-2">
-                    <Label htmlFor="Qpp">Budget for border crossing points</Label>
-                    <Input
-                    id="Qpp"
-                    name="Qpp"
-                    value={stateRoadData.Qpp}
-                    onChange={handleStateRoadInputChange}
-                    type="number"
+                  </TableCell>
+                  <TableCell>
+                    <Input 
+                      value={item.normativeDocument || ""}
+                      onChange={(e) => handleDocumentChange(item.id, e.target.value)}
+                      placeholder="Документ"
+                      className="w-full border-gray-300"
                     />
-                </div>
-                
-                <div className="grid gap-2">
-                    <Label htmlFor="Qmizhn">Budget for international projects</Label>
-                    <Input
-                    id="Qmizhn"
-                    name="Qmizhn"
-                    value={stateRoadData.Qminzhn}
-                    onChange={handleStateRoadInputChange}
-                    type="number"
-                    />
-                </div>
-                
-                <div className="grid gap-2">
-                    <Label htmlFor="QIAS">Budget for information-analytical system</Label>
-                    <Input
-                    id="QIAS"
-                    name="QIAS"
-                    value={stateRoadData.QIAS}
-                    onChange={handleStateRoadInputChange}
-                    type="number"
-                    />
-                </div>
-                
-                <div className="grid gap-2">
-                    <Label htmlFor="Qn">Budget for research and development</Label>
-                    <Input
-                    id="Qn"
-                    name="Qn"
-                    value={stateRoadData.Qn}
-                    onChange={handleStateRoadInputChange}
-                    type="number"
-                    />
-                </div>
-                </div>
-            </div>
-            
-            <div>
-                <h4 className="text-sm font-medium mb-3">Additional budget indicators</h4>
-                
-                <div className="space-y-4">
-                <div className="grid gap-2">
-                    <Label htmlFor="Qlik">Budget for medical facilities</Label>
-                    <Input
-                    id="Qlik"
-                    name="Qlik"
-                    value={stateRoadData.Qlik}
-                    onChange={handleStateRoadInputChange}
-                    type="number"
-                    />
-                </div>
-                
-                <div className="grid gap-2">
-                    <Label htmlFor="Qvp">Budget for production capacity development</Label>
-                    <Input
-                    id="Qvp"
-                    name="Qvp"
-                    value={stateRoadData.Qvp}
-                    onChange={handleStateRoadInputChange}
-                    type="number"
-                    />
-                </div>
-                
-                <div className="grid gap-2">
-                    <Label htmlFor="Qupr">Budget for road management</Label>
-                    <Input
-                    id="Qupr"
-                    name="Qupr"
-                    value={stateRoadData.Qupr}
-                    onChange={handleStateRoadInputChange}
-                    type="number"
-                    />
-                </div>
-                
-                <div className="grid gap-2">
-                    <Label htmlFor="QDPP">Budget for public-private partnership</Label>
-                    <Input
-                    id="QDPP"
-                    name="QDPP"
-                    value={stateRoadData.QDPP}
-                    onChange={handleStateRoadInputChange}
-                    type="number"
-                    />
-                </div>
-                </div>
-            </div>
-            </div>
-            
-            <div className="bg-muted p-4 mt-6 rounded-md font-mono text-center">
-            <p>
-                Q<sub>1</sub> = Q<sub>dz</sub> - Q<sub>pp</sub> - Q<sub>mizhn</sub> - 
-                Q<sub>IAS</sub> - Q<sub>n</sub> - Q<sub>lik</sub> - Q<sub>vp</sub> - 
-                Q<sub>upr</sub> - Q<sub>DPP</sub>
-            </p>
-            </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-            <Button 
-            className="w-full" 
-            onClick={performStateRoadFundingCalculation}
-            >
-            Calculate
-            </Button>
-            
-            {stateRoadData.Q1 !== undefined && (
-            <Alert variant="default" className="mt-2 border-green-600">
-                <AlertTitle>Result: {stateRoadData.Q1.toLocaleString()} thousand UAH</AlertTitle>
-                <AlertDescription className="text-amber-600 font-medium">
-                IMPORTANT! This result will be used for further calculations
-                </AlertDescription>
-            </Alert>
-            )}
-        </CardFooter>
-        </Card>
-    );
-
-    // Render Block 1 - Calculation of total budget for local roads
-    const renderLocalRoadFundingCalculation = () => (
-        <Card className="mb-6">
-        <CardHeader>
-            <CardTitle>Block 1 - Step 1.2</CardTitle>
-            <CardDescription>Determination of total budget for local road development and maintenance</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <h4 className="text-sm font-medium mb-3">Budget indicators for local roads (thousand UAH)</h4>
-                
-                <div className="space-y-4">
-                <div className="grid gap-2">
-                    <Label htmlFor="Qmz">Total budget for local road construction, reconstruction, repairs and maintenance</Label>
-                    <Input
-                    id="Qmz"
-                    name="Qmz"
-                    value={localRoadData.Qmz}
-                    onChange={handleLocalRoadInputChange}
-                    type="number"
-                    />
-                </div>
-                
-                <div className="grid gap-2">
-                    <Label htmlFor="Qkred">Budget for loan repayment</Label>
-                    <Input
-                    id="Qkred"
-                    name="Qkred"
-                    value={localRoadData.Qkred}
-                    onChange={handleLocalRoadInputChange}
-                    type="number"
-                    />
-                </div>
-                
-                <div className="grid gap-2">
-                    <Label htmlFor="Qn2">Budget for research of local roads</Label>
-                    <Input
-                    id="Qn2"
-                    name="Qn2"
-                    value={localRoadData.Qn2}
-                    onChange={handleLocalRoadInputChange}
-                    type="number"
-                    />
-                </div>
-                </div>
-            </div>
-            
-            <div>
-                <h4 className="text-sm font-medium mb-3">Additional budget indicators</h4>
-                
-                <div className="space-y-4">
-                <div className="grid gap-2">
-                    <Label htmlFor="QDPP2">Budget for public-private partnership (local)</Label>
-                    <Input
-                    id="QDPP2"
-                    name="QDPP2"
-                    value={localRoadData.QDPP2}
-                    onChange={handleLocalRoadInputChange}
-                    type="number"
-                    />
-                </div>
-                
-                <div className="grid gap-2">
-                    <Label htmlFor="Qkom">Budget for communal roads</Label>
-                    <Input
-                    id="Qkom"
-                    name="Qkom"
-                    value={localRoadData.Qkom}
-                    onChange={handleLocalRoadInputChange}
-                    type="number"
-                    />
-                </div>
-                </div>
-            </div>
-            </div>
-            
-            <div className="bg-muted p-4 mt-6 rounded-md font-mono text-center">
-            <p>
-                Q<sub>2</sub> = Q<sub>mz</sub> - Q<sub>kred</sub> - Q<sub>n2</sub> - 
-                Q<sub>DPP2</sub> - Q<sub>kom</sub>
-            </p>
-            </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-            <Button 
-            className="w-full" 
-            onClick={performLocalRoadFundingCalculation}
-            >
-            Calculate
-            </Button>
-            
-            {localRoadData.Q2 !== undefined && (
-            <Alert variant="default" className="mt-2 border-green-600">
-                <AlertTitle>Result: {localRoadData.Q2.toLocaleString()} thousand UAH</AlertTitle>
-                <AlertDescription className="text-amber-600 font-medium">
-                IMPORTANT! This result will be used for further calculations
-                </AlertDescription>
-            </Alert>
-            )}
-            
-            <p className="text-sm text-muted-foreground">
-            Note: Calculations for local roads are optional. You can skip this step if not needed.
-            </p>
-        </CardFooter>
-        </Card>
-    );
-
-    // Render Block 2 - Calculation of maintenance norms
-    const renderMaintenanceNormCalculation = () => (
-        <Card>
-        <CardHeader>
-            <CardTitle>Block 2 - Steps 2.1-2.2</CardTitle>
-            <CardDescription>Calculation of maintenance norms for state and local roads</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <h4 className="text-sm font-medium mb-3">Base maintenance norm parameters</h4>
-                
-                <div className="space-y-4">
-                <div className="grid gap-2">
-                    <Label htmlFor="stateValue">Established norm for state roads (category II, thousand UAH/km)</Label>
-                    <Input
-                    id="stateValue"
-                    name="stateValue"
-                    value={maintenanceNorms.stateValue}
-                    onChange={handleMaintenanceNormChange}
-                    type="number"
-                    />
-                    <p className="text-xs text-muted-foreground">Base year: {maintenanceNorms.year}</p>
-                </div>
-                
-                <div className="grid gap-2">
-                    <Label htmlFor="localValue">Established norm for local roads (category II, thousand UAH/km)</Label>
-                    <Input
-                    id="localValue"
-                    name="localValue"
-                    value={maintenanceNorms.localValue}
-                    onChange={handleMaintenanceNormChange}
-                    type="number"
-                    />
-                    <p className="text-xs text-muted-foreground">Base year: {maintenanceNorms.year}</p>
-                </div>
-                </div>
-            </div>
-            
-            <div>
-                <h4 className="text-sm font-medium mb-3">Inflation indices</h4>
-                
-                <div className="space-y-4">
-                {maintenanceNorms.inflationIndices.map((index, i) => (
-                    <div className="grid gap-2" key={i}>
-                    <Label htmlFor={`inflationIndex-${i}`}>Inflation index {i + 1}</Label>
-                    <Input
-                        id={`inflationIndex-${i}`}
-                        value={index}
-                        onChange={(e) => handleInflationIndicesChange(i, parseFloat(e.target.value) || 1.0)}
-                        type="number"
-                        step="0.01"
-                    />
-                    </div>
-                ))}
-                
-                <Button 
-                    variant="outline" 
-                    onClick={addInflationIndex}
-                    size="sm"
-                >
-                    Add Inflation Index
-                </Button>
-                </div>
-            </div>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-4 mt-6">
-            <Button 
-                className="flex-1" 
-                onClick={performStateMaintenanceNormsCalculation}
-            >
-                Calculate State Road Norms
-            </Button>
-            
-            <Button 
-                className="flex-1" 
-                variant="secondary"
-                onClick={performLocalMaintenanceNormsCalculation}
-            >
-                Calculate Local Road Norms
-            </Button>
-            </div>
-            
-            {(calculatedStateNorms || calculatedLocalNorms) && (
-            <div className="mt-6">
-                <h3 className="text-lg font-medium mb-3">Calculated Maintenance Norms by Road Category</h3>
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Road Category</TableHead>
-                    {calculatedStateNorms && (
-                        <TableHead className="text-right">State Roads (thousand UAH/km)</TableHead>
-                    )}
-                    {calculatedLocalNorms && (
-                        <TableHead className="text-right">Local Roads (thousand UAH/km)</TableHead>
-                    )}
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    <TableRow>
-                    <TableCell>Category I</TableCell>
-                    {calculatedStateNorms && (
-                        <TableCell className="text-right">{calculatedStateNorms.categoryI.toFixed(3)}</TableCell>
-                    )}
-                    {calculatedLocalNorms && (
-                        <TableCell className="text-right">{calculatedLocalNorms.categoryI.toFixed(3)}</TableCell>
-                    )}
-                    </TableRow>
-                    <TableRow>
-                    <TableCell>Category II</TableCell>
-                    {calculatedStateNorms && (
-                        <TableCell className="text-right">{calculatedStateNorms.categoryII.toFixed(3)}</TableCell>
-                    )}
-                    {calculatedLocalNorms && (
-                        <TableCell className="text-right">{calculatedLocalNorms.categoryII.toFixed(3)}</TableCell>
-                    )}
-                    </TableRow>
-                    <TableRow>
-                    <TableCell>Category III</TableCell>
-                    {calculatedStateNorms && (
-                        <TableCell className="text-right">{calculatedStateNorms.categoryIII.toFixed(3)}</TableCell>
-                    )}
-                    {calculatedLocalNorms && (
-                        <TableCell className="text-right">{calculatedLocalNorms.categoryIII.toFixed(3)}</TableCell>
-                    )}
-                    </TableRow>
-                    <TableRow>
-                    <TableCell>Category IV</TableCell>
-                    {calculatedStateNorms && (
-                        <TableCell className="text-right">{calculatedStateNorms.categoryIV.toFixed(3)}</TableCell>
-                    )}
-                    {calculatedLocalNorms && (
-                        <TableCell className="text-right">{calculatedLocalNorms.categoryIV.toFixed(3)}</TableCell>
-                    )}
-                    </TableRow>
-                    <TableRow>
-                    <TableCell>Category V</TableCell>
-                    {calculatedStateNorms && (
-                        <TableCell className="text-right">{calculatedStateNorms.categoryV.toFixed(3)}</TableCell>
-                    )}
-                    {calculatedLocalNorms && (
-                        <TableCell className="text-right">{calculatedLocalNorms.categoryV.toFixed(3)}</TableCell>
-                    )}
-                    </TableRow>
-                </TableBody>
-                </Table>
-                
-                <p className="text-sm text-muted-foreground mt-2">
-                Note: These norms are required for further calculations of maintenance funds.
-                </p>
-            </div>
-            )}
-        </CardContent>
-        </Card>
-    );
-
-    // Render Block 3 placeholder - State Road Maintenance calculations
-    const renderStateRoadMaintenanceCalculation = () => (
-        <Card>
-        <CardHeader>
-            <CardTitle>Block 3 - Steps 2.3-2.5</CardTitle>
-            <CardDescription>Calculation of state road maintenance funding</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <p className="mb-4">
-            This section allows uploading templates with road data and calculating maintenance costs for state roads.
-            </p>
-            
-            <Alert className="mt-4">
-            <AlertTitle>Under Development</AlertTitle>
-            <AlertDescription>
-                Functionality to be implemented: Upload road data template with state road lengths by category and region, 
-                calculate maintenance funding according to section 3.5 of the methodology.
-            </AlertDescription>
-            </Alert>
-        </CardContent>
-        </Card>
-    );
-
-    // Render Block 4 placeholder - Local Road Maintenance calculations
-    const renderLocalRoadMaintenanceCalculation = () => (
-        <Card>
-        <CardHeader>
-            <CardTitle>Block 4 - Steps 2.6-2.8</CardTitle>
-            <CardDescription>Calculation of local road maintenance funding</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <p className="mb-4">
-            This section allows uploading templates with road data and calculating maintenance costs for local roads.
-            </p>
-            
-            <Alert className="mt-4">
-            <AlertTitle>Under Development</AlertTitle>
-            <AlertDescription>
-                Functionality to be implemented: Upload road data template with local road lengths by category and region, 
-                calculate maintenance funding according to section 3.6 of the methodology.
-            </AlertDescription>
-            </Alert>
-        </CardContent>
-        </Card>
-    );
-
-    return (
-        <div className="container max-w-6xl mx-auto py-8 px-4">
-        <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">Road Funding Calculator</h1>
-            <p className="text-muted-foreground">
-            Based on the Methodology for determining the funding volume for road construction, 
-            current repair and operational maintenance
-            </p>
+                  </TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
-        
-        <Tabs defaultValue="block1" value={activeTab} onValueChange={setActiveTab} className="mb-8">
-            <TabsList className="grid grid-cols-4 w-full">
-            <TabsTrigger value="block1">Block 1: Total Budget</TabsTrigger>
-            <TabsTrigger value="block2">Block 2: Maintenance Norms</TabsTrigger>
-            <TabsTrigger value="block3">Block 3: State Road Maintenance</TabsTrigger>
-            <TabsTrigger value="block4">Block 4: Local Road Maintenance</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="block1" className="mt-6">
-                {renderStateRoadFundingCalculation()}
-                {renderLocalRoadFundingCalculation()}
-            </TabsContent>
-            
-            <TabsContent value="block2" className="mt-6">
-                {renderMaintenanceNormCalculation()}
-            </TabsContent>
-            
-            <TabsContent value="block3" className="mt-6">
-                {renderStateRoadMaintenanceCalculation()}
-            </TabsContent>
-            
-            <TabsContent value="block4" className="mt-6">
-                {renderLocalRoadMaintenanceCalculation()}
-            </TabsContent>
-        </Tabs>
-        </div>
-    );
-}
 
-export default RoadFundingCalculator;
+        <div className="mt-2 w-full">
+          <div className="text-lg font-semibold text-gray-100">
+            Розрахунок Q<sub>1</sub> = Q<sub>дз</sub> - Q<sub>пп</sub> - Q<sub>міжн</sub> - Q<sub>ІАС</sub> - Q<sub>н</sub> - Q<sub>лік</sub> - Q<sub>вп</sub> - Q<sub>упр</sub> - Q<sub>ДПП</sub>
+          </div>
+        </div>
+
+        <Button 
+          onClick={handleCalculate} 
+          className="mt-2 w-36 bg-gray-800 hover:bg-gray-700 text-white py-3 text-xl h-auto"
+        >
+          Розрахувати
+        </Button>
+
+        {q1Result !== null && (
+          <div className="mt-4 p-4 bg-gray-100 rounded-md w-full border border-gray-300">
+            <div className="font-bold text-xl text-center text-gray-800">РЕЗУЛЬТАТ!</div>
+            <div className="text-lg mt-2 text-center text-gray-800">Q<sub>1</sub> = {q1Result.toLocaleString()} тис. грн</div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// Компонент для блока 2: Расчет объема финансирования дорог местного значения
+const LocalRoadFundingBlock = () => {
+  const [localRoadBudget, setLocalRoadBudget] = useState<BudgetItem[]>(modifyItemsWithLineBreak(initialLocalRoadItems));
+  const [q2Result, setQ2Result] = useState<number | null>(null);
+
+  const handleInputChange = (id: string, value: string) => {
+    const newValue = value === "" ? null : parseFloat(value);
+    setLocalRoadBudget(prev => 
+      prev.map(item => 
+        item.id === id ? { ...item, value: newValue } : item
+      )
+    );
+  };
+
+  const handleDocumentChange = (id: string, document: string) => {
+    setLocalRoadBudget(prev => 
+      prev.map(item => 
+        item.id === id ? { ...item, normativeDocument: document } : item
+      )
+    );
+  };
+
+  const handleCalculate = () => {
+    // Передаем исходные данные без переноса строк для расчета
+    const originalLocalRoadItems = initialLocalRoadItems.map((original, index) => {
+      return {
+        ...original,
+        value: localRoadBudget[index].value,
+        normativeDocument: localRoadBudget[index].normativeDocument
+      };
+    });
+
+    const qmzValue = originalLocalRoadItems.find(item => item.id === "Qмз")?.value;
+    
+    if (qmzValue === null || qmzValue === undefined) {
+      alert("Необхідно заповнити значення Qмз!");
+      return;
+    }
+
+    const result = calculateQ2(originalLocalRoadItems);
+    setQ2Result(result);
+  };
+
+  return (
+    <Card className="w-full border-gray-300 shadow-sm">
+      <CardHeader className="bg-gray-100 border-b border-gray-200">
+        <CardTitle className="text-xl font-bold text-gray-800">
+          Етап 1.2 Блоку 1 Визначення загального обсягу бюджетних коштів Q<sub>2</sub>, що спрямовується на фінансове забезпечення заходів з розвитку та утримання автомобільних доріг загального користування місцевого значення (п.2.1.2 Методики)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-6">
+        <div className="w-full overflow-x-auto">
+          <Table className="w-full">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-3/5 bg-gray-100">*Назва показника нехай підсвічується при наведені на сам показник</TableHead>
+                <TableHead className="w-16 bg-gray-100">Показник</TableHead>
+                <TableHead className="w-32 bg-gray-100">Обсяг, тис.грн.</TableHead>
+                <TableHead className="bg-gray-100">Нормативний документ, з якого взяті дані</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {localRoadBudget.map((item) => (
+                <TableRow key={item.id} className="hover:bg-gray-50">
+                  <TableCell className="font-medium">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-start">
+                            <div style={{ whiteSpace: 'pre-line' }}>{item.name}</div>
+                            <InfoCircledIcon className="ml-2 h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md bg-gray-800 text-white">
+                          <p>{item.tooltip}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </TableCell>
+                  <TableCell className="text-center font-medium py-3">{item.id}</TableCell>
+                  <TableCell>
+                    <Input 
+                      type="number" 
+                      value={item.value === null ? "" : item.value.toString()}
+                      onChange={(e) => handleInputChange(item.id, e.target.value)}
+                      placeholder="0"
+                      className="w-full border-gray-300"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input 
+                      value={item.normativeDocument || ""}
+                      onChange={(e) => handleDocumentChange(item.id, e.target.value)}
+                      placeholder="Документ"
+                      className="w-full border-gray-300"
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="mt-6 w-full">
+          <div className="text-lg font-semibold text-gray-700">
+            Розрахунок Q<sub>2</sub> = Q<sub>мз</sub> - Q<sub>кред</sub> - Q<sub>н2</sub> - Q<sub>ДПП2</sub> - Q<sub>ком</sub>
+          </div>
+        </div>
+
+        <Button 
+          onClick={handleCalculate} 
+          className="mt-4 w-36 bg-gray-800 hover:bg-gray-700 text-white py-3 text-xl h-auto"
+        >
+          Розрахувати
+        </Button>
+
+        {q2Result !== null && (
+          <div className="mt-4 p-4 bg-gray-100 rounded-md w-full border border-gray-300">
+            <div className="font-bold text-xl text-center text-gray-800">РЕЗУЛЬТАТ!</div>
+            <div className="text-lg mt-2 text-center text-gray-800">Q<sub>2</sub> = {q2Result.toLocaleString()} тис. грн</div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// Главный компонент приложения
+const RoadFundingApp = () => {
+  return (
+    <div className="min-h-screen bg-gray-50 p-6 w-full">
+      <div className="w-full mx-auto">
+        <Card className="mb-8 w-full border-gray-300 shadow-sm">
+          <CardHeader className="bg-gray-100">
+            <CardTitle className="text-3xl font-bold text-gray-800">
+              Блок 1: Визначення загального обсягу бюджетних коштів, що спрямовується на фінансове забезпечення заходів з розвитку та утримання автомобільних доріг загального користування державного та місцевого значення
+            </CardTitle>
+            <div className="text-lg text-gray-600 mt-2">
+              (Розділ ІІ Методики)
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* Блок 1.1: Дороги государственного значения */}
+        <StateRoadFundingBlock />
+
+        {/* Блок 1.2: Дороги местного значения */}
+        <LocalRoadFundingBlock />
+
+        {/* Здесь могут быть добавлены другие блоки расчета */}
+      </div>
+    </div>
+  );
+};
+
+export default RoadFundingApp;

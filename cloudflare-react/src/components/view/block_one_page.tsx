@@ -13,7 +13,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 
 // Модифицированные данные с переносом на новую строку
@@ -92,8 +91,8 @@ const StateRoadFundingBlock = () => {
   };
 
   return (
-    <Card className="mb-8 w-full border-gray-300 shadow-sm">
-      <CardHeader className="bg-gray-100 border-b border-gray-200">
+    <Card className="mb-8 w-full border-black shadow-sm rounded-none">
+      <CardHeader className="bg-white border-b border-black">
         <CardTitle className="text-xl font-bold text-gray-800">
           Етап 1.1 Блоку 1 Визначення загального обсягу бюджетних коштів Q<sub>1</sub>, що спрямовується на фінансове забезпечення заходів з розвитку та утримання автомобільних доріг загального користування державного значення (п.2.1.1 Методики)
         </CardTitle>
@@ -103,10 +102,10 @@ const StateRoadFundingBlock = () => {
           <Table className="w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-3/5 bg-gray-100">*Назва показника нехай підсвічується при наведені на сам показник</TableHead>
-                <TableHead className="w-16 bg-gray-100">Показник</TableHead>
-                <TableHead className="w-32 bg-gray-100">Обсяг, тис.грн.</TableHead>
-                <TableHead className="bg-gray-100">Нормативний документ, з якого взяті дані</TableHead>
+                <TableHead className="w-3/5 bg-white">*Назва показника нехай підсвічується при наведені на сам показник</TableHead>
+                <TableHead className="w-16 bg-white">Показник</TableHead>
+                <TableHead className="w-32 bg-white">Обсяг, тис.грн.</TableHead>
+                <TableHead className="bg-white">Нормативний документ, з якого взяті дані</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -121,7 +120,7 @@ const StateRoadFundingBlock = () => {
                             <InfoCircledIcon className="ml-2 h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
                           </div>
                         </TooltipTrigger>
-                        <TooltipContent className="max-w-md bg-gray-800 text-white">
+                        <TooltipContent className="max-w-md bg-black text-white">
                           <p>{item.tooltip}</p>
                         </TooltipContent>
                       </Tooltip>
@@ -134,7 +133,7 @@ const StateRoadFundingBlock = () => {
                       value={item.value === null ? "" : item.value.toString()}
                       onChange={(e) => handleInputChange(item.id, e.target.value)}
                       placeholder="0"
-                      className="w-full border-gray-300"
+                      className="w-full border-black rounded-none"
                     />
                   </TableCell>
                   <TableCell>
@@ -142,10 +141,9 @@ const StateRoadFundingBlock = () => {
                       value={item.normativeDocument || ""}
                       onChange={(e) => handleDocumentChange(item.id, e.target.value)}
                       placeholder="Документ"
-                      className="w-full border-gray-300"
+                      className="w-full border-black rounded-none"
                     />
                   </TableCell>
-                  <TableCell></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -160,13 +158,13 @@ const StateRoadFundingBlock = () => {
 
         <Button 
           onClick={handleCalculate} 
-          className="mt-2 w-36 bg-gray-800 hover:bg-gray-700 text-white py-3 text-xl h-auto"
+          className="mt-2 w-36 bg-black text-white py-3 text-xl h-auto rounded-none"
         >
           Розрахувати
         </Button>
 
         {q1Result !== null && (
-          <div className="mt-4 p-4 bg-gray-100 rounded-md w-full border border-gray-300">
+          <div className="mt-4 p-4 bg-white rounded-none w-full border border-green-700">
             <div className="font-bold text-xl text-center text-gray-800">РЕЗУЛЬТАТ!</div>
             <div className="text-lg mt-2 text-center text-gray-800">Q<sub>1</sub> = {q1Result.toLocaleString()} тис. грн</div>
           </div>
@@ -220,9 +218,9 @@ const LocalRoadFundingBlock = () => {
   };
 
   return (
-    <Card className="w-full border-gray-300 shadow-sm">
-      <CardHeader className="bg-gray-100 border-b border-gray-200">
-        <CardTitle className="text-xl font-bold text-gray-800">
+    <Card className="w-full border-black shadow-sm rounded-none">
+      <CardHeader className="bg-white border-b border-black">
+        <CardTitle className="text-xl font-bold text-gray-900">
           Етап 1.2 Блоку 1 Визначення загального обсягу бюджетних коштів Q<sub>2</sub>, що спрямовується на фінансове забезпечення заходів з розвитку та утримання автомобільних доріг загального користування місцевого значення (п.2.1.2 Методики)
         </CardTitle>
       </CardHeader>
@@ -231,10 +229,10 @@ const LocalRoadFundingBlock = () => {
           <Table className="w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-3/5 bg-gray-100">*Назва показника нехай підсвічується при наведені на сам показник</TableHead>
-                <TableHead className="w-16 bg-gray-100">Показник</TableHead>
-                <TableHead className="w-32 bg-gray-100">Обсяг, тис.грн.</TableHead>
-                <TableHead className="bg-gray-100">Нормативний документ, з якого взяті дані</TableHead>
+                <TableHead className="w-3/5 bg-white">*Назва показника нехай підсвічується при наведені на сам показник</TableHead>
+                <TableHead className="w-16 bg-white">Показник</TableHead>
+                <TableHead className="w-32 bg-white">Обсяг, тис.грн.</TableHead>
+                <TableHead className="bg-white">Нормативний документ, з якого взяті дані</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -249,7 +247,7 @@ const LocalRoadFundingBlock = () => {
                             <InfoCircledIcon className="ml-2 h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
                           </div>
                         </TooltipTrigger>
-                        <TooltipContent className="max-w-md bg-gray-800 text-white">
+                        <TooltipContent className="max-w-md black text-white">
                           <p>{item.tooltip}</p>
                         </TooltipContent>
                       </Tooltip>
@@ -262,7 +260,7 @@ const LocalRoadFundingBlock = () => {
                       value={item.value === null ? "" : item.value.toString()}
                       onChange={(e) => handleInputChange(item.id, e.target.value)}
                       placeholder="0"
-                      className="w-full border-gray-300"
+                      className="w-full border-black rounded-none focus/:border-black"
                     />
                   </TableCell>
                   <TableCell>
@@ -270,7 +268,7 @@ const LocalRoadFundingBlock = () => {
                       value={item.normativeDocument || ""}
                       onChange={(e) => handleDocumentChange(item.id, e.target.value)}
                       placeholder="Документ"
-                      className="w-full border-gray-300"
+                      className="w-full border-black rounded-none focus:border-black"
                     />
                   </TableCell>
                 </TableRow>
@@ -287,13 +285,13 @@ const LocalRoadFundingBlock = () => {
 
         <Button 
           onClick={handleCalculate} 
-          className="mt-4 w-36 bg-gray-800 hover:bg-gray-700 text-white py-3 text-xl h-auto"
+          className="mt-4 w-36 bg-black text-white py-3 text-xl h-auto rounded-none"
         >
           Розрахувати
         </Button>
 
         {q2Result !== null && (
-          <div className="mt-4 p-4 bg-gray-100 rounded-md w-full border border-gray-300">
+          <div className="mt-4 p-4 bg-white rounded-none w-full border border-green-700">
             <div className="font-bold text-xl text-center text-gray-800">РЕЗУЛЬТАТ!</div>
             <div className="text-lg mt-2 text-center text-gray-800">Q<sub>2</sub> = {q2Result.toLocaleString()} тис. грн</div>
           </div>
@@ -304,12 +302,12 @@ const LocalRoadFundingBlock = () => {
 };
 
 // Главный компонент приложения
-const RoadFundingApp = () => {
+const RoadFundingApp: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gray-50 p-6 w-full">
+    <div className="min-h-screen p-6 w-full">
       <div className="w-full mx-auto">
-        <Card className="mb-8 w-full border-gray-300 shadow-sm">
-          <CardHeader className="bg-gray-100">
+        <Card className="mb-8 w-full border-black shadow-sm rounded-none">
+          <CardHeader>
             <CardTitle className="text-3xl font-bold text-gray-800">
               Блок 1: Визначення загального обсягу бюджетних коштів, що спрямовується на фінансове забезпечення заходів з розвитку та утримання автомобільних доріг загального користування державного та місцевого значення
             </CardTitle>

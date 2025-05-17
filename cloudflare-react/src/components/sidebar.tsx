@@ -11,6 +11,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
     { to: "/block_one_page", label: "Блок один" },
+    { to: "/block_two_page", label: "Блок два" },
 ]
 
 

@@ -66,7 +66,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
 
   // State for funding calculation (Block 2.3-2.8)
   const [selectedRegion, setSelectedRegion] = useState<string>("Вінницька");
-  const [regionCoefficients, setRegionCoefficients] = useState<RegionCoefficients[]>(getRegionCoefficients());
+  const [regionCoefficients] = useState<RegionCoefficients[]>(getRegionCoefficients());
   const [regionData, setRegionData] = useState<RegionRoads>(generateSampleRegionData("Вінницька"));
   const [fundingResults, setFundingResults] = useState<{
     stateFunding: number;

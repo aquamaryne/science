@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import {Table,TableBody,TableCaption,TableCell,TableHead,TableHeader,TableRow,} from "@/components/ui/table";
-import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue,} from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader,TableRow,} from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger,SelectValue,} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoIcon, X, CheckCircle, Plus, Download } from "lucide-react";
@@ -17,20 +17,17 @@ import type {
   PriceIndexes
 } from '../../modules/block_two';
 
-// Import calculation functions
+// Import calculation functions - тільки ті, які дійсно використовуються
 import {
   calculateStateRoadMaintenanceRate,
   calculateLocalRoadMaintenanceRate,
   getRegionCoefficients,
   generateSampleRegionData,
   calculateTotalFunding,
-  calculateTrafficIntensityCoefficient,
-  calculateEuropeanRoadCoefficient,
-  calculateBorderCrossingCoefficient,
-  calculateLightingCoefficient,
-  calculateRepairCoefficient,
-  calculateCriticalInfrastructureCoefficient,
 } from '../../modules/block_two';
+
+// Импортируем SheetJS
+import * as XLSX from 'xlsx';
 
 const Block2MaintenanceCalculator: React.FC = () => {
   // State for state road calculation (Block 2.1)
@@ -68,9 +65,9 @@ const Block2MaintenanceCalculator: React.FC = () => {
   });
 
   // State for funding calculation (Block 2.3-2.8)
-  const [selectedRegion, setSelectedRegion] = useState<string>("Винницкая");
+  const [selectedRegion, setSelectedRegion] = useState<string>("Вінницька");
   const [regionCoefficients, setRegionCoefficients] = useState<RegionCoefficients[]>(getRegionCoefficients());
-  const [regionData, setRegionData] = useState<RegionRoads>(generateSampleRegionData("Винницкая"));
+  const [regionData, setRegionData] = useState<RegionRoads>(generateSampleRegionData("Вінницька"));
   const [fundingResults, setFundingResults] = useState<{
     stateFunding: number;
     localFunding: number;
@@ -223,7 +220,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
       inflationIndex: totalInflationIndex
     };
 
-    // Calculate total funding
+    // Calculate total funding - тут всі коефіцієнти розраховуються всередині функції
     const results = calculateTotalFunding(regionData, selectedRegionCoeff, priceIndexes);
     setFundingResults(results);
     
@@ -233,17 +230,216 @@ const Block2MaintenanceCalculator: React.FC = () => {
   
   // Handle export to Excel
   const handleExport = () => {
-    alert("Функция экспорта в Excel будет реализована в полной версии приложения");
+    try {
+      // Создаем новую рабочую книгу
+      const workbook = XLSX.utils.book_new();
+      
+      // Создаем лист с результатами расчетов
+      const wsData = [
+        ['Результати розрахунку експлуатаційного утримання доріг'],
+        ['Область:', selectedRegion],
+        ['Дата розрахунку:', new Date().toLocaleDateString('uk-UA')],
+        [],
+        ['1. НОРМАТИВИ ДЛЯ ДОРІГ ДЕРЖАВНОГО ЗНАЧЕННЯ'],
+        ['Категорія', 'Норматив (тис. грн/км)'],
+        ['I категорія', stateRoadRates.category1.toFixed(2)],
+        ['II категорія', stateRoadRates.category2.toFixed(2)],
+        ['III категорія', stateRoadRates.category3.toFixed(2)],
+        ['IV категорія', stateRoadRates.category4.toFixed(2)],
+        ['V категорія', stateRoadRates.category5.toFixed(2)],
+        [],
+        ['2. НОРМАТИВИ ДЛЯ ДОРІГ МІСЦЕВОГО ЗНАЧЕННЯ'],
+        ['Категорія', 'Норматив (тис. грн/км)'],
+        ['I категорія', localRoadRates.category1.toFixed(2)],
+        ['II категорія', localRoadRates.category2.toFixed(2)],
+        ['III категорія', localRoadRates.category3.toFixed(2)],
+        ['IV категорія', localRoadRates.category4.toFixed(2)],
+        ['V категорія', localRoadRates.category5.toFixed(2)],
+        [],
+        ['3. КОЕФІЦІЄНТИ РОЗРАХУНКУ'],
+        ['Коефіцієнт', 'Значення'],
+        ['Kд (обслуговування доріг)', fundingResults.details.appliedCoefficients.stateServiceCoefficient.toFixed(2)],
+        ['Kг (гірська місцевість)', fundingResults.details.appliedCoefficients.mountainous.toFixed(2)],
+        ['Kуе (умови експлуатації)', fundingResults.details.appliedCoefficients.operatingConditions.toFixed(2)],
+        ['Kінт.д (інтенсивність держзначення)', fundingResults.details.appliedCoefficients.trafficIntensityState.toFixed(2)],
+        ['Kінт.м (інтенсивність місц.)', fundingResults.details.appliedCoefficients.trafficIntensityLocal.toFixed(2)],
+        ['Kе.д (дороги з індексом Е)', fundingResults.details.appliedCoefficients.europeanRoad.toFixed(2)],
+        ['Kмпп.д (пункти пропуску)', fundingResults.details.appliedCoefficients.borderCrossing.toFixed(2)],
+        ['Kосв (освітлення)', fundingResults.details.appliedCoefficients.lighting.toFixed(2)],
+        ['Kрем (нещодавній ремонт)', fundingResults.details.appliedCoefficients.repair.toFixed(2)],
+        ['Kкр.і (критич. інфраструктура)', fundingResults.details.appliedCoefficients.criticalInfrastructure.toFixed(2)],
+        [],
+        ['4. РЕЗУЛЬТАТИ РОЗРАХУНКУ ФІНАНСУВАННЯ'],
+        ['Показник', 'Значення'],
+        ['Протяжність доріг державного значення (км)', fundingResults.details.stateRoadLength.toFixed(2)],
+        ['Протяжність доріг місцевого значення (км)', fundingResults.details.localRoadLength.toFixed(2)],
+        ['Фінансування доріг державного значення (тис. грн)', fundingResults.stateFunding.toFixed(2)],
+        ['Фінансування доріг місцевого значення (тис. грн)', fundingResults.localFunding.toFixed(2)],
+        ['ЗАГАЛЬНИЙ ОБСЯГ ФІНАНСУВАННЯ (тис. грн)', fundingResults.totalFunding.toFixed(2)],
+        [],
+        ['5. ПОТРЕБА У ФІНАНСУВАННІ ЗА КАТЕГОРІЯМИ'],
+        ['Категорія', 'Держзначення (тис. грн)', 'Місцевого значення (тис. грн)']
+      ];
+      
+      // Добавляем данные по категориям
+      for (let category = 1; category <= 5; category++) {
+        const funding = calculateCategoryFunding(category);
+        wsData.push([
+          `Категорія ${category}`,
+          funding.stateFunding.toFixed(2),
+          funding.localFunding.toFixed(2)
+        ]);
+      }
+      
+      wsData.push(
+        [],
+        ['6. ДАНІ ПО ДОРОЖНІЙ МЕРЕЖІ РЕГІОНУ'],
+        ['Категорія', 'Держзначення всього (км)', 'Держзначення інтенс.>15000', 'Держзначення з індексом Е', 'Місцевого всього (км)', 'Місцевого інтенс.>15000', 'Місцевого з освітленням']
+      );
+      
+      // Добавляем данные по дорожной сети
+      for (let category = 1; category <= 5; category++) {
+        wsData.push([
+          `Категорія ${category}`,
+          regionData.roadSections
+            .filter(s => s.stateImportance && s.category === category)
+            .reduce((sum, s) => sum + s.length, 0).toString(),
+          regionData.roadSections
+            .filter(s => s.stateImportance && s.category === category && s.trafficIntensity > 15000)
+            .reduce((sum, s) => sum + s.length, 0).toString(),
+          regionData.roadSections
+            .filter(s => s.stateImportance && s.category === category && s.hasEuropeanStatus)
+            .reduce((sum, s) => sum + s.length, 0).toString(),
+          regionData.roadSections
+            .filter(s => !s.stateImportance && s.category === category)
+            .reduce((sum, s) => sum + s.length, 0).toString(),
+          regionData.roadSections
+            .filter(s => !s.stateImportance && s.category === category && s.trafficIntensity > 15000)
+            .reduce((sum, s) => sum + s.length, 0).toString(),
+          regionData.roadSections
+            .filter(s => !s.stateImportance && s.category === category && s.hasLighting)
+            .reduce((sum, s) => sum + s.length, 0).toString(),
+        ]);
+      }
+      
+      // Создаем лист
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      
+      // Устанавливаем ширину колонок
+      ws['!cols'] = [
+        { width: 40 }, // Первая колонка шире для названий
+        { width: 20 },
+        { width: 20 },
+        { width: 20 },
+        { width: 20 },
+        { width: 20 },
+        { width: 20 }
+      ];
+      
+      // Добавляем лист в книгу
+      XLSX.utils.book_append_sheet(workbook, ws, 'Результати розрахунку');
+      
+      // Создаем отдельный лист с детальными данными по индексам инфляции
+      const inflationData = [
+        ['ІНДЕКСИ ІНФЛЯЦІЇ'],
+        [],
+        ['Індекси інфляції для доріг державного значення:'],
+        ['№', 'Індекс (%)', 'Коефіцієнт']
+      ];
+      
+      stateInflationIndexes.forEach((index, i) => {
+        inflationData.push([(i + 1).toString(), index.toString(), (1 + index / 100).toFixed(4)]);
+      });
+      
+      inflationData.push(
+        [],
+        ['Сукупний індекс інфляції (держ.):', calculateCumulativeInflationIndex(stateInflationIndexes).toFixed(4)],
+        [],
+        ['Індекси інфляції для доріг місцевого значення:'],
+        ['№', 'Індекс (%)', 'Коефіцієнт']
+      );
+      
+      localInflationIndexes.forEach((index, i) => {
+        inflationData.push([(i + 1).toString(), index.toString(), (1 + index / 100).toFixed(4)]);
+      });
+      
+      inflationData.push(
+        [],
+        ['Сукупний індекс інфляції (місц.):', calculateCumulativeInflationIndex(localInflationIndexes).toFixed(4)]
+      );
+      
+      const wsInflation = XLSX.utils.aoa_to_sheet(inflationData);
+      wsInflation['!cols'] = [{ width: 15 }, { width: 15 }, { width: 15 }];
+      XLSX.utils.book_append_sheet(workbook, wsInflation, 'Індекси інфляції');
+      
+      // Создаем лист с базовыми данными (как в оригинальном шаблоне)
+      const baseData = [
+        ['Розподіл витрат на експлуатаційне утримання (ЕУ)'],
+        ['Область: ' + selectedRegion],
+        [],
+        ['Базові нормативи (ціни 2023 року):'],
+        ['Державні дороги, II категорія:', stateRoadBaseRate + ' тис. грн/км'],
+        ['Місцеві дороги, II категорія:', localRoadBaseRate + ' тис. грн/км'],
+        [],
+        ['Індекси інфляції (державні дороги):'],
+        ...stateInflationIndexes.map((index, i) => [`Індекс ${i+1}:`, index + '%']),
+        ['Сукупний індекс:', calculateCumulativeInflationIndex(stateInflationIndexes).toFixed(4)],
+        [],
+        ['Індекси інфляції (місцеві дороги):'],
+        ...localInflationIndexes.map((index, i) => [`Індекс ${i+1}:`, index + '%']),
+        ['Сукупний індекс:', calculateCumulativeInflationIndex(localInflationIndexes).toFixed(4)]
+      ];
+      
+      const wsBase = XLSX.utils.aoa_to_sheet(baseData);
+      wsBase['!cols'] = [{ width: 30 }, { width: 20 }];
+      XLSX.utils.book_append_sheet(workbook, wsBase, 'Базові дані');
+      
+      // Генерируем файл и скачиваем
+      const fileName = `Розрахунок_ЕУ_${selectedRegion}_${new Date().toLocaleDateString('uk-UA').replace(/\./g, '_')}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      
+      setSaveStatus("Excel файл успішно згенеровано та завантажено");
+      setTimeout(() => setSaveStatus(""), 3000);
+      
+    } catch (error) {
+      console.error('Помилка при експорті:', error);
+      setSaveStatus("Помилка при експорті в Excel");
+      setTimeout(() => setSaveStatus(""), 3000);
+    }
   };
   
   // Handle save results
   const handleSaveResults = () => {
+    // Вместо localStorage используем JSON экспорт
     try {
-      localStorage.setItem('roadMaintenanceFunding', JSON.stringify(fundingResults));
-      setSaveStatus("Результаты успешно сохранены");
+      const dataToSave = {
+        region: selectedRegion,
+        date: new Date().toISOString(),
+        stateRoadRates,
+        localRoadRates,
+        fundingResults,
+        stateInflationIndexes,
+        localInflationIndexes,
+        regionData
+      };
+      
+      const dataStr = JSON.stringify(dataToSave, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Дані_розрахунку_${selectedRegion}_${new Date().toLocaleDateString('uk-UA').replace(/\./g, '_')}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      setSaveStatus("Дані успішно збережено у JSON файл");
       setTimeout(() => setSaveStatus(""), 3000);
     } catch (error) {
-      setSaveStatus("Ошибка при сохранении результатов");
+      setSaveStatus("Помилка при збереженні даних");
+      setTimeout(() => setSaveStatus(""), 3000);
     }
   };
 
@@ -263,23 +459,23 @@ const Block2MaintenanceCalculator: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-2">Блок 2: Эксплуатационное содержание дорог</h1>
-      <p className="text-gray-600 mb-6">Определение общего объема бюджетных средств на финансовое обеспечение мероприятий по эксплуатационному содержанию</p>
+      <h1 className="text-2xl font-bold mb-2">Блок 2: Експлуатаційне утримання доріг</h1>
+      <p className="text-gray-600 mb-6">Визначення загального обсягу бюджетних коштів на фінансове забезпечення заходів з експлуатаційного утримання</p>
       
       <Tabs defaultValue="step1" className="mb-8">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="step1">Этап 2.1: Дороги государственного значения</TabsTrigger>
-          <TabsTrigger value="step2">Этап 2.2: Дороги местного значения</TabsTrigger>
-          <TabsTrigger value="step3">Этап 2.3-2.8: Расчет объема средств</TabsTrigger>
+          <TabsTrigger value="step1">Етап 2.1: Дороги державного значення</TabsTrigger>
+          <TabsTrigger value="step2">Етап 2.2: Дороги місцевого значення</TabsTrigger>
+          <TabsTrigger value="step3">Етап 2.3-2.8: Розрахунок обсягу коштів</TabsTrigger>
         </TabsList>
         
         {/* Stage 2.1: State Road Norms */}
         <TabsContent value="step1">
           <Card>
             <CardHeader>
-              <CardTitle className="text-red-500">Этап 2.1 Блоку 2</CardTitle>
+              <CardTitle className="text-red-500">Етап 2.1 Блоку 2</CardTitle>
               <CardDescription>
-                Приведенный норматив годовых финансовых затрат на эксплуатационное содержание автомобильных дорог государственного значения
+                Приведений норматив річних фінансових витрат на експлуатаційне утримання автомобільних доріг державного значення
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -287,7 +483,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                 <div className="grid gap-4">
                   <div>
                     <Label htmlFor="stateRoadBaseRate">
-                      Установленный норматив годовых финансовых затрат на ЭУ 1 км дороги II кат. государственного значения в ценах 2023 года
+                      Встановлений норматив річних фінансових витрат на ЕУ 1 км дороги II кат. державного значення в цінах 2023 року
                     </Label>
                     <Input
                       id="stateRoadBaseRate"
@@ -300,19 +496,19 @@ const Block2MaintenanceCalculator: React.FC = () => {
                   
                   <div>
                     <div className="flex items-center justify-between">
-                      <Label>Индексы инфляции</Label>
+                      <Label>Індекси інфляції</Label>
                       <Button 
                         variant="outline" 
                         size="sm"
                         onClick={addStateInflationIndex}
                       >
-                        <Plus className="h-4 w-4 mr-1" /> Добавить индекс
+                        <Plus className="h-4 w-4 mr-1" /> Додати індекс
                       </Button>
                     </div>
                     <div className="grid gap-2 mt-2">
                       {stateInflationIndexes.map((index, i) => (
                         <div key={i} className="flex items-center gap-2">
-                          <Label className="min-w-[100px]">{`Индекс ${i+1}:`}</Label>
+                          <Label className="min-w-[100px]">{`Індекс ${i+1}:`}</Label>
                           <Input
                             type="number"
                             value={index}
@@ -339,51 +535,51 @@ const Block2MaintenanceCalculator: React.FC = () => {
                   onClick={calculateStateRoadRates}
                   className="mt-4 bg-green-600 hover:bg-green-700"
                 >
-                  Рассчитать
+                  Розрахувати
                 </Button>
                 
                 <div className="grid grid-cols-5 gap-4 mt-6">
                   <Card className="p-4">
                     <CardContent className="p-0 text-center">
-                      <h3 className="font-bold">Категория I</h3>
+                      <h3 className="font-bold">Категорія I</h3>
                       <div className="text-xl font-bold mt-2">
-                        {stateRoadRates.category1.toFixed(2)} тыс. грн.
+                        {stateRoadRates.category1.toFixed(2)} тис. грн.
                       </div>
                     </CardContent>
                   </Card>
                   
                   <Card className="p-4">
                     <CardContent className="p-0 text-center">
-                      <h3 className="font-bold">Категория II</h3>
+                      <h3 className="font-bold">Категорія II</h3>
                       <div className="text-xl font-bold mt-2">
-                        {stateRoadRates.category2.toFixed(2)} тыс. грн.
+                        {stateRoadRates.category2.toFixed(2)} тис. грн.
                       </div>
                     </CardContent>
                   </Card>
                   
                   <Card className="p-4">
                     <CardContent className="p-0 text-center">
-                      <h3 className="font-bold">Категория III</h3>
+                      <h3 className="font-bold">Категорія III</h3>
                       <div className="text-xl font-bold mt-2">
-                        {stateRoadRates.category3.toFixed(2)} тыс. грн.
+                        {stateRoadRates.category3.toFixed(2)} тис. грн.
                       </div>
                     </CardContent>
                   </Card>
                   
                   <Card className="p-4">
                     <CardContent className="p-0 text-center">
-                      <h3 className="font-bold">Категория IV</h3>
+                      <h3 className="font-bold">Категорія IV</h3>
                       <div className="text-xl font-bold mt-2">
-                        {stateRoadRates.category4.toFixed(2)} тыс. грн.
+                        {stateRoadRates.category4.toFixed(2)} тис. грн.
                       </div>
                     </CardContent>
                   </Card>
                   
                   <Card className="p-4">
                     <CardContent className="p-0 text-center">
-                      <h3 className="font-bold">Категория V</h3>
+                      <h3 className="font-bold">Категорія V</h3>
                       <div className="text-xl font-bold mt-2">
-                        {stateRoadRates.category5.toFixed(2)} тыс. грн.
+                        {stateRoadRates.category5.toFixed(2)} тис. грн.
                       </div>
                     </CardContent>
                   </Card>
@@ -391,10 +587,10 @@ const Block2MaintenanceCalculator: React.FC = () => {
                 
                 <Alert className="mt-4 bg-blue-50">
                   <InfoIcon className="h-4 w-4" />
-                  <AlertTitle>Методика расчета</AlertTitle>
+                  <AlertTitle>Методика розрахунку</AlertTitle>
                   <AlertDescription>
-                    После того как пользователь ввел вышеуказанные данные, программа считает норматив в соответствии с п.3.2 Методики. 
-                    Коэффициенты дифференцирования в зависимости от категории приведены в Додатке 3 Методики.
+                    Після того як користувач ввів вищезазначені дані, програма рахує норматив відповідно до п.3.2 Методики. 
+                    Коефіцієнти диференціювання залежно від категорії наведені в Додатку 3 Методики.
                   </AlertDescription>
                 </Alert>
               </div>
@@ -406,9 +602,9 @@ const Block2MaintenanceCalculator: React.FC = () => {
         <TabsContent value="step2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-red-500">Этап 2.2 Блоку 2</CardTitle>
+              <CardTitle className="text-red-500">Етап 2.2 Блоку 2</CardTitle>
               <CardDescription>
-                Приведенный норматив годовых финансовых затрат на эксплуатационное содержание автомобильных дорог местного значения
+                Приведений норматив річних фінансових витрат на експлуатаційне утримання автомобільних доріг місцевого значення
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -416,7 +612,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                 <div className="grid gap-4">
                   <div>
                     <Label htmlFor="localRoadBaseRate">
-                      Установленный норматив годовых финансовых затрат на ЭУ 1 км дороги II кат. местного значения в ценах 2023 года
+                      Встановлений норматив річних фінансових витрат на ЕУ 1 км дороги II кат. місцевого значення в цінах 2023 року
                     </Label>
                     <Input
                       id="localRoadBaseRate"
@@ -429,19 +625,19 @@ const Block2MaintenanceCalculator: React.FC = () => {
                   
                   <div>
                     <div className="flex items-center justify-between">
-                      <Label>Индексы инфляции</Label>
+                      <Label>Індекси інфляції</Label>
                       <Button 
                         variant="outline" 
                         size="sm"
                         onClick={addLocalInflationIndex}
                       >
-                        <Plus className="h-4 w-4 mr-1" /> Добавить индекс
+                        <Plus className="h-4 w-4 mr-1" /> Додати індекс
                       </Button>
                     </div>
                     <div className="grid gap-2 mt-2">
                       {localInflationIndexes.map((index, i) => (
                         <div key={i} className="flex items-center gap-2">
-                          <Label className="min-w-[100px]">{`Индекс ${i+1}:`}</Label>
+                          <Label className="min-w-[100px]">{`Індекс ${i+1}:`}</Label>
                           <Input
                             type="number"
                             value={index}
@@ -468,51 +664,51 @@ const Block2MaintenanceCalculator: React.FC = () => {
                   onClick={calculateLocalRoadRates}
                   className="mt-4 bg-green-600 hover:bg-green-700"
                 >
-                  Рассчитать
+                  Розрахувати
                 </Button>
                 
                 <div className="grid grid-cols-5 gap-4 mt-6">
                   <Card className="p-4">
                     <CardContent className="p-0 text-center">
-                      <h3 className="font-bold">Категория I</h3>
+                      <h3 className="font-bold">Категорія I</h3>
                       <div className="text-xl font-bold mt-2">
-                        {localRoadRates.category1.toFixed(2)} тыс. грн.
+                        {localRoadRates.category1.toFixed(2)} тис. грн.
                       </div>
                     </CardContent>
                   </Card>
                   
                   <Card className="p-4">
                     <CardContent className="p-0 text-center">
-                      <h3 className="font-bold">Категория II</h3>
+                      <h3 className="font-bold">Категорія II</h3>
                       <div className="text-xl font-bold mt-2">
-                        {localRoadRates.category2.toFixed(2)} тыс. грн.
+                        {localRoadRates.category2.toFixed(2)} тис. грн.
                       </div>
                     </CardContent>
                   </Card>
                   
                   <Card className="p-4">
                     <CardContent className="p-0 text-center">
-                      <h3 className="font-bold">Категория III</h3>
+                      <h3 className="font-bold">Категорія III</h3>
                       <div className="text-xl font-bold mt-2">
-                        {localRoadRates.category3.toFixed(2)} тыс. грн.
+                        {localRoadRates.category3.toFixed(2)} тис. грн.
                       </div>
                     </CardContent>
                   </Card>
                   
                   <Card className="p-4">
                     <CardContent className="p-0 text-center">
-                      <h3 className="font-bold">Категория IV</h3>
+                      <h3 className="font-bold">Категорія IV</h3>
                       <div className="text-xl font-bold mt-2">
-                        {localRoadRates.category4.toFixed(2)} тыс. грн.
+                        {localRoadRates.category4.toFixed(2)} тис. грн.
                       </div>
                     </CardContent>
                   </Card>
                   
                   <Card className="p-4">
                     <CardContent className="p-0 text-center">
-                      <h3 className="font-bold">Категория V</h3>
+                      <h3 className="font-bold">Категорія V</h3>
                       <div className="text-xl font-bold mt-2">
-                        {localRoadRates.category5.toFixed(2)} тыс. грн.
+                        {localRoadRates.category5.toFixed(2)} тис. грн.
                       </div>
                     </CardContent>
                   </Card>
@@ -520,9 +716,9 @@ const Block2MaintenanceCalculator: React.FC = () => {
                 
                 <Alert className="mt-4 bg-red-50">
                   <InfoIcon className="h-4 w-4" />
-                  <AlertTitle className="text-red-500 font-bold">ВАЖНО!!!</AlertTitle>
+                  <AlertTitle className="text-red-500 font-bold">ВАЖЛИВО!!!</AlertTitle>
                   <AlertDescription>
-                    Приведенные нормативы необходимы для дальнейших расчетов объема средств на эксплуатационное содержание.
+                    Приведені нормативи необхідні для подальших розрахунків обсягу коштів на експлуатаційне утримання.
                   </AlertDescription>
                 </Alert>
               </div>
@@ -534,22 +730,22 @@ const Block2MaintenanceCalculator: React.FC = () => {
         <TabsContent value="step3">
           <Card>
             <CardHeader>
-              <CardTitle className="text-red-500">Этап 2.3-2.8 Блоку 2</CardTitle>
+              <CardTitle className="text-red-500">Етап 2.3-2.8 Блоку 2</CardTitle>
               <CardDescription>
-                Определение объема средств на эксплуатационное содержание автомобильных дорог государственного и местного значения
+                Визначення обсягу коштів на експлуатаційне утримання автомобільних доріг державного та місцевого значення
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-6">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="region-select">Выберите область:</Label>
+                    <Label htmlFor="region-select">Оберіть область:</Label>
                     <Select 
                       value={selectedRegion}
                       onValueChange={handleRegionChange}
                     >
                       <SelectTrigger id="region-select" className="mt-2">
-                        <SelectValue placeholder="Выберите область" />
+                        <SelectValue placeholder="Оберіть область" />
                       </SelectTrigger>
                       <SelectContent>
                         {regionCoefficients.map((region) => (
@@ -566,7 +762,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                       onClick={calculateFunding}
                       className="w-full bg-green-600 hover:bg-green-700"
                     >
-                      Рассчитать коэффициенты и объем средств
+                      Розрахувати коефіцієнти та обсяг коштів
                     </Button>
                   </div>
                 </div>
@@ -575,53 +771,53 @@ const Block2MaintenanceCalculator: React.FC = () => {
                 
                 <div className="grid md:grid-cols-2 gap-8">
                   <div>
-                    <h3 className="text-lg font-bold mb-4">Коэффициенты расчета</h3>
+                    <h3 className="text-lg font-bold mb-4">Коефіцієнти розрахунку</h3>
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Коэффициент</TableHead>
-                          <TableHead className="text-right">Значение</TableHead>
+                          <TableHead>Коефіцієнт</TableHead>
+                          <TableHead className="text-right">Значення</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         <TableRow>
-                          <TableCell>K<sub>д</sub> (обслуживание дорог)</TableCell>
+                          <TableCell>K<sub>д</sub> (обслуговування доріг)</TableCell>
                           <TableCell className="text-right">{fundingResults.details.appliedCoefficients.stateServiceCoefficient.toFixed(2)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell>K<sub>г</sub> (горная местность)</TableCell>
+                          <TableCell>K<sub>г</sub> (гірська місцевість)</TableCell>
                           <TableCell className="text-right">{fundingResults.details.appliedCoefficients.mountainous.toFixed(2)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell>K<sub>уе</sub> (условия эксплуатации)</TableCell>
+                          <TableCell>K<sub>уе</sub> (умови експлуатації)</TableCell>
                           <TableCell className="text-right">{fundingResults.details.appliedCoefficients.operatingConditions.toFixed(2)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell>K<sup>i</sup><sub>інт.д</sub> (интенсивность госзначения)</TableCell>
+                          <TableCell>K<sup>i</sup><sub>інт.д</sub> (інтенсивність держзначення)</TableCell>
                           <TableCell className="text-right">{fundingResults.details.appliedCoefficients.trafficIntensityState.toFixed(2)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell>K<sup>i</sup><sub>інт.м</sub> (интенсивность местн.)</TableCell>
+                          <TableCell>K<sup>i</sup><sub>інт.м</sub> (інтенсивність місц.)</TableCell>
                           <TableCell className="text-right">{fundingResults.details.appliedCoefficients.trafficIntensityLocal.toFixed(2)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell>K<sup>i</sup><sub>е.д</sub> (дороги с индексом Е)</TableCell>
+                          <TableCell>K<sup>i</sup><sub>е.д</sub> (дороги з індексом Е)</TableCell>
                           <TableCell className="text-right">{fundingResults.details.appliedCoefficients.europeanRoad.toFixed(2)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell>K<sup>i</sup><sub>мпп.д</sub> (пункты пропуска)</TableCell>
+                          <TableCell>K<sup>i</sup><sub>мпп.д</sub> (пункти пропуску)</TableCell>
                           <TableCell className="text-right">{fundingResults.details.appliedCoefficients.borderCrossing.toFixed(2)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell>K<sup>i</sup><sub>осв</sub> (освещение)</TableCell>
+                          <TableCell>K<sup>i</sup><sub>осв</sub> (освітлення)</TableCell>
                           <TableCell className="text-right">{fundingResults.details.appliedCoefficients.lighting.toFixed(2)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell>K<sup>i</sup><sub>рем</sub> (недавний ремонт)</TableCell>
+                          <TableCell>K<sup>i</sup><sub>рем</sub> (нещодавній ремонт)</TableCell>
                           <TableCell className="text-right">{fundingResults.details.appliedCoefficients.repair.toFixed(2)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell>K<sup>i</sup><sub>кр.i</sub> (критич. инфраструктура)</TableCell>
+                          <TableCell>K<sup>i</sup><sub>кр.i</sub> (критич. інфраструктура)</TableCell>
                           <TableCell className="text-right">{fundingResults.details.appliedCoefficients.criticalInfrastructure.toFixed(2)}</TableCell>
                         </TableRow>
                       </TableBody>
@@ -629,45 +825,39 @@ const Block2MaintenanceCalculator: React.FC = () => {
                   </div>
                   
                   <div>
-                    <h3 className="text-lg font-bold mb-4">Результаты расчета</h3>
+                    <h3 className="text-lg font-bold mb-4">Результати розрахунку</h3>
                     <Card className="bg-gray-50">
                       <CardContent className="p-6">
                         <div className="space-y-4">
                           <div>
-                            <p className="text-sm text-gray-600">Протяженность дорог государственного значения:</p>
+                            <p className="text-sm text-gray-600">Протяжність доріг державного значення:</p>
                             <p className="text-lg font-bold">{fundingResults.details.stateRoadLength.toFixed(2)} км</p>
                           </div>
                           
                           <div>
-                            <p className="text-sm text-gray-600">Протяженность дорог местного значения:</p>
+                            <p className="text-sm text-gray-600">Протяжність доріг місцевого значення:</p>
                             <p className="text-lg font-bold">{fundingResults.details.localRoadLength.toFixed(2)} км</p>
                           </div>
                           
                           <Separator />
                           
                           <div>
-                            <p className="text-sm text-gray-600">Финансирование дорог государственного значения:</p>
-                            <p className="text-xl font-bold text-green-700">{fundingResults.stateFunding.toFixed(2)} тыс. грн.</p>
+                            <p className="text-sm text-gray-600">Фінансування доріг державного значення:</p>
+                            <p className="text-xl font-bold text-green-700">{fundingResults.stateFunding.toFixed(2)} тис. грн.</p>
                           </div>
                           
                           <div>
-                            <p className="text-sm text-gray-600">Финансирование дорог местного значения:</p>
-                            <p className="text-xl font-bold text-green-700">{fundingResults.localFunding.toFixed(2)} тыс. грн.</p>
+                            <p className="text-sm text-gray-600">Фінансування доріг місцевого значення:</p>
+                            <p className="text-xl font-bold text-green-700">{fundingResults.localFunding.toFixed(2)} тис. грн.</p>
                           </div>
                           
                           <Separator />
                           
                           <div>
-                            <p className="text-sm text-gray-600">Общий объем финансирования:</p>
-                            <p className="text-2xl font-bold text-green-700">{fundingResults.totalFunding.toFixed(2)} тыс. грн.</p>
+                            <p className="text-sm text-gray-600">Загальний обсяг фінансування:</p>
+                            <p className="text-2xl font-bold text-green-700">{fundingResults.totalFunding.toFixed(2)} тис. грн.</p>
                           </div>
                           
-                          {saveStatus && (
-                            <div className="p-2 bg-green-100 text-green-800 rounded flex items-center mt-2">
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              {saveStatus}
-                            </div>
-                          )}
                           {saveStatus && (
                             <div className="p-2 bg-green-100 text-green-800 rounded flex items-center mt-2">
                               <CheckCircle className="h-4 w-4 mr-2" />
@@ -679,13 +869,13 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     </Card>
 
                     <div className="mt-6">
-                      <h3 className="text-lg font-bold mb-2">Потребность в финансировании по категориям</h3>
+                      <h3 className="text-lg font-bold mb-2">Потреба у фінансуванні за категоріями</h3>
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Категория</TableHead>
-                            <TableHead className="text-right">Госзначение (тыс. грн.)</TableHead>
-                            <TableHead className="text-right">Местного значения (тыс. грн.)</TableHead>
+                            <TableHead>Категорія</TableHead>
+                            <TableHead className="text-right">Держзначення (тис. грн.)</TableHead>
+                            <TableHead className="text-right">Місцевого значення (тис. грн.)</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -693,7 +883,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                             const funding = calculateCategoryFunding(category);
                             return (
                               <TableRow key={category}>
-                                <TableCell>Категория {category}</TableCell>
+                                <TableCell>Категорія {category}</TableCell>
                                 <TableCell className="text-right">{funding.stateFunding.toFixed(2)}</TableCell>
                                 <TableCell className="text-right">{funding.localFunding.toFixed(2)}</TableCell>
                               </TableRow>
@@ -706,28 +896,28 @@ const Block2MaintenanceCalculator: React.FC = () => {
                 </div>
                 
                 <div className="mt-8">
-                  <h3 className="text-lg font-bold mb-4">Данные по дорожной сети региона</h3>
+                  <h3 className="text-lg font-bold mb-4">Дані по дорожній мережі регіону</h3>
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead rowSpan={2}>Категория</TableHead>
-                          <TableHead colSpan={3}>Протяженность дорог госзначения (км)</TableHead>
-                          <TableHead colSpan={3}>Протяженность дорог местного значения (км)</TableHead>
+                          <TableHead rowSpan={2}>Категорія</TableHead>
+                          <TableHead colSpan={3}>Протяжність доріг держзначення (км)</TableHead>
+                          <TableHead colSpan={3}>Протяжність доріг місцевого значення (км)</TableHead>
                         </TableRow>
                         <TableRow>
-                          <TableHead>Всего</TableHead>
-                          <TableHead>с интенсивностью {'>'} 15000</TableHead>
-                          <TableHead>с индексом Е</TableHead>
-                          <TableHead>Всего</TableHead>
-                          <TableHead>с интенсивностью {'>'} 15000</TableHead>
-                          <TableHead>с освещением</TableHead>
+                          <TableHead>Усього</TableHead>
+                          <TableHead>з інтенсивністю {'>'} 15000</TableHead>
+                          <TableHead>з індексом Е</TableHead>
+                          <TableHead>Усього</TableHead>
+                          <TableHead>з інтенсивністю {'>'} 15000</TableHead>
+                          <TableHead>з освітленням</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {[1, 2, 3, 4, 5].map(category => (
                           <TableRow key={category}>
-                            <TableCell>Категория {category}</TableCell>
+                            <TableCell>Категорія {category}</TableCell>
                             <TableCell>
                               {regionData.roadSections
                                 .filter(s => s.stateImportance && s.category === category)
@@ -761,7 +951,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                           </TableRow>
                         ))}
                         <TableRow className="bg-gray-100 font-bold">
-                          <TableCell>Итого</TableCell>
+                          <TableCell>Підсумок</TableCell>
                           <TableCell>
                             {regionData.roadSections
                               .filter(s => s.stateImportance)
@@ -800,9 +990,9 @@ const Block2MaintenanceCalculator: React.FC = () => {
                 
                 <Alert className="mt-4 bg-red-50">
                   <InfoIcon className="h-4 w-4" />
-                  <AlertTitle className="text-red-500 font-bold">ВАЖНО!!!</AlertTitle>
+                  <AlertTitle className="text-red-500 font-bold">ВАЖЛИВО!!!</AlertTitle>
                   <AlertDescription>
-                    После завершения расчетов программа запоминает общий результат финансирования для последующих расчетов в Блоке 3.
+                    Після завершення розрахунків програма запам'ятовує загальний результат фінансування для подальших розрахунків у Блоці 3.
                   </AlertDescription>
                 </Alert>
                 
@@ -812,13 +1002,13 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     onClick={handleExport}
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Экспорт результатов в Excel
+                    Експорт результатів в Excel
                   </Button>
                   <Button 
                     className="bg-blue-600 hover:bg-blue-700"
                     onClick={handleSaveResults}
                   >
-                    Сохранить результаты
+                    Зберегти результати
                   </Button>
                 </div>
               </div>
@@ -831,5 +1021,3 @@ const Block2MaintenanceCalculator: React.FC = () => {
 };
 
 export default Block2MaintenanceCalculator;
-
-                          

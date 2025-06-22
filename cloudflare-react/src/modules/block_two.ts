@@ -427,12 +427,13 @@ export function getRegionCoefficients(): RegionCoefficients[] {
 
 // Функция для создания примера данных для региона
 export function generateSampleRegionData(regionName: string): RegionRoads {
-  return {
+  // Создаем более реалистичные данные в зависимости от региона
+  const baseData = {
     regionalName: regionName,
     criticalInfrastructureCount: 6, // Для примера, 5-10 объектов критической инфраструктуры
     roadSections: [
       {
-        category: 1, // I категория
+        category: 1 as const, // I категория
         stateImportance: true,
         length: 120,
         trafficIntensity: 25000,
@@ -442,7 +443,7 @@ export function generateSampleRegionData(regionName: string): RegionRoads {
         recentlyRepaired: false
       },
       {
-        category: 2, // II категория
+        category: 2 as const, // II категория
         stateImportance: true,
         length: 250,
         trafficIntensity: 12000,
@@ -452,7 +453,7 @@ export function generateSampleRegionData(regionName: string): RegionRoads {
         recentlyRepaired: true
       },
       {
-        category: 3, // III категория
+        category: 3 as const, // III категория
         stateImportance: true,
         length: 350,
         trafficIntensity: 6000,
@@ -462,7 +463,27 @@ export function generateSampleRegionData(regionName: string): RegionRoads {
         recentlyRepaired: false
       },
       {
-        category: 2, // II категория
+        category: 4 as const, // IV категория
+        stateImportance: true,
+        length: 180,
+        trafficIntensity: 3500,
+        hasEuropeanStatus: false,
+        isBorderCrossing: false,
+        hasLighting: false,
+        recentlyRepaired: false
+      },
+      {
+        category: 5 as const, // V категория
+        stateImportance: true,
+        length: 100,
+        trafficIntensity: 1200,
+        hasEuropeanStatus: false,
+        isBorderCrossing: false,
+        hasLighting: false,
+        recentlyRepaired: false
+      },
+      {
+        category: 2 as const, // II категория
         stateImportance: false, // местного значения
         length: 180,
         trafficIntensity: 5000,
@@ -472,7 +493,7 @@ export function generateSampleRegionData(regionName: string): RegionRoads {
         recentlyRepaired: false
       },
       {
-        category: 3, // III категория
+        category: 3 as const, // III категория
         stateImportance: false, // местного значения
         length: 420,
         trafficIntensity: 3000,
@@ -482,7 +503,7 @@ export function generateSampleRegionData(regionName: string): RegionRoads {
         recentlyRepaired: true
       },
       {
-        category: 4, // IV категория
+        category: 4 as const, // IV категория
         stateImportance: false, // местного значения
         length: 580,
         trafficIntensity: 1200,
@@ -490,7 +511,54 @@ export function generateSampleRegionData(regionName: string): RegionRoads {
         isBorderCrossing: false,
         hasLighting: false,
         recentlyRepaired: false
+      },
+      {
+        category: 5 as const, // V категория
+        stateImportance: false, // местного значения
+        length: 320,
+        trafficIntensity: 800,
+        hasEuropeanStatus: false,
+        isBorderCrossing: false,
+        hasLighting: false,
+        recentlyRepaired: false
       }
     ]
   };
+
+  // Корректируем данные в зависимости от региона
+  if (regionName.includes("Закарпат") || regionName.includes("Ивано-Франков") || regionName.includes("Львов") || regionName.includes("Черновиц")) {
+    // Горные области - увеличиваем критическую инфраструктуру
+    baseData.criticalInfrastructureCount = 8;
+    // Добавляем участки с пограничными переходами
+    baseData.roadSections[0].isBorderCrossing = true;
+    baseData.roadSections[1].isBorderCrossing = true;
+  }
+
+  if (regionName.includes("Киев")) {
+    // Киевская область и город - больше критической инфраструктуры и освещения
+    baseData.criticalInfrastructureCount = 12;
+    baseData.roadSections.forEach((section, index) => {
+      if (index < 4) section.hasLighting = true;
+    });
+  }
+
+  if (regionName.includes("Донец") || regionName.includes("Луган")) {
+    // Восточные области - больше критической инфраструктуры
+    baseData.criticalInfrastructureCount = 15;
+  }
+
+  return baseData;
 }
+
+/**
+ * Экспортируем основные константы для использования в интерфейсе
+ */
+export const MAINTENANCE_CONSTANTS = {
+  STATE_ROAD_BASE_COST: STATE_ROAD_MAINTENANCE_BASE_COST,
+  LOCAL_ROAD_BASE_COST: LOCAL_ROAD_MAINTENANCE_BASE_COST,
+  CATEGORY_COEFFICIENTS_STATE,
+  CATEGORY_COEFFICIENTS_LOCAL,
+  TRAFFIC_INTENSITY_COEFFICIENTS,
+  CRITICAL_INFRASTRUCTURE_COEFFICIENTS,
+  STATE_SERVICE_COEFFICIENT: 1.16
+};

@@ -59,7 +59,6 @@ const MAX_DESIGN_INTENSITY_BY_CATEGORY: Record<number, number> = {
   5: 500
 };
 
-// Потрібний коефіцієнт зчеплення
 const REQUIRED_FRICTION_COEFFICIENT = 0.35;
 
 // ==================== ОСНОВНІ ФУНКЦІЇ РОЗДІЛУ IV ====================
@@ -75,6 +74,13 @@ export function determineWorkTypeByTechnicalCondition(
   // 4.2.3.1 - Перевірка інтенсивності руху для реконструкції
   const maxDesignIntensity = MAX_DESIGN_INTENSITY_BY_CATEGORY[section.category] || 500;
   
+  // Перевіряємо чи перевищує фактична інтенсивність максимальну розрахункову для категорії
+  if (section.trafficIntensity > maxDesignIntensity) {
+    console.log(`Секція ${section.id}: потребує реконструкції (інтенсивність ${section.trafficIntensity} > ${maxDesignIntensity})`);
+    return 'reconstruction';
+  }
+  
+  // Додаткова перевірка коефіцієнта інтенсивності
   if (condition.intensityCoefficient < 1.0) {
     console.log(`Секція ${section.id}: потребує реконструкції (коефіцієнт інтенсивності ${condition.intensityCoefficient})`);
     return 'reconstruction';
@@ -84,15 +90,21 @@ export function determineWorkTypeByTechnicalCondition(
   const minStrengthCoeff = MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[section.category] || 0.85;
   
   if (condition.strengthCoefficient < minStrengthCoeff) {
-    console.log(`Секція ${section.id}: потребує капітального ремонту (коефіцієнт міцності ${condition.strengthCoefficient})`);
+    console.log(`Секція ${section.id}: потребує капітального ремонту (коефіцієнт міцності ${condition.strengthCoefficient} < ${minStrengthCoeff})`);
     return 'capital_repair';
   }
   
   // 4.2.3.3-4.2.3.5 - Перевірка рівності, колійності та зчеплення для поточного ремонту
   if (condition.evennessCoefficient < 1.0 || 
-      condition.rutCoefficient < 1.0 || 
-      condition.frictionCoefficient < 1.0) {
-    console.log(`Секція ${section.id}: потребує поточного ремонту`);
+      condition.rutCoefficient < 1.0) {
+    console.log(`Секція ${section.id}: потребує поточного ремонту (рівність або колійність)`);
+    return 'current_repair';
+  }
+  
+  // Перевірка коефіцієнта зчеплення відносно потрібного значення
+  const actualFrictionValue = condition.frictionCoefficient * REQUIRED_FRICTION_COEFFICIENT;
+  if (actualFrictionValue < REQUIRED_FRICTION_COEFFICIENT) {
+    console.log(`Секція ${section.id}: потребує поточного ремонту (зчеплення ${actualFrictionValue.toFixed(3)} < ${REQUIRED_FRICTION_COEFFICIENT})`);
     return 'current_repair';
   }
   
@@ -117,6 +129,59 @@ export function determineWorkTypeByExpertAssessment(
   }
   
   return 'no_work_needed';
+}
+
+/**
+ * Функція для перевірки відповідності дороги своїй категорії за інтенсивністю
+ */
+export function checkCategoryComplianceByIntensity(section: RoadSection): {
+  isCompliant: boolean;
+  recommendedCategory?: number;
+  maxAllowedIntensity: number;
+} {
+  const maxDesignIntensity = MAX_DESIGN_INTENSITY_BY_CATEGORY[section.category] || 500;
+  const isCompliant = section.trafficIntensity <= maxDesignIntensity;
+  
+  let recommendedCategory: number | undefined;
+  
+  if (!isCompliant) {
+    // Знаходимо мінімальну категорію, яка відповідає фактичній інтенсивності
+    for (const [category, maxIntensity] of Object.entries(MAX_DESIGN_INTENSITY_BY_CATEGORY)) {
+      if (section.trafficIntensity <= maxIntensity) {
+        recommendedCategory = parseInt(category);
+        break;
+      }
+    }
+  }
+  
+  return {
+    isCompliant,
+    recommendedCategory,
+    maxAllowedIntensity: maxDesignIntensity
+  };
+}
+
+/**
+ * Функція для перевірки відповідності фактичного зчеплення потрібному
+ */
+export function checkFrictionCompliance(
+  actualFrictionCoefficient: number
+): {
+  isCompliant: boolean;
+  actualValue: number;
+  requiredValue: number;
+  deficit: number;
+} {
+  const actualValue = actualFrictionCoefficient * REQUIRED_FRICTION_COEFFICIENT;
+  const isCompliant = actualValue >= REQUIRED_FRICTION_COEFFICIENT;
+  const deficit = isCompliant ? 0 : REQUIRED_FRICTION_COEFFICIENT - actualValue;
+  
+  return {
+    isCompliant,
+    actualValue,
+    requiredValue: REQUIRED_FRICTION_COEFFICIENT,
+    deficit
+  };
 }
 
 /**
@@ -153,9 +218,20 @@ export function estimateWorkCost(
   
   const category = section.category as 1 | 2 | 3 | 4 | 5;
   const categoryBaseCost = baseCosts[workType][category] || baseCosts[workType][5];
-  const estimatedCost = categoryBaseCost * section.length;
   
-  console.log(`Вартість ${workType} для секції ${section.id}: ${estimatedCost.toFixed(2)} тис. грн`);
+  // Корекція вартості залежно від перевищення інтенсивності
+  let intensityCorrection = 1.0;
+  const complianceCheck = checkCategoryComplianceByIntensity(section);
+  
+  if (!complianceCheck.isCompliant && workType === 'reconstruction') {
+    // Збільшуємо вартість реконструкції при перевищенні інтенсивності
+    const excessRatio = section.trafficIntensity / complianceCheck.maxAllowedIntensity;
+    intensityCorrection = 1.0 + (excessRatio - 1.0) * 0.3; // +30% за кожну одиницю перевищення
+  }
+  
+  const estimatedCost = categoryBaseCost * section.length * intensityCorrection;
+  
+  console.log(`Вартість ${workType} для секції ${section.id}: ${estimatedCost.toFixed(2)} тис. грн (корекція: ${intensityCorrection.toFixed(2)})`);
   return estimatedCost;
 }
 
@@ -169,10 +245,16 @@ export function rankCurrentRepairProjects(projects: RepairProject[]): RepairProj
       const conditionA = a.section.technicalCondition;
       const conditionB = b.section.technicalCondition;
       
-      // Сортування за найменшими коефіцієнтами та найвищою інтенсивністю
-      const priorityA = Math.min(conditionA.evennessCoefficient, conditionA.rutCoefficient, conditionA.frictionCoefficient) * 
+      // Додаємо вагу для зчеплення відносно потрібного коефіцієнта
+      const frictionDeficitA = Math.max(0, REQUIRED_FRICTION_COEFFICIENT - (conditionA.frictionCoefficient * REQUIRED_FRICTION_COEFFICIENT));
+      const frictionDeficitB = Math.max(0, REQUIRED_FRICTION_COEFFICIENT - (conditionB.frictionCoefficient * REQUIRED_FRICTION_COEFFICIENT));
+      
+      // Сортування за найменшими коефіцієнтами, дефіцитом зчеплення та найвищою інтенсивністю
+      const priorityA = Math.min(conditionA.evennessCoefficient, conditionA.rutCoefficient) + 
+                       frictionDeficitA * 10 + // збільшуємо вагу дефіциту зчеплення
                        (1 / (a.section.trafficIntensity + 1));
-      const priorityB = Math.min(conditionB.evennessCoefficient, conditionB.rutCoefficient, conditionB.frictionCoefficient) * 
+      const priorityB = Math.min(conditionB.evennessCoefficient, conditionB.rutCoefficient) + 
+                       frictionDeficitB * 10 +
                        (1 / (b.section.trafficIntensity + 1));
       
       return priorityA - priorityB;
@@ -192,7 +274,28 @@ export function rankCapitalAndReconstructionProjects(projects: RepairProject[]):
     .sort((a, b) => {
       const enpvPerKmA = (a.economicNPV || 0) / a.section.length;
       const enpvPerKmB = (b.economicNPV || 0) / b.section.length;
-      return enpvPerKmB - enpvPerKmA; // Спадання
+      
+      // Якщо ENPV однакові або відсутні, сортуємо за критичністю стану
+      if (Math.abs(enpvPerKmA - enpvPerKmB) < 0.01) {
+        // Для реконструкції враховуємо перевищення інтенсивності
+        if (a.workType === 'reconstruction' && b.workType === 'reconstruction') {
+          const complianceA = checkCategoryComplianceByIntensity(a.section);
+          const complianceB = checkCategoryComplianceByIntensity(b.section);
+          
+          const excessA = complianceA.isCompliant ? 0 : a.section.trafficIntensity - complianceA.maxAllowedIntensity;
+          const excessB = complianceB.isCompliant ? 0 : b.section.trafficIntensity - complianceB.maxAllowedIntensity;
+          
+          return excessB - excessA; // Більше перевищення = вищий пріоритет
+        }
+        
+        // Для капремонту - за дефіцитом міцності
+        const strengthDeficitA = (MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[a.section.category] || 0.85) - a.section.technicalCondition.strengthCoefficient;
+        const strengthDeficitB = (MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[b.section.category] || 0.85) - b.section.technicalCondition.strengthCoefficient;
+        
+        return strengthDeficitB - strengthDeficitA; // Більший дефіцит = вищий пріоритет
+      }
+      
+      return enpvPerKmB - enpvPerKmA; // Спадання за ENPV
     })
     .map((project, index) => ({
       ...project,
@@ -262,13 +365,25 @@ export function planRepairWorks(
   reconstructionProjects: RepairProject[];
   totalCost: number;
   budgetUtilization: number;
+  complianceReport: Array<{sectionId: string, categoryCompliance: boolean, frictionCompliance: boolean}>;
 } {
   console.log('=== Початок планування ремонтних робіт ===');
   
   const allProjects: RepairProject[] = [];
+  const complianceReport: Array<{sectionId: string, categoryCompliance: boolean, frictionCompliance: boolean}> = [];
   
   // Крок 1: Визначення виду робіт для кожної секції
   for (const section of sections) {
+    // Перевіряємо відповідність нормативам
+    const categoryCompliance = checkCategoryComplianceByIntensity(section);
+    const frictionCompliance = checkFrictionCompliance(section.technicalCondition.frictionCoefficient);
+    
+    complianceReport.push({
+      sectionId: section.id,
+      categoryCompliance: categoryCompliance.isCompliant,
+      frictionCompliance: frictionCompliance.isCompliant
+    });
+    
     let workType: 'current_repair' | 'capital_repair' | 'reconstruction' | 'no_work_needed';
     
     if (section.significance === 'local' && expertAssessments?.has(section.id)) {
@@ -289,7 +404,7 @@ export function planRepairWorks(
         workType,
         priority: 0,
         estimatedCost,
-        reasoning: `Визначено за технічним станом`
+        reasoning: `Визначено за технічним станом. Категорія: ${categoryCompliance.isCompliant ? 'відповідає' : 'не відповідає'}, Зчеплення: ${frictionCompliance.isCompliant ? 'достатнє' : 'недостатнє'}`
       });
     }
   }
@@ -326,7 +441,8 @@ export function planRepairWorks(
     capitalRepairProjects,
     reconstructionProjects,
     totalCost,
-    budgetUtilization
+    budgetUtilization,
+    complianceReport
   };
 }
 
@@ -338,28 +454,52 @@ export function planRepairWorks(
 export function generateRepairPlanReport(
   planResult: ReturnType<typeof planRepairWorks>
 ): string {
-  const { currentRepairProjects, capitalRepairProjects, reconstructionProjects, totalCost, budgetUtilization } = planResult;
+  const { currentRepairProjects, capitalRepairProjects, reconstructionProjects, totalCost, budgetUtilization, complianceReport } = planResult;
   
   let report = '# ЗВІТ ПРО ПЛАНУВАННЯ РЕМОНТНИХ РОБІТ\n\n';
   
-  report += '## ПОТОЧНИЙ РЕМОНТ\n';
+  // Додаємо звіт про відповідність нормативам
+  report += '## АНАЛІЗ ВІДПОВІДНОСТІ НОРМАТИВАМ\n';
+  const nonCompliantSections = complianceReport.filter(r => !r.categoryCompliance || !r.frictionCompliance);
+  if (nonCompliantSections.length > 0) {
+    report += 'Секції, що не відповідають нормативам:\n';
+    nonCompliantSections.forEach(section => {
+      const issues = [];
+      if (!section.categoryCompliance) issues.push('перевищення інтенсивності для категорії');
+      if (!section.frictionCompliance) issues.push('недостатнє зчеплення');
+      report += `- ${section.sectionId}: ${issues.join(', ')}\n`;
+    });
+  } else {
+    report += 'Всі секції відповідають нормативним вимогам.\n';
+  }
+  
+  report += '\n## ПОТОЧНИЙ РЕМОНТ\n';
   currentRepairProjects.forEach((project, index) => {
-    report += `${index + 1}. ${project.section.name} (${project.section.length} км) - ${project.estimatedCost.toFixed(0)} тис. грн\n`;
+    const frictionCheck = checkFrictionCompliance(project.section.technicalCondition.frictionCoefficient);
+    const frictionStatus = frictionCheck.isCompliant ? '✓' : `✗ (дефіцит: ${frictionCheck.deficit.toFixed(3)})`;
+    report += `${index + 1}. ${project.section.name} (${project.section.length} км) - ${project.estimatedCost.toFixed(0)} тис. грн [Зчеплення: ${frictionStatus}]\n`;
   });
   
   report += '\n## КАПІТАЛЬНИЙ РЕМОНТ\n';
   capitalRepairProjects.forEach((project, index) => {
-    report += `${index + 1}. ${project.section.name} (${project.section.length} км) - ${project.estimatedCost.toFixed(0)} тис. грн\n`;
+    const minStrength = MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[project.section.category] || 0.85;
+    const strengthDeficit = Math.max(0, minStrength - project.section.technicalCondition.strengthCoefficient);
+    report += `${index + 1}. ${project.section.name} (${project.section.length} км) - ${project.estimatedCost.toFixed(0)} тис. грн [Дефіцит міцності: ${strengthDeficit.toFixed(3)}]\n`;
   });
   
   report += '\n## РЕКОНСТРУКЦІЯ\n';
   reconstructionProjects.forEach((project, index) => {
-    report += `${index + 1}. ${project.section.name} (${project.section.length} км) - ${project.estimatedCost.toFixed(0)} тис. грн\n`;
+    const complianceCheck = checkCategoryComplianceByIntensity(project.section);
+    const intensityStatus = complianceCheck.isCompliant ? 
+      '✓' : 
+      `✗ (перевищення: ${project.section.trafficIntensity - complianceCheck.maxAllowedIntensity} авт./добу)`;
+    report += `${index + 1}. ${project.section.name} (${project.section.length} км) - ${project.estimatedCost.toFixed(0)} тис. грн [Інтенсивність: ${intensityStatus}]\n`;
   });
   
   report += `\n## ПІДСУМОК\n`;
   report += `Загальна вартість: ${totalCost.toFixed(0)} тис. грн\n`;
   report += `Використання бюджету: ${budgetUtilization.toFixed(1)}%\n`;
+  report += `Потрібний коефіцієнт зчеплення: ${REQUIRED_FRICTION_COEFFICIENT}\n`;
   
   return report;
 }
@@ -373,5 +513,11 @@ export default {
   rankLocalRoadsByExpertMethod,
   selectProjectsWithinBudget,
   planRepairWorks,
-  generateRepairPlanReport
+  generateRepairPlanReport,
+  checkCategoryComplianceByIntensity,
+  checkFrictionCompliance,
+  // Экспорт констант для использования в других модулях
+  MAX_DESIGN_INTENSITY_BY_CATEGORY,
+  MIN_STRENGTH_COEFFICIENT_BY_CATEGORY,
+  REQUIRED_FRICTION_COEFFICIENT
 };

@@ -49,10 +49,10 @@ interface RepairProject {
   reasoning: string;
 }
 
-interface ExpertAssessment {
-  operationalStateIndex: number;
-  trafficIntensity: number;
-}
+// interface ExpertAssessment {
+//   operationalStateIndex: number;
+//   trafficIntensity: number;
+// }
 
 // Константы (имитация импорта из модуля)
 const MAX_DESIGN_INTENSITY_BY_CATEGORY: Record<number, number> = {

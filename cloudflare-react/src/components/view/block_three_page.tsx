@@ -49,10 +49,10 @@ interface RepairProject {
   reasoning: string;
 }
 
-// interface ExpertAssessment {
-//   operationalStateIndex: number;
-//   trafficIntensity: number;
-// }
+interface ExpertAssessment {
+  operationalStateIndex: number;
+  trafficIntensity: number;
+}
 
 // Константы (имитация импорта из модуля)
 const MAX_DESIGN_INTENSITY_BY_CATEGORY: Record<number, number> = {
@@ -417,22 +417,157 @@ const ComplianceStatus = ({ section }: { section: RoadSection }) => {
   );
 };
 
+// Компонент экспертной оценки для местных дорог
+const ExpertAssessmentForm = ({ 
+  section, 
+  assessment, 
+  onUpdate 
+}: { 
+  section: RoadSection;
+  assessment?: ExpertAssessment;
+  onUpdate: (sectionId: string, assessment: ExpertAssessment) => void;
+}) => {
+  const [operationalStateIndex, setOperationalStateIndex] = useState(assessment?.operationalStateIndex || 5);
+  const [trafficIntensity, setTrafficIntensity] = useState(assessment?.trafficIntensity || section.trafficIntensity);
+
+  const handleUpdate = () => {
+    onUpdate(section.id, {
+      operationalStateIndex,
+      trafficIntensity
+    });
+  };
+
+  const getIndexDescription = (index: number) => {
+    if (index >= 8) return "Відмінний стан";
+    if (index >= 5) return "Потребує поточного ремонту";
+    if (index <= 4) return "Потребує капітального ремонту";
+    return "Невизначено";
+  };
+
+  const getIndexColor = (index: number) => {
+    if (index >= 8) return "text-green-600";
+    if (index >= 5) return "text-orange-600";
+    if (index <= 4) return "text-red-600";
+    return "text-gray-600";
+  };
+
+  return (
+    <div className="border rounded-lg p-4 bg-blue-50">
+      <div className="flex justify-between items-center mb-3">
+        <h4 className="font-medium">Експертна оцінка: {section.name}</h4>
+        <Badge variant="outline">Місцева дорога</Badge>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Індекс експлуатаційного стану (J)
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon className="inline h-3 w-3 ml-1 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="text-xs">
+                    <p>1-4: Капітальний ремонт</p>
+                    <p>5-7: Поточний ремонт</p>
+                    <p>8-10: Роботи не потрібні</p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </label>
+          <div className="space-y-2">
+            <Input
+              type="range"
+              min="1"
+              max="10"
+              step="0.1"
+              value={operationalStateIndex}
+              onChange={(e) => setOperationalStateIndex(parseFloat(e.target.value))}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>1 (критичний)</span>
+              <span className={`font-medium ${getIndexColor(operationalStateIndex)}`}>
+                {operationalStateIndex.toFixed(1)} - {getIndexDescription(operationalStateIndex)}
+              </span>
+              <span>10 (відмінний)</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Інтенсивність руху (авт./добу)
+          </label>
+          <Input
+            type="number"
+            min="1"
+            value={trafficIntensity}
+            onChange={(e) => setTrafficIntensity(parseInt(e.target.value) || section.trafficIntensity)}
+          />
+        </div>
+      </div>
+
+      <Button onClick={handleUpdate} size="sm" className="mt-3 w-full">
+        Оновити експертну оцінку
+      </Button>
+    </div>
+  );
+};
+
+// Функция экспертного определения типа работ
+const determineWorkTypeByExpertAssessment = (assessment: ExpertAssessment): 'current_repair' | 'capital_repair' | 'no_work_needed' => {
+  const j = assessment.operationalStateIndex;
+  
+  if (j >= 8) {
+    return 'no_work_needed';
+  } else if (j >= 5 && j <= 7) {
+    return 'current_repair';
+  } else if (j <= 4) {
+    return 'capital_repair';
+  }
+  
+  return 'no_work_needed';
+};
+
 // Основной компонент
 const BlockFourInterface = () => {
   const [sections, setSections] = useState<RoadSection[]>([]);
   const [projects, setProjects] = useState<RepairProject[]>([]);
   const [budget, setBudget] = useState<number>(100000);
   const [calculationResults, setCalculationResults] = useState<any>(null);
+  const [expertAssessments, setExpertAssessments] = useState<Map<string, ExpertAssessment>>(new Map());
+  const [useExpertMethod, setUseExpertMethod] = useState<boolean>(false);
+
+  // Обновление экспертной оценки
+  const updateExpertAssessment = (sectionId: string, assessment: ExpertAssessment) => {
+    setExpertAssessments(prev => new Map(prev.set(sectionId, assessment)));
+  };
 
   // Добавление секции
   const addSection = (section: RoadSection) => {
     setSections(prev => [...prev, section]);
+    
+    // Если это местная дорога, добавляем базовую экспертную оценку
+    if (section.significance === 'local') {
+      setExpertAssessments(prev => new Map(prev.set(section.id, {
+        operationalStateIndex: 5,
+        trafficIntensity: section.trafficIntensity
+      })));
+    }
   };
 
   // Удаление секции
   const removeSection = (id: string) => {
     setSections(prev => prev.filter(s => s.id !== id));
     setProjects(prev => prev.filter(p => p.section.id !== id));
+    setExpertAssessments(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(id);
+      return newMap;
+    });
   };
 
   // Расчет планирования ремонтов
@@ -440,7 +575,20 @@ const BlockFourInterface = () => {
     const allProjects: RepairProject[] = [];
     
     sections.forEach(section => {
-      const workType = determineWorkType(section);
+      let workType: 'current_repair' | 'capital_repair' | 'reconstruction' | 'no_work_needed';
+      let reasoning = '';
+      
+      // Для местных дорог используем экспертный метод, если включен
+      if (section.significance === 'local' && useExpertMethod && expertAssessments.has(section.id)) {
+        const assessment = expertAssessments.get(section.id)!;
+        const expertWorkType = determineWorkTypeByExpertAssessment(assessment);
+        workType = expertWorkType;
+        reasoning = `Експертна оцінка: індекс ${assessment.operationalStateIndex.toFixed(1)}`;
+      } else {
+        // Использование технических показателей
+        workType = determineWorkType(section);
+        reasoning = 'Технічні показники стану дороги';
+      }
       
       if (workType !== 'no_work_needed') {
         const estimatedCost = estimateWorkCost(section, workType);
@@ -450,15 +598,47 @@ const BlockFourInterface = () => {
           workType,
           priority: 0,
           estimatedCost,
-          reasoning: `Автоматично визначено за технічним станом`
+          reasoning
         });
       }
     });
 
-    // Простое ранжирование
+    // Простое ранжирование с учетом экспертных оценок
     const currentRepair = allProjects.filter(p => p.workType === 'current_repair');
     const capitalRepair = allProjects.filter(p => p.workType === 'capital_repair');
     const reconstruction = allProjects.filter(p => p.workType === 'reconstruction');
+    
+    // Ранжирование местных дорог по экспертному методу
+    if (useExpertMethod) {
+      currentRepair.sort((a, b) => {
+        if (a.section.significance === 'local' && b.section.significance === 'local') {
+          const assessmentA = expertAssessments.get(a.section.id);
+          const assessmentB = expertAssessments.get(b.section.id);
+          
+          if (assessmentA && assessmentB) {
+            // Сортировка по наименьшему индексу и наибольшей интенсивности
+            const priorityA = assessmentA.operationalStateIndex - (assessmentA.trafficIntensity / 10000);
+            const priorityB = assessmentB.operationalStateIndex - (assessmentB.trafficIntensity / 10000);
+            return priorityA - priorityB;
+          }
+        }
+        return 0;
+      });
+      
+      capitalRepair.sort((a, b) => {
+        if (a.section.significance === 'local' && b.section.significance === 'local') {
+          const assessmentA = expertAssessments.get(a.section.id);
+          const assessmentB = expertAssessments.get(b.section.id);
+          
+          if (assessmentA && assessmentB) {
+            const priorityA = assessmentA.operationalStateIndex - (assessmentA.trafficIntensity / 10000);
+            const priorityB = assessmentB.operationalStateIndex - (assessmentB.trafficIntensity / 10000);
+            return priorityA - priorityB;
+          }
+        }
+        return 0;
+      });
+    }
     
     // Отбор в пределах бюджета
     const selectedProjects: RepairProject[] = [];
@@ -483,7 +663,10 @@ const BlockFourInterface = () => {
       selectedProjects: selectedProjects.length,
       totalCost,
       budgetUtilization,
-      remainingBudget
+      remainingBudget,
+      expertMethodUsed: useExpertMethod,
+      localRoadsCount: sections.filter(s => s.significance === 'local').length,
+      expertAssessmentsCount: expertAssessments.size
     });
   };
 
@@ -523,11 +706,11 @@ const BlockFourInterface = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CalculatorIcon className="h-5 w-5" />
-              Бюджетні параметри
+              Бюджетні параметри та методи оцінки
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Загальний бюджет (тис. грн)</label>
                 <Input
@@ -538,17 +721,50 @@ const BlockFourInterface = () => {
                   onChange={(e) => setBudget(parseInt(e.target.value) || 100000)}
                 />
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Метод оцінки місцевих доріг</label>
+                <div className="flex items-center space-x-2 mt-2">
+                  <input
+                    type="checkbox"
+                    id="expertMethod"
+                    checked={useExpertMethod}
+                    onChange={(e) => setUseExpertMethod(e.target.checked)}
+                    className="rounded"
+                  />
+                  <label htmlFor="expertMethod" className="text-sm">
+                    Експертний метод
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="inline h-3 w-3 ml-1 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Використовувати експертну оцінку для місцевих доріг замість технічних показників</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </label>
+                </div>
+              </div>
+              
               <div className="flex items-end">
                 <Button onClick={calculateRepairPlan} className="w-full" disabled={sections.length === 0}>
                   <CalculatorIcon className="h-4 w-4 mr-2" />
                   Розрахувати план
                 </Button>
               </div>
+              
               {calculationResults && (
                 <div className="flex items-end">
                   <Alert className="w-full">
                     <AlertDescription>
                       Використання бюджету: {calculationResults.budgetUtilization.toFixed(1)}%
+                      {calculationResults.expertMethodUsed && (
+                        <div className="text-xs mt-1">
+                          Експертна оцінка: {calculationResults.expertAssessmentsCount}/{calculationResults.localRoadsCount} місцевих доріг
+                        </div>
+                      )}
                     </AlertDescription>
                   </Alert>
                 </div>
@@ -558,8 +774,11 @@ const BlockFourInterface = () => {
         </Card>
 
         <Tabs defaultValue="sections" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="sections">Дорожні секції ({sections.length})</TabsTrigger>
+            <TabsTrigger value="expert">
+              Експертна оцінка ({sections.filter(s => s.significance === 'local').length})
+            </TabsTrigger>
             <TabsTrigger value="results">Результати планування ({projects.length})</TabsTrigger>
             <TabsTrigger value="report">Звіт</TabsTrigger>
           </TabsList>
@@ -631,6 +850,82 @@ const BlockFourInterface = () => {
             )}
           </TabsContent>
 
+          {/* Вкладка: Экспертная оценка */}
+          <TabsContent value="expert" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <InfoIcon className="h-5 w-5" />
+                  Експертна оцінка місцевих доріг
+                  <Badge variant="outline" className="ml-2">
+                    4.4.3.1 Методики
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Alert className="mb-4">
+                  <InfoIcon className="h-4 w-4" />
+                  <AlertDescription>
+                    Експертний експрес-метод використовується для оцінки технічного стану місцевих доріг 
+                    на основі індексу експлуатаційного стану (J) від 1 до 10.
+                  </AlertDescription>
+                </Alert>
+
+                {sections.filter(s => s.significance === 'local').length === 0 ? (
+                  <Alert>
+                    <AlertTriangleIcon className="h-4 w-4" />
+                    <AlertDescription>
+                      Немає доріг місцевого значення для експертної оцінки. 
+                      Додайте дороги місцевого значення на вкладці "Дорожні секції".
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="space-y-4">
+                    {sections
+                      .filter(s => s.significance === 'local')
+                      .map(section => (
+                        <ExpertAssessmentForm
+                          key={section.id}
+                          section={section}
+                          assessment={expertAssessments.get(section.id)}
+                          onUpdate={updateExpertAssessment}
+                        />
+                      ))
+                    }
+                    
+                    <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                      <h4 className="font-medium mb-2">Методика експертної оцінки:</h4>
+                      <div className="text-sm space-y-1">
+                        <div className="flex justify-between">
+                          <span>J ≥ 8:</span>
+                          <span className="text-green-600 font-medium">Роботи не потрібні</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>5 ≤ J ≤ 7:</span>
+                          <span className="text-orange-600 font-medium">Поточний ремонт</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>J ≤ 4:</span>
+                          <span className="text-red-600 font-medium">Капітальний ремонт</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {useExpertMethod && (
+                      <Alert>
+                        <CheckCircleIcon className="h-4 w-4" />
+                        <AlertDescription>
+                          Експертний метод увімкнено. При розрахунку плану для місцевих доріг 
+                          використовуватимуться експертні оцінки замість технічних показників.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Вкладка: Результаты планирования */}
           <TabsContent value="results" className="space-y-6">
             {calculationResults && (
@@ -663,6 +958,11 @@ const BlockFourInterface = () => {
                       {calculationResults.remainingBudget.toLocaleString()}
                     </div>
                     <p className="text-sm text-gray-600">Залишок (тис. грн)</p>
+                    {calculationResults.expertMethodUsed && (
+                      <div className="text-xs text-blue-600 mt-1">
+                        Експертна оцінка застосована
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -693,13 +993,27 @@ const BlockFourInterface = () => {
                           </TableCell>
                           <TableCell className="font-medium">{project.section.name}</TableCell>
                           <TableCell>
-                            <Badge className={getWorkTypeBadgeColor(project.workType)}>
-                              {getWorkTypeLabel(project.workType)}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge className={getWorkTypeBadgeColor(project.workType)}>
+                                {getWorkTypeLabel(project.workType)}
+                              </Badge>
+                              {project.section.significance === 'local' && calculationResults.expertMethodUsed && (
+                                <Badge variant="outline" className="text-xs">
+                                  Експертна
+                                </Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>{project.section.length}</TableCell>
                           <TableCell>{project.estimatedCost.toLocaleString()}</TableCell>
-                          <TableCell className="text-sm text-gray-600">{project.reasoning}</TableCell>
+                          <TableCell className="text-sm text-gray-600">
+                            {project.reasoning}
+                            {project.section.significance === 'local' && expertAssessments.has(project.section.id) && (
+                              <div className="text-xs text-blue-600">
+                                J = {expertAssessments.get(project.section.id)!.operationalStateIndex.toFixed(1)}
+                              </div>
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -897,7 +1211,7 @@ const BlockFourInterface = () => {
                       )}
                       
                       <div className="border rounded-lg p-3 bg-blue-50">
-                        <div className="font-medium text-blue-800 mb-2">Нормативні вимоги:</div>
+                        <div className="font-medium text-blue-800 mb-2">Нормативні вимоги та методи оцінки:</div>
                         <ul className="space-y-1 text-blue-700">
                           <li>• Мінімальний коефіцієнт зчеплення: {REQUIRED_FRICTION_COEFFICIENT}</li>
                           <li>• Максимальна інтенсивність за категоріями:</li>
@@ -906,6 +1220,16 @@ const BlockFourInterface = () => {
                               <li key={category}>- {category} категорія: {intensity.toLocaleString()} авт./добу</li>
                             ))}
                           </ul>
+                          {calculationResults.expertMethodUsed && (
+                            <>
+                              <li className="pt-2 border-t border-blue-200">• Експертна оцінка місцевих доріг:</li>
+                              <ul className="ml-4 space-y-0.5">
+                                <li>- J ≥ 8: роботи не потрібні</li>
+                                <li>- 5 ≤ J ≤ 7: поточний ремонт</li>
+                                <li>- J ≤ 4: капітальний ремонт</li>
+                              </ul>
+                            </>
+                          )}
                         </ul>
                       </div>
                     </div>
@@ -916,26 +1240,51 @@ const BlockFourInterface = () => {
                     <Button 
                       onClick={() => {
                         const reportContent = `
-                            ЗВІТ ПРО ПЛАНУВАННЯ РЕМОНТНИХ РОБІТ
-                            Дата: ${new Date().toLocaleDateString('uk-UA')}
+ЗВІТ ПРО ПЛАНУВАННЯ РЕМОНТНИХ РОБІТ
+Дата: ${new Date().toLocaleDateString('uk-UA')}
 
-                            ЗАГАЛЬНІ ПОКАЗНИКИ:
-                            - Загальний бюджет: ${budget.toLocaleString()} тис. грн
-                            - Використано: ${calculationResults.totalCost.toLocaleString()} тис. грн (${calculationResults.budgetUtilization.toFixed(1)}%)
-                            - Залишок: ${calculationResults.remainingBudget.toLocaleString()} тис. грн
+ЗАГАЛЬНІ ПОКАЗНИКИ:
+- Загальний бюджет: ${budget.toLocaleString()} тис. грн
+- Використано: ${calculationResults.totalCost.toLocaleString()} тис. грн (${calculationResults.budgetUtilization.toFixed(1)}%)
+- Залишок: ${calculationResults.remainingBudget.toLocaleString()} тис. грн
 
-                            ПЛАН РЕМОНТНИХ РОБІТ:
-                            ${projects.map((p, i) => 
-                            `${i+1}. ${p.section.name} - ${getWorkTypeLabel(p.workType)} (${p.section.length} км) - ${p.estimatedCost.toLocaleString()} тис. грн`
-                            ).join('\n')}
+ПЛАН РЕМОНТНИХ РОБІТ:
+${projects.map((p, i) => {
+  const isExpert = p.section.significance === 'local' && 
+                   calculationResults.expertMethodUsed && 
+                   expertAssessments.has(p.section.id);
+  const assessment = isExpert ? expertAssessments.get(p.section.id) : null;
+  const assessmentText = assessment ? ` [J=${assessment.operationalStateIndex.toFixed(1)}]` : '';
+  const methodText = isExpert ? ' (експертна оцінка)' : ' (технічні показники)';
+  
+  return `${i+1}. ${p.section.name} - ${getWorkTypeLabel(p.workType)} (${p.section.length} км) - ${p.estimatedCost.toLocaleString()} тис. грн${assessmentText}${methodText}`;
+}).join('\n')}
 
-                            РОЗПОДІЛ ЗА ВИДАМИ РОБІТ:
-                            ${['current_repair', 'capital_repair', 'reconstruction'].map(workType => {
-                            const typeProjects = projects.filter(p => p.workType === workType);
-                            const typeCost = typeProjects.reduce((sum, p) => sum + p.estimatedCost, 0);
-                            return typeProjects.length > 0 ? 
-                                `- ${getWorkTypeLabel(workType)}: ${typeProjects.length} проектів, ${typeCost.toLocaleString()} тис. грн` : ''
-                            }).filter(Boolean).join('\n')}
+РОЗПОДІЛ ЗА ВИДАМИ РОБІТ:
+${['current_repair', 'capital_repair', 'reconstruction'].map(workType => {
+  const typeProjects = projects.filter(p => p.workType === workType);
+  const typeCost = typeProjects.reduce((sum, p) => sum + p.estimatedCost, 0);
+  const expertCount = typeProjects.filter(p => 
+    p.section.significance === 'local' && 
+    calculationResults.expertMethodUsed && 
+    expertAssessments.has(p.section.id)
+  ).length;
+  const expertText = expertCount > 0 ? ` (${expertCount} експертних оцінок)` : '';
+  
+  return typeProjects.length > 0 ? 
+    `- ${getWorkTypeLabel(workType)}: ${typeProjects.length} проектів, ${typeCost.toLocaleString()} тис. грн${expertText}` : '';
+}).filter(Boolean).join('\n')}
+
+${calculationResults.expertMethodUsed ? `
+ЕКСПЕРТНІ ОЦІНКИ:
+${Array.from(expertAssessments.entries()).map(([sectionId, assessment]) => {
+  const section = sections.find(s => s.id === sectionId);
+  if (!section) return '';
+  const workType = determineWorkTypeByExpertAssessment(assessment);
+  const workTypeText = workType === 'no_work_needed' ? 'роботи не потрібні' : getWorkTypeLabel(workType);
+  return `- ${section.name}: J=${assessment.operationalStateIndex.toFixed(1)} → ${workTypeText}`;
+}).filter(Boolean).join('\n')}
+` : ''}
                         `.trim();
                         
                         const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });

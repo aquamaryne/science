@@ -1280,14 +1280,6 @@ const FixedExcelInterface = () => {
           <CardContent>
             <div className="space-y-4">
               <Alert>
-                <CheckCircleIcon className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Проблему вирішено!</strong> Раніше текст відображався як нечитабельні символи через неправильне кодування.
-                </AlertDescription>
-              </Alert>
-              
-
-              <Alert>
                 <AlertTriangleIcon className="h-4 w-4" />
                 <AlertDescription>
                   <strong>Інструкція для Excel:</strong> При відкритті CSV файлу в Excel виберіть "Дані" → "Із тексту" 

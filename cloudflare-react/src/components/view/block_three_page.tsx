@@ -1286,54 +1286,6 @@ const FixedExcelInterface = () => {
                 </AlertDescription>
               </Alert>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium mb-2 text-red-600">❌ Було (проблема):</h4>
-                  <div className="text-xs font-mono bg-red-50 p-2 rounded border">
-                    РџРёРґР№С—Р№РѕР№РЅРЅР№СЂРІРЁ РџС€РѕР№С†Р№РјРѕР№СЂРІРЁ...
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium mb-2 text-green-600">✅ Стало (виправлено):</h4>
-                  <div className="text-xs bg-green-50 p-2 rounded border">
-                    Найменування ділянки дороги, Протяжність дороги, км...
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-medium mb-2">Що було виправлено:</h4>
-                <ul className="text-sm space-y-1 text-gray-600">
-                  <li>• <strong>UTF-8 BOM:</strong> Додано Byte Order Mark для правильного визначення кодування</li>
-                  <li>• <strong>Екранування символів:</strong> Правильна обробка ком, лапок та переносів рядків</li>
-                  <li>• <strong>Мета-теги:</strong> Вказано charset=UTF-8 в HTML експорті</li>
-                  <li>• <strong>MIME-типи:</strong> Правильно вказані типи файлів для браузера</li>
-                  <li>• <strong>Тестування:</strong> Перевірено на українських текстах з діакритичними знаками</li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="font-medium mb-2">Формати експорту:</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                  <div className="border rounded p-3">
-                    <div className="font-medium">📊 CSV файл</div>
-                    <div className="text-gray-600">
-                      • Сумісний з Microsoft Excel<br/>
-                      • UTF-8 з BOM для Windows<br/>
-                      • Автоматичне визначення кодування
-                    </div>
-                  </div>
-                  <div className="border rounded p-3">
-                    <div className="font-medium">🌐 HTML звіт</div>
-                    <div className="text-gray-600">
-                      • Відкривається в будь-якому браузері<br/>
-                      • Готовий для друку<br/>
-                      • Збережене форматування таблиць
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               <Alert>
                 <AlertTriangleIcon className="h-4 w-4" />

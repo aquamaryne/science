@@ -18,8 +18,26 @@ import {
   DownloadIcon
 } from "lucide-react";
 
+// Импорты из модуля расчетов
+import {
+  type RoadSection,
+  type RoadTechnicalCondition,
+  type RepairProject,
+  determineWorkTypeByTechnicalCondition,
+  estimateWorkCost,
+  rankCurrentRepairProjects,
+  rankCapitalAndReconstructionProjects,
+  planRepairWorks,
+  generateRepairPlanReport,
+  checkCategoryComplianceByIntensity,
+  checkFrictionCompliance
+} from '../../modules/block_three';
+
+// Импорт default объекта с константами
+import block_three from '../../modules/block_three';
+
 // Типы данных соответствующие шаблону
-interface RoadSectionData {
+export interface RoadSectionData {
   id: string;
   name: string; // Найменування ділянки дороги
   length: number; // Протяжність дороги, км
@@ -44,87 +62,103 @@ interface RoadSectionData {
   enpv?: number; // ENPV
   eirr?: number; // EIRR
   bcr?: number; // BCR
+  
+  // Добавляем поля для совместимости с RoadSection
+  significance?: 'state' | 'local';
+  technicalCondition?: RoadTechnicalCondition;
 }
 
-// Нормативы стоимости из листа 3 шаблона
+// Нормативы стоимости (возвращаем, так как нет в модуле)
 const COST_STANDARDS = {
   reconstruction: { 1: 50.0, 2: 40.0, 3: 30.0, 4: 25.0, 5: 20.0 },
   capital_repair: { 1: 15.0, 2: 12.0, 3: 10.0, 4: 8.0, 5: 6.0 },
   current_repair: { 1: 3.0, 2: 2.0, 3: 1.5, 4: 1.0, 5: 0.8 }
 };
 
-// Нормативные значения для определения коефіцієнтів
+// Нормативные значения для определения коефіцієнтів (только те, которых нет в модуле)
 const CATEGORY_NORMS = {
-  maxIntensity: { 1: 20000, 2: 12000, 3: 6000, 4: 2000, 5: 500 },
-  minStrength: { 1: 300, 2: 280, 3: 260, 4: 240, 5: 220 },
   maxRoughness: { 1: 1.0, 2: 1.2, 3: 1.5, 4: 2.0, 5: 2.5 },
-  maxRutDepth: { 1: 5, 2: 8, 3: 12, 4: 15, 5: 20 },
-  minFriction: 0.35
+  maxRutDepth: { 1: 5, 2: 8, 3: 12, 4: 15, 5: 20 }
 };
 
-// Функции расчета коэффициентов
-const calculateCoefficients = (section: RoadSectionData): RoadSectionData => {
-  const norms = CATEGORY_NORMS;
+// Функция конвертации UI данных в формат модуля расчетов
+const convertToRoadSection = (sectionData: RoadSectionData): RoadSection => {
+  // Вычисляем коэффициенты на основе введенных данных используя константы из модуля
+  const maxIntensity = block_three.MAX_DESIGN_INTENSITY_BY_CATEGORY[sectionData.category] || 500;
+  const intensityCoefficient = maxIntensity / sectionData.trafficIntensity;
   
-  // Коефіцієнт інтенсивності руху
-  const maxIntensity = norms.maxIntensity[section.category as keyof typeof norms.maxIntensity] || 500;
-  const intensityCoeff = maxIntensity / section.trafficIntensity;
+  const minStrength = block_three.MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[sectionData.category] || 220;
+  const strengthCoefficient = sectionData.strengthModulus / minStrength;
   
-  // Коефіцієнт запасу міцності
-  const minStrength = norms.minStrength[section.category as keyof typeof norms.minStrength] || 220;
-  const strengthCoeff = section.strengthModulus / minStrength;
+  const maxRoughness = CATEGORY_NORMS.maxRoughness[sectionData.category as keyof typeof CATEGORY_NORMS.maxRoughness] || 2.5;
+  const evennessCoefficient = maxRoughness / sectionData.roughnessProfile;
   
-  // Коефіцієнт рівності (профілометр)
-  const maxRoughness = norms.maxRoughness[section.category as keyof typeof norms.maxRoughness] || 2.5;
-  const evennessCoeff = maxRoughness / section.roughnessProfile;
+  const maxRut = CATEGORY_NORMS.maxRutDepth[sectionData.category as keyof typeof CATEGORY_NORMS.maxRutDepth] || 20;
+  const rutCoefficient = maxRut / sectionData.rutDepth;
   
-  // Коефіцієнт колійності
-  const maxRut = norms.maxRutDepth[section.category as keyof typeof norms.maxRutDepth] || 20;
-  const rutCoeff = maxRut / section.rutDepth;
-  
-  // Коефіцієнт зчеплення
-  const frictionFactorCoeff = section.frictionCoeff / norms.minFriction;
+  const frictionCoefficient = sectionData.frictionCoeff / block_three.REQUIRED_FRICTION_COEFFICIENT;
   
   return {
-    ...section,
-    intensityCoeff: Number(intensityCoeff.toFixed(2)),
-    strengthCoeff: Number(strengthCoeff.toFixed(2)),
-    evennessCoeff: Number(evennessCoeff.toFixed(2)),
-    rutCoeff: Number(rutCoeff.toFixed(2)),
-    frictionFactorCoeff: Number(frictionFactorCoeff.toFixed(2))
+    id: sectionData.id,
+    name: sectionData.name,
+    category: sectionData.category,
+    length: sectionData.length,
+    significance: 'state', // по умолчанию государственная дорога
+    technicalCondition: {
+      intensityCoefficient: Number(intensityCoefficient.toFixed(2)),
+      strengthCoefficient: Number(strengthCoefficient.toFixed(2)),
+      evennessCoefficient: Number(evennessCoefficient.toFixed(2)),
+      rutCoefficient: Number(rutCoefficient.toFixed(2)),
+      frictionCoefficient: Number(frictionCoefficient.toFixed(2))
+    },
+    trafficIntensity: sectionData.trafficIntensity
   };
 };
 
-// Определение вида работ
-const determineWorkType = (section: RoadSectionData): string => {
-  // Реконструкція - если превышена интенсивность или коеф < 1.0
-  if (section.intensityCoeff! < 1.0) {
-    return 'Реконструкція';
-  }
-  
-  // Капітальний ремонт - проблемы с прочностью
-  if (section.strengthCoeff! < 1.0) {
-    return 'Капітальний ремонт';
-  }
-  
-  // Поточний ремонт - проблемы с поверхностью
-  if (section.evennessCoeff! < 1.0 || section.rutCoeff! < 1.0 || section.frictionFactorCoeff! < 1.0) {
-    return 'Поточний ремонт';
-  }
-  
-  return 'Не потрібно';
+// Конвертация типа работ из модуля в украинский текст
+const getWorkTypeText = (workType: 'current_repair' | 'capital_repair' | 'reconstruction' | 'no_work_needed'): string => {
+  const typeMap = {
+    'current_repair': 'Поточний ремонт',
+    'capital_repair': 'Капітальний ремонт',
+    'reconstruction': 'Реконструкція',
+    'no_work_needed': 'Не потрібно'
+  };
+  return typeMap[workType];
 };
 
-// Расчет стоимости
+// Функции расчета коэффициентов с использованием модуля
+const calculateCoefficients = (section: RoadSectionData): RoadSectionData => {
+  const roadSection = convertToRoadSection(section);
+  
+  return {
+    ...section,
+    intensityCoeff: roadSection.technicalCondition.intensityCoefficient,
+    strengthCoeff: roadSection.technicalCondition.strengthCoefficient,
+    evennessCoeff: roadSection.technicalCondition.evennessCoefficient,
+    rutCoeff: roadSection.technicalCondition.rutCoefficient,
+    frictionFactorCoeff: roadSection.technicalCondition.frictionCoefficient,
+    technicalCondition: roadSection.technicalCondition,
+    significance: roadSection.significance
+  };
+};
+
+// Определение вида работ с использованием модуля
+const determineWorkType = (section: RoadSectionData): string => {
+  const roadSection = convertToRoadSection(section);
+  const workType = determineWorkTypeByTechnicalCondition(roadSection);
+  return getWorkTypeText(workType);
+};
+
+// Расчет стоимости с использованием модуля
 const calculateCost = (section: RoadSectionData): number => {
-  const workType = section.workType || 'Не потрібно';
-  if (workType === 'Не потрібно') return 0;
+  const roadSection = convertToRoadSection(section);
+  const workType = determineWorkTypeByTechnicalCondition(roadSection);
   
-  const typeKey = workType === 'Реконструкція' ? 'reconstruction' :
-                  workType === 'Капітальний ремонт' ? 'capital_repair' : 'current_repair';
+  if (workType === 'no_work_needed') return 0;
   
-  const costPerKm = COST_STANDARDS[typeKey as keyof typeof COST_STANDARDS][section.category as keyof typeof COST_STANDARDS.reconstruction] || 1;
-  return Number((costPerKm * section.length).toFixed(2));
+  // Используем функцию из модуля и конвертируем в млн грн
+  const costInThousands = estimateWorkCost(roadSection, workType);
+  return Number((costInThousands / 1000).toFixed(2));
 };
 
 // Компонент формы ввода данных
@@ -157,7 +191,7 @@ const RoadSectionForm = ({ onAdd }: { onAdd: (section: RoadSectionData) => void 
       frictionCoeff: formData.frictionCoeff
     };
 
-    // Рассчитываем коэффициенты
+    // Рассчитываем коэффициенты используя модуль расчетов
     const sectionWithCoeffs = calculateCoefficients(newSection);
     sectionWithCoeffs.workType = determineWorkType(sectionWithCoeffs);
     sectionWithCoeffs.estimatedCost = calculateCost(sectionWithCoeffs);
@@ -235,6 +269,9 @@ const RoadSectionForm = ({ onAdd }: { onAdd: (section: RoadSectionData) => void 
             value={formData.trafficIntensity}
             onChange={(e) => setFormData(prev => ({ ...prev, trafficIntensity: parseInt(e.target.value) || 1000 }))}
           />
+          <div className="text-xs text-gray-500 mt-1">
+            Макс. для {formData.category} кат.: {block_three.MAX_DESIGN_INTENSITY_BY_CATEGORY[formData.category as keyof typeof block_three.MAX_DESIGN_INTENSITY_BY_CATEGORY]}
+          </div>
         </div>
         
         <div>
@@ -245,6 +282,9 @@ const RoadSectionForm = ({ onAdd }: { onAdd: (section: RoadSectionData) => void 
             value={formData.strengthModulus}
             onChange={(e) => setFormData(prev => ({ ...prev, strengthModulus: parseInt(e.target.value) || 300 }))}
           />
+          <div className="text-xs text-gray-500 mt-1">
+            Мін. для {formData.category} кат.: {block_three.MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[formData.category as keyof typeof block_three.MIN_STRENGTH_COEFFICIENT_BY_CATEGORY]}
+          </div>
         </div>
 
         <div>
@@ -288,6 +328,9 @@ const RoadSectionForm = ({ onAdd }: { onAdd: (section: RoadSectionData) => void 
             value={formData.frictionCoeff}
             onChange={(e) => setFormData(prev => ({ ...prev, frictionCoeff: parseFloat(e.target.value) || 0.4 }))}
           />
+          <div className="text-xs text-gray-500 mt-1">
+            Потрібний: {block_three.REQUIRED_FRICTION_COEFFICIENT}
+          </div>
         </div>
       </div>
 
@@ -296,6 +339,316 @@ const RoadSectionForm = ({ onAdd }: { onAdd: (section: RoadSectionData) => void 
         Додати дорожню секцію
       </Button>
     </form>
+  );
+};
+
+// Компонент анализа соответствия нормативам с использованием функций модуля
+const ComplianceAnalysis = ({ sections }: { sections: RoadSectionData[] }) => {
+  if (sections.length === 0) return null;
+
+  return (
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CheckCircleIcon className="h-5 w-5" />
+          Аналіз відповідності нормативам (з модуля block_three.ts)
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {sections.map(section => {
+            const roadSection = convertToRoadSection(section);
+            const categoryCompliance = checkCategoryComplianceByIntensity(roadSection);
+            const frictionCompliance = checkFrictionCompliance(section.frictionCoeff);
+            
+            return (
+              <div key={section.id} className="border rounded-lg p-4">
+                <div className="font-medium mb-2">{section.name}</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Інтенсивність руху: </span>
+                    {categoryCompliance.isCompliant ? (
+                      <Badge variant="secondary" className="text-green-700 bg-green-100">
+                        ✓ Відповідає категорії
+                      </Badge>
+                    ) : (
+                      <Badge variant="destructive">
+                        ✗ Перевищення на {section.trafficIntensity - categoryCompliance.maxAllowedIntensity} авт./добу
+                      </Badge>
+                    )}
+                    {!categoryCompliance.isCompliant && categoryCompliance.recommendedCategory && (
+                      <div className="text-xs text-orange-600 mt-1">
+                        Рекомендована категорія: {categoryCompliance.recommendedCategory}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Зчеплення: </span>
+                    {frictionCompliance.isCompliant ? (
+                      <Badge variant="secondary" className="text-green-700 bg-green-100">
+                        ✓ Достатнє ({frictionCompliance.actualValue.toFixed(3)})
+                      </Badge>
+                    ) : (
+                      <Badge variant="destructive">
+                        ✗ Дефіцит {frictionCompliance.deficit.toFixed(3)}
+                      </Badge>
+                    )}
+                    <div className="text-xs text-gray-500 mt-1">
+                      Потрібний: {frictionCompliance.requiredValue.toFixed(3)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+const ProjectRankingComponent = ({ sections }: { sections: RoadSectionData[] }) => {
+  const [rankedProjects, setRankedProjects] = useState<{
+    currentRepair: RepairProject[];
+    capitalAndReconstruction: RepairProject[];
+  } | null>(null);
+  const [reportText, setReportText] = useState<string>('');
+
+  const generateRanking = () => {
+    // Конвертируем секции в проекты
+    const projects: RepairProject[] = sections
+      .filter(s => s.workType !== 'Не потрібно')
+      .map(section => {
+        const roadSection = convertToRoadSection(section);
+        const workType = determineWorkTypeByTechnicalCondition(roadSection);
+        
+        return {
+          section: roadSection,
+          workType,
+          priority: 0,
+          estimatedCost: (section.estimatedCost || 0) * 1000, // конвертируем в тыс. грн
+          economicNPV: section.enpv,
+          reasoning: `Визначено автоматично за технічним станом`
+        } as RepairProject;
+      });
+
+    // Используем функции ранжирования из модуля
+    const currentRepairRanked = rankCurrentRepairProjects(projects);
+    const capitalAndReconstructionRanked = rankCapitalAndReconstructionProjects(projects);
+
+    setRankedProjects({
+      currentRepair: currentRepairRanked,
+      capitalAndReconstruction: capitalAndReconstructionRanked
+    });
+
+    // Генерируем отчет
+    const roadSections = sections.map(convertToRoadSection);
+    const planResult = planRepairWorks(roadSections, 100000); // примерный бюджет
+    const report = generateRepairPlanReport(planResult);
+    setReportText(report);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CalculatorIcon className="h-5 w-5" />
+          Детальне ранжування проектів
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Button 
+          onClick={generateRanking}
+          disabled={sections.filter(s => s.workType !== 'Не потрібно').length === 0}
+          className="w-full"
+        >
+          <RefreshCwIcon className="h-4 w-4 mr-2" />
+          Виконати ранжування за алгоритмами модуля
+        </Button>
+
+        {rankedProjects && (
+          <div className="space-y-6">
+            {/* Поточний ремонт */}
+            {rankedProjects.currentRepair.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-3 text-blue-700">
+                  Поточний ремонт (ранжовано за критичністю стану)
+                </h4>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Пріоритет</TableHead>
+                      <TableHead>Назва</TableHead>
+                      <TableHead>Довжина (км)</TableHead>
+                      <TableHead>Вартість (тис. грн)</TableHead>
+                      <TableHead>Обґрунтування</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rankedProjects.currentRepair.map((project) => (
+                      <TableRow key={project.section.id}>
+                        <TableCell>
+                          <Badge variant="default">#{project.priority}</Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">{project.section.name}</TableCell>
+                        <TableCell>{project.section.length}</TableCell>
+                        <TableCell className="text-green-600 font-medium">
+                          {project.estimatedCost.toFixed(0)}
+                        </TableCell>
+                        <TableCell className="text-xs">{project.reasoning}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {/* Капремонт и реконструкция */}
+            {rankedProjects.capitalAndReconstruction.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-3 text-orange-700">
+                  Капітальний ремонт і реконструкція (ранжовано за ENPV)
+                </h4>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Пріоритет</TableHead>
+                      <TableHead>Назва</TableHead>
+                      <TableHead>Тип робіт</TableHead>
+                      <TableHead>Довжина (км)</TableHead>
+                      <TableHead>Вартість (тис. грн)</TableHead>
+                      <TableHead>ENPV</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rankedProjects.capitalAndReconstruction.map((project) => (
+                      <TableRow key={project.section.id}>
+                        <TableCell>
+                          <Badge variant="outline">#{project.priority}</Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">{project.section.name}</TableCell>
+                        <TableCell>
+                          <Badge variant={project.workType === 'capital_repair' ? 'secondary' : 'destructive'}>
+                            {project.workType === 'capital_repair' ? 'Капремонт' : 'Реконструкція'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{project.section.length}</TableCell>
+                        <TableCell className="text-green-600 font-medium">
+                          {project.estimatedCost.toFixed(0)}
+                        </TableCell>
+                        <TableCell className="text-blue-600">
+                          {project.economicNPV ? Math.round(project.economicNPV).toLocaleString() : 'N/A'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {/* Отчет */}
+            {reportText && (
+              <div>
+                <h4 className="font-medium mb-3">Автоматично згенерований звіт</h4>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <pre className="text-xs whitespace-pre-wrap font-mono overflow-x-auto">
+                    {reportText}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <Alert>
+          <CheckCircleIcon className="h-4 w-4" />
+          <AlertDescription>
+            Ранжування виконується функціями з модуля block_three.ts згідно з ДБН В.2.3-4:2015.
+          </AlertDescription>
+        </Alert>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Компонент планирования ремонтов
+const RepairPlanningComponent = ({ sections }: { sections: RoadSectionData[] }) => {
+  const [budget, setBudget] = useState(100000); // тыс. грн
+  const [planResult, setPlanResult] = useState<ReturnType<typeof planRepairWorks> | null>(null);
+
+  const generatePlan = () => {
+    const roadSections = sections.map(convertToRoadSection);
+    const result = planRepairWorks(roadSections, budget);
+    setPlanResult(result);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Планування ремонтних робіт</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <label className="block text-sm font-medium mb-1">Доступний бюджет (тис. грн)</label>
+            <Input
+              type="number"
+              min="1000"
+              step="1000"
+              value={budget}
+              onChange={(e) => setBudget(parseInt(e.target.value) || 100000)}
+            />
+          </div>
+          <Button 
+            onClick={generatePlan}
+            disabled={sections.length === 0}
+            className="mt-6"
+          >
+            <CalculatorIcon className="h-4 w-4 mr-2" />
+            Сформувати план
+          </Button>
+        </div>
+
+        {planResult && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <div className="text-lg font-bold text-blue-800">
+                  {planResult.currentRepairProjects.length}
+                </div>
+                <div className="text-sm text-blue-600">Поточний ремонт</div>
+              </div>
+              <div className="bg-orange-50 p-3 rounded-lg">
+                <div className="text-lg font-bold text-orange-800">
+                  {planResult.capitalRepairProjects.length}
+                </div>
+                <div className="text-sm text-orange-600">Капітальний ремонт</div>
+              </div>
+              <div className="bg-red-50 p-3 rounded-lg">
+                <div className="text-lg font-bold text-red-800">
+                  {planResult.reconstructionProjects.length}
+                </div>
+                <div className="text-sm text-red-600">Реконструкція</div>
+              </div>
+              <div className="bg-green-50 p-3 rounded-lg">
+                <div className="text-lg font-bold text-green-800">
+                  {planResult.budgetUtilization.toFixed(1)}%
+                </div>
+                <div className="text-sm text-green-600">Використання бюджету</div>
+              </div>
+            </div>
+
+            <Alert>
+              <CheckCircleIcon className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Загальна вартість плану: {planResult.totalCost.toFixed(0)} тис. грн</strong>
+                <br />
+                План сформовано з використанням алгоритмів модуля розрахунків згідно з ДБН В.2.3-4:2015
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
@@ -350,14 +703,29 @@ const TemplateExporter = ({ sections }: { sections: RoadSectionData[] }) => {
       ])
     ];
 
-    // Лист 3: Показники вартості (неизменная таблица)
+    // Лист 3: Показники вартості (используем локальные константы COST_STANDARDS)
     const sheet3Data = [
       ['Усереднені орієнтовні показники вартості дорожніх робіт за даними об\'єктів-аналогів, млн.грн/1 км', '', '', '', '', ''],
       ['Вид робіт', 'Категорія дороги', '', '', '', ''],
       ['', 'І', 'ІІ', 'ІІІ', 'ІV', 'V'],
-      ['Реконструкція', 50.0, 40.0, 30.0, 25.0, 20.0],
-      ['Капітальний ремонт', 15.0, 12.0, 10.0, 8.0, 6.0],
-      ['Поточний ремонт', 3.0, 2.0, 1.5, 1.0, 0.8]
+      ['Реконструкція', 
+       COST_STANDARDS.reconstruction[1], 
+       COST_STANDARDS.reconstruction[2], 
+       COST_STANDARDS.reconstruction[3], 
+       COST_STANDARDS.reconstruction[4], 
+       COST_STANDARDS.reconstruction[5]],
+      ['Капітальний ремонт', 
+       COST_STANDARDS.capital_repair[1], 
+       COST_STANDARDS.capital_repair[2], 
+       COST_STANDARDS.capital_repair[3], 
+       COST_STANDARDS.capital_repair[4], 
+       COST_STANDARDS.capital_repair[5]],
+      ['Поточний ремонт', 
+       COST_STANDARDS.current_repair[1], 
+       COST_STANDARDS.current_repair[2], 
+       COST_STANDARDS.current_repair[3], 
+       COST_STANDARDS.current_repair[4], 
+       COST_STANDARDS.current_repair[5]]
     ];
 
     // Лист 4: Визначення вартості робіт
@@ -512,8 +880,7 @@ const TemplateExporter = ({ sections }: { sections: RoadSectionData[] }) => {
         <Alert>
           <CheckCircleIcon className="h-4 w-4" />
           <AlertDescription>
-            Файл буде створено у форматі, сумісному з оригінальним шаблоном "Шаблон _21.xlsx".
-            Всі розрахунки виконуються автоматично згідно з методикою.
+            Розрахунки виконуються за алгоритмами модуля block_three.ts згідно з ДБН В.2.3-4:2015.
           </AlertDescription>
         </Alert>
       </CardContent>
@@ -575,7 +942,7 @@ const TestDataGenerator = ({ onAddTestData }: { onAddTestData: (sections: RoadSe
       }
     ];
 
-    // Рассчитываем все коэффициенты и показатели
+    // Рассчитываем все коэффициенты и показатели используя модуль расчетов
     const processedSections = testSections.map(section => {
       const sectionWithCoeffs = calculateCoefficients(section);
       sectionWithCoeffs.workType = determineWorkType(sectionWithCoeffs);
@@ -598,10 +965,10 @@ const TestDataGenerator = ({ onAddTestData }: { onAddTestData: (sections: RoadSe
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-600 mb-2">
-              Додайте тестові дані різних категорій доріг для демонстрації заповнення шаблону
+              Додайте тестові дані різних категорій доріг для демонстрації роботи з модулем block_three.ts
             </p>
             <p className="text-xs text-gray-500">
-              Буде додано 4 дорожні секції з автоматичним розрахунком всіх показників
+              Буде додано 4 дорожні секції з автоматичним розрахунком згідно з ДБН В.2.3-4:2015
             </p>
           </div>
           <Button onClick={generateTestData} variant="outline">
@@ -650,16 +1017,17 @@ const TemplateFillerApp = () => {
             Заповнення шаблону "Шаблон _21.xlsx"
           </h1>
           <p className="text-gray-600">
-            Ввід даних та автоматичне заповнення шаблону аналізу стану автомобільних доріг
+            Ввід даних та автоматичне заповнення шаблону з використанням модуля block_three.ts згідно з ДБН В.2.3-4:2015
           </p>
         </div>
 
         <Tabs defaultValue="input" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="input">📊 Ввід даних ({sections.length})</TabsTrigger>
-            <TabsTrigger value="analysis">🔍 Аналіз результатів</TabsTrigger>
-            <TabsTrigger value="preview">📋 Попередній перегляд</TabsTrigger>
-            <TabsTrigger value="export">💾 Експорт шаблону</TabsTrigger>
+            <TabsTrigger value="ranking">🏆 Ранжування</TabsTrigger>
+            <TabsTrigger value="planning">📋 Планування</TabsTrigger>
+            <TabsTrigger value="analysis">📈 Аналіз</TabsTrigger>
+            <TabsTrigger value="export">💾 Експорт</TabsTrigger>
           </TabsList>
 
           {/* Вкладка: Ввод данных */}
@@ -674,6 +1042,9 @@ const TemplateFillerApp = () => {
                 <RoadSectionForm onAdd={addSection} />
               </CardContent>
             </Card>
+
+            {/* Анализ соответствия нормативам */}
+            <ComplianceAnalysis sections={sections} />
 
             {sections.length > 0 && (
               <Card>
@@ -761,6 +1132,34 @@ const TemplateFillerApp = () => {
             )}
           </TabsContent>
 
+          {/* Вкладка: Ранжирование */}
+          <TabsContent value="ranking" className="space-y-6">
+            {sections.length === 0 ? (
+              <Alert>
+                <AlertTriangleIcon className="h-4 w-4" />
+                <AlertDescription>
+                  Додайте дорожні секції для ранжування проектів.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <ProjectRankingComponent sections={sections} />
+            )}
+          </TabsContent>
+
+          {/* Вкладка: Планирование */}
+          <TabsContent value="planning" className="space-y-6">
+            {sections.length === 0 ? (
+              <Alert>
+                <AlertTriangleIcon className="h-4 w-4" />
+                <AlertDescription>
+                  Додайте дорожні секції для планування ремонтних робіт.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <RepairPlanningComponent sections={sections} />
+            )}
+          </TabsContent>
+
           {/* Вкладка: Анализ результатов */}
           <TabsContent value="analysis" className="space-y-6">
             <Card>
@@ -772,7 +1171,7 @@ const TemplateFillerApp = () => {
                   <Alert>
                     <AlertTriangleIcon className="h-4 w-4" />
                     <AlertDescription>
-                      Додайте дорожні секції на вкладці "Ввід даних" для проведення аналізу.
+                      Додайте дорожні секції для проведення аналізу.
                     </AlertDescription>
                   </Alert>
                 ) : (
@@ -854,142 +1253,9 @@ const TemplateFillerApp = () => {
             </Card>
           </TabsContent>
 
-          {/* Вкладка: Предварительный просмотр */}
-          <TabsContent value="preview" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Попередній перегляд шаблону</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {sections.length === 0 ? (
-                  <Alert>
-                    <AlertTriangleIcon className="h-4 w-4" />
-                    <AlertDescription>
-                      Додайте дорожні секції для попереднього перегляду шаблону.
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="space-y-6">
-                    {/* Превью листа 1 */}
-                    <div>
-                      <h4 className="font-medium mb-3">Лист 1: Вихідні дані</h4>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs border-collapse border border-gray-300">
-                          <thead>
-                            <tr className="bg-gray-100">
-                              <th className="border border-gray-300 p-2 text-left">Найменування ділянки дороги</th>
-                              <th className="border border-gray-300 p-2">Протяжність (км)</th>
-                              <th className="border border-gray-300 p-2">Категорія</th>
-                              <th className="border border-gray-300 p-2">Інтенсивність (авт./добу)</th>
-                              <th className="border border-gray-300 p-2">Модуль пружності (МПа)</th>
-                              <th className="border border-gray-300 p-2">Рівність (м/км)</th>
-                              <th className="border border-gray-300 p-2">Коефіцієнт зчеплення</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sections.slice(0, 5).map(section => (
-                              <tr key={section.id}>
-                                <td className="border border-gray-300 p-2">{section.name}</td>
-                                <td className="border border-gray-300 p-2 text-center">{section.length}</td>
-                                <td className="border border-gray-300 p-2 text-center">{section.category}</td>
-                                <td className="border border-gray-300 p-2 text-center">{section.trafficIntensity}</td>
-                                <td className="border border-gray-300 p-2 text-center">{section.strengthModulus}</td>
-                                <td className="border border-gray-300 p-2 text-center">{section.roughnessProfile}</td>
-                                <td className="border border-gray-300 p-2 text-center">{section.frictionCoeff}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        {sections.length > 5 && (
-                          <p className="text-xs text-gray-500 mt-2">... та ще {sections.length - 5} записів</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Превью листа 2 */}
-                    <div>
-                      <h4 className="font-medium mb-3">Лист 2: Визначення виду робіт</h4>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs border-collapse border border-gray-300">
-                          <thead>
-                            <tr className="bg-gray-100">
-                              <th className="border border-gray-300 p-2 text-left">Найменування ділянки дороги</th>
-                              <th className="border border-gray-300 p-2">Кінт</th>
-                              <th className="border border-gray-300 p-2">Кміц</th>
-                              <th className="border border-gray-300 p-2">Крівн</th>
-                              <th className="border border-gray-300 p-2">Ккол</th>
-                              <th className="border border-gray-300 p-2">Кзчеп</th>
-                              <th className="border border-gray-300 p-2">Вид робіт</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sections.slice(0, 5).map(section => (
-                              <tr key={section.id}>
-                                <td className="border border-gray-300 p-2">{section.name}</td>
-                                <td className="border border-gray-300 p-2 text-center">{section.intensityCoeff}</td>
-                                <td className="border border-gray-300 p-2 text-center">{section.strengthCoeff}</td>
-                                <td className="border border-gray-300 p-2 text-center">{section.evennessCoeff}</td>
-                                <td className="border border-gray-300 p-2 text-center">{section.rutCoeff}</td>
-                                <td className="border border-gray-300 p-2 text-center">{section.frictionFactorCoeff}</td>
-                                <td className="border border-gray-300 p-2 text-center">{section.workType}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        {sections.length > 5 && (
-                          <p className="text-xs text-gray-500 mt-2">... та ще {sections.length - 5} записів</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           {/* Вкладка: Экспорт */}
           <TabsContent value="export" className="space-y-6">
             <TemplateExporter sections={sections} />
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Інструкція по використанню</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <Alert>
-                    <CheckCircleIcon className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Файл створюється у повній відповідності до оригінального шаблону "Шаблон _21.xlsx".</strong>
-                    </AlertDescription>
-                  </Alert>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <h5 className="font-medium mb-2">Структура експорту:</h5>
-                      <ul className="text-sm space-y-1">
-                        <li>• Лист 1: Вихідні дані секцій доріг</li>
-                        <li>• Лист 2: Розрахунок коефіцієнтів та виду робіт</li>
-                        <li>• Лист 3: Показники вартості (довідкова таблиця)</li>
-                        <li>• Лист 4: Визначення вартості робіт</li>
-                        <li>• Лист 7: Ранжування об'єктів за ENPV</li>
-                      </ul>
-                    </div>
-                    
-                    <div>
-                      <h5 className="font-medium mb-2">Формули розрахунку:</h5>
-                      <ul className="text-sm space-y-1">
-                        <li>• Кінт = Інормативна / Іфактична</li>
-                        <li>• Кміц = Ефактичний / Енормативний</li>
-                        <li>• Крівн = Рнормативна / Рфактична</li>
-                        <li>• Ккол = Кнормативна / Кфактична</li>
-                        <li>• Кзчеп = φфактичний / φнормативний</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </div>

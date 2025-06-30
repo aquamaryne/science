@@ -516,7 +516,6 @@ export default {
   generateRepairPlanReport,
   checkCategoryComplianceByIntensity,
   checkFrictionCompliance,
-  // Экспорт констант для использования в других модулях
   MAX_DESIGN_INTENSITY_BY_CATEGORY,
   MIN_STRENGTH_COEFFICIENT_BY_CATEGORY,
   REQUIRED_FRICTION_COEFFICIENT

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   type BudgetItem,
   initialStateRoadItems,
@@ -6,7 +6,7 @@ import {
   calculateQ1,
   calculateQ2
 } from '../../modules/block_one';
-
+import { calculationResultsService } from '../../settings/resultLocalStorage';
 // shadcn/ui components
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,9 +14,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
+import { UploadIcon, FileIcon, XIcon } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+// Расширенный интерфейс для BudgetItem с файлами
+interface ExtendedBudgetItem extends BudgetItem {
+  attachedFiles?: File[];
+}
 
 // Модифицированные данные с переносом на новую строку
-const modifyItemsWithLineBreak = (items: BudgetItem[]): BudgetItem[] => {
+const modifyItemsWithLineBreak = (items: BudgetItem[]): ExtendedBudgetItem[] => {
   return items.map(item => {
     // Делим название на части, учитывая специфические места разделения
     let modifiedName = item.name;
@@ -39,14 +46,115 @@ const modifyItemsWithLineBreak = (items: BudgetItem[]): BudgetItem[] => {
 
     return {
       ...item,
-      name: modifiedName
+      name: modifiedName,
+      attachedFiles: []
     };
   });
 };
 
+// Компонент для загрузки файлов
+const FileUploadComponent = ({ 
+  itemId, 
+  files = [], 
+  onFilesChange 
+}: { 
+  itemId: string; 
+  files: File[]; 
+  onFilesChange: (itemId: string, files: File[]) => void; 
+}) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    const updatedFiles = [...files, ...selectedFiles];
+    onFilesChange(itemId, updatedFiles);
+    
+    // Очищаем input для возможности повторной загрузки того же файла
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeFile = (index: number) => {
+    const updatedFiles = files.filter((_, i) => i !== index);
+    onFilesChange(itemId, updatedFiles);
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Кнопка загрузки */}
+      <div className="flex items-center gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          onChange={handleFileUpload}
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"
+          className="hidden"
+          id={`file-upload-${itemId}`}
+        />
+        <label
+          htmlFor={`file-upload-${itemId}`}
+          className="cursor-pointer inline-flex items-center px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+        >
+          <UploadIcon className="h-3 w-3 mr-1" />
+          Додати файл
+        </label>
+        {files.length > 0 && (
+          <span className="text-xs text-gray-500">
+            {files.length} файл{files.length > 1 ? 'ів' : ''}
+          </span>
+        )}
+      </div>
+
+      {/* Список загруженных файлов */}
+      {files.length > 0 && (
+        <div className="space-y-1">
+          {files.map((file, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-between p-2 bg-gray-50 rounded text-xs"
+            >
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <FileIcon className="h-3 w-3 text-gray-500 flex-shrink-0" />
+                <div className="truncate flex-1">
+                  <div className="font-medium truncate">{file.name}</div>
+                  <div className="text-gray-500">{formatFileSize(file.size)}</div>
+                </div>
+              </div>
+              <Button
+                onClick={() => removeFile(index)}
+                variant="ghost"
+                size="sm"
+                className="h-auto p-1 text-red-500 hover:text-red-700"
+              >
+                <XIcon className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Компонент для блока 1: Расчет объема финансирования дорог государственного значения
-const StateRoadFundingBlock = () => {
-  const [stateRoadBudget, setStateRoadBudget] = useState<BudgetItem[]>(modifyItemsWithLineBreak(initialStateRoadItems));
+const StateRoadFundingBlock = ({ 
+  onResultsChange 
+}: { 
+  onResultsChange?: (q1: number, items: ExtendedBudgetItem[]) => void 
+}) => {
+  const [stateRoadBudget, setStateRoadBudget] = useState<ExtendedBudgetItem[]>(
+    modifyItemsWithLineBreak(initialStateRoadItems)
+  );
   const [q1Result, setQ1Result] = useState<number | null>(null);
 
   // Обработчик изменения значений полей ввода
@@ -64,6 +172,15 @@ const StateRoadFundingBlock = () => {
     setStateRoadBudget(prev => 
       prev.map(item => 
         item.id === id ? { ...item, normativeDocument: document } : item
+      )
+    );
+  };
+
+  // Обработчик изменения файлов
+  const handleFilesChange = (id: string, files: File[]) => {
+    setStateRoadBudget(prev => 
+      prev.map(item => 
+        item.id === id ? { ...item, attachedFiles: files } : item
       )
     );
   };
@@ -88,6 +205,11 @@ const StateRoadFundingBlock = () => {
 
     const result = calculateQ1(originalStateRoadItems);
     setQ1Result(result);
+    
+    // Уведомляем родительский компонент о результатах
+    if (onResultsChange) {
+      onResultsChange(result as number, stateRoadBudget);
+    }
   };
 
   return (
@@ -102,10 +224,10 @@ const StateRoadFundingBlock = () => {
           <Table className="w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-3/5 bg-white">*Назва показника нехай підсвічується при наведені на сам показник</TableHead>
+                <TableHead className="w-2/5 bg-white">*Назва показника нехай підсвічується при наведені на сам показник</TableHead>
                 <TableHead className="w-16 bg-white">Показник</TableHead>
                 <TableHead className="w-32 bg-white">Обсяг, тис.грн.</TableHead>
-                <TableHead className="bg-white">Нормативний документ, з якого взяті дані</TableHead>
+                <TableHead className="w-1/4 bg-white">Нормативний документ / Файли</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -136,12 +258,17 @@ const StateRoadFundingBlock = () => {
                       className="w-full border-black rounded-none"
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="space-y-2">
                     <Input 
                       value={item.normativeDocument || ""}
                       onChange={(e) => handleDocumentChange(item.id, e.target.value)}
-                      placeholder="Документ"
+                      placeholder="Назва документа"
                       className="w-full border-black rounded-none"
+                    />
+                    <FileUploadComponent
+                      itemId={item.id}
+                      files={item.attachedFiles || []}
+                      onFilesChange={handleFilesChange}
                     />
                   </TableCell>
                 </TableRow>
@@ -151,7 +278,7 @@ const StateRoadFundingBlock = () => {
         </div>
 
         <div className="mt-2 w-full">
-          <div className="text-lg font-semibold text-gray-100">
+          <div className="text-lg font-semibold text-gray-700">
             Розрахунок Q<sub>1</sub> = Q<sub>дз</sub> - Q<sub>пп</sub> - Q<sub>міжн</sub> - Q<sub>ІАС</sub> - Q<sub>н</sub> - Q<sub>лік</sub> - Q<sub>вп</sub> - Q<sub>упр</sub> - Q<sub>ДПП</sub>
           </div>
         </div>
@@ -175,8 +302,14 @@ const StateRoadFundingBlock = () => {
 };
 
 // Компонент для блока 2: Расчет объема финансирования дорог местного значения
-const LocalRoadFundingBlock = () => {
-  const [localRoadBudget, setLocalRoadBudget] = useState<BudgetItem[]>(modifyItemsWithLineBreak(initialLocalRoadItems));
+const LocalRoadFundingBlock = ({ 
+  onResultsChange 
+}: { 
+  onResultsChange?: (q2: number, items: ExtendedBudgetItem[]) => void 
+}) => {
+  const [localRoadBudget, setLocalRoadBudget] = useState<ExtendedBudgetItem[]>(
+    modifyItemsWithLineBreak(initialLocalRoadItems)
+  );
   const [q2Result, setQ2Result] = useState<number | null>(null);
 
   const handleInputChange = (id: string, value: string) => {
@@ -192,6 +325,14 @@ const LocalRoadFundingBlock = () => {
     setLocalRoadBudget(prev => 
       prev.map(item => 
         item.id === id ? { ...item, normativeDocument: document } : item
+      )
+    );
+  };
+
+  const handleFilesChange = (id: string, files: File[]) => {
+    setLocalRoadBudget(prev => 
+      prev.map(item => 
+        item.id === id ? { ...item, attachedFiles: files } : item
       )
     );
   };
@@ -215,6 +356,11 @@ const LocalRoadFundingBlock = () => {
 
     const result = calculateQ2(originalLocalRoadItems);
     setQ2Result(result);
+    
+    // Уведомляем родительский компонент о результатах
+    if (onResultsChange) {
+      onResultsChange(result as number, localRoadBudget);
+    }
   };
 
   return (
@@ -229,10 +375,10 @@ const LocalRoadFundingBlock = () => {
           <Table className="w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-3/5 bg-white">*Назва показника нехай підсвічується при наведені на сам показник</TableHead>
+                <TableHead className="w-2/5 bg-white">*Назва показника нехай підсвічується при наведені на сам показник</TableHead>
                 <TableHead className="w-16 bg-white">Показник</TableHead>
                 <TableHead className="w-32 bg-white">Обсяг, тис.грн.</TableHead>
-                <TableHead className="bg-white">Нормативний документ, з якого взяті дані</TableHead>
+                <TableHead className="w-1/4 bg-white">Нормативний документ / Файли</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -247,7 +393,7 @@ const LocalRoadFundingBlock = () => {
                             <InfoCircledIcon className="ml-2 h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
                           </div>
                         </TooltipTrigger>
-                        <TooltipContent className="max-w-md black text-white">
+                        <TooltipContent className="max-w-md bg-black text-white">
                           <p>{item.tooltip}</p>
                         </TooltipContent>
                       </Tooltip>
@@ -260,15 +406,20 @@ const LocalRoadFundingBlock = () => {
                       value={item.value === null ? "" : item.value.toString()}
                       onChange={(e) => handleInputChange(item.id, e.target.value)}
                       placeholder="0"
-                      className="w-full border-black rounded-none focus/:border-black"
+                      className="w-full border-black rounded-none"
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="space-y-2">
                     <Input 
                       value={item.normativeDocument || ""}
                       onChange={(e) => handleDocumentChange(item.id, e.target.value)}
-                      placeholder="Документ"
-                      className="w-full border-black rounded-none focus:border-black"
+                      placeholder="Назва документа"
+                      className="w-full border-black rounded-none"
+                    />
+                    <FileUploadComponent
+                      itemId={item.id}
+                      files={item.attachedFiles || []}
+                      onFilesChange={handleFilesChange}
                     />
                   </TableCell>
                 </TableRow>
@@ -303,6 +454,50 @@ const LocalRoadFundingBlock = () => {
 
 // Главный компонент приложения
 const RoadFundingApp: React.FC = () => {
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [q1Results, setQ1Results] = useState<{ value: number; items: ExtendedBudgetItem[] } | null>(null);
+  const [q2Results, setQ2Results] = useState<{ value: number; items: ExtendedBudgetItem[] } | null>(null);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+
+  // Создаем сессию при первом рендере
+  React.useEffect(() => {
+    const newSessionId = calculationResultsService.createSession();
+    setSessionId(newSessionId);
+  }, []);
+
+  const handleQ1Results = (q1: number, items: ExtendedBudgetItem[]) => {
+    setQ1Results({ value: q1, items });
+  };
+
+  const handleQ2Results = (q2: number, items: ExtendedBudgetItem[]) => {
+    setQ2Results({ value: q2, items });
+  };
+
+  // Сохранение результатов в сервис
+  const saveResults = () => {
+    if (!q1Results || !q2Results) {
+      alert("Спочатку виконайте розрахунки Q₁ та Q₂!");
+      return;
+    }
+
+    // Конвертируем ExtendedBudgetItem обратно в BudgetItem для сервиса
+    const convertToBasicItems = (items: ExtendedBudgetItem[]): BudgetItem[] => {
+      return items.map(({ attachedFiles, ...item }) => item);
+    };
+
+    const success = calculationResultsService.saveBlockOneResults(
+      convertToBasicItems(q1Results.items),
+      q1Results.value,
+      convertToBasicItems(q2Results.items),
+      q2Results.value
+    );
+
+    if (success) {
+      setShowSaveSuccess(true);
+      setTimeout(() => setShowSaveSuccess(false), 3000);
+    }
+  };
+
   return (
     <div className="min-h-screen p-6 w-full">
       <div className="w-full mx-auto">
@@ -314,16 +509,70 @@ const RoadFundingApp: React.FC = () => {
             <div className="text-lg text-gray-600 mt-2">
               (Розділ ІІ Методики)
             </div>
+            {sessionId && (
+              <div className="text-sm text-gray-500 mt-2">
+                Сесія розрахунків: {sessionId}
+              </div>
+            )}
           </CardHeader>
         </Card>
 
+        {showSaveSuccess && (
+          <Alert className="mb-6 border-green-500 bg-green-50">
+            <AlertDescription className="text-green-700">
+              ✅ Результати Блоку 1 успішно збережені в сесії розрахунків!
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Блок 1.1: Дороги государственного значения */}
-        <StateRoadFundingBlock />
+        <StateRoadFundingBlock onResultsChange={handleQ1Results} />
 
         {/* Блок 1.2: Дороги местного значения */}
-        <LocalRoadFundingBlock />
+        <LocalRoadFundingBlock onResultsChange={handleQ2Results} />
 
-        {/* Здесь могут быть добавлены другие блоки расчета */}
+        {/* Сводка и сохранение результатов */}
+        {q1Results && q2Results && (
+          <Card className="mt-8 w-full border-green-500 shadow-sm rounded-none">
+            <CardHeader className="bg-green-50 border-b border-green-500">
+              <CardTitle className="text-xl font-bold text-green-800">
+                Сводка результатів Блоку 1
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-gray-800">
+                    {q1Results.value.toLocaleString()}
+                  </div>
+                  <div className="text-sm text-gray-600">Q₁ (тис. грн)</div>
+                  <div className="text-xs text-gray-500">Державні дороги</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-gray-800">
+                    {q2Results.value.toLocaleString()}
+                  </div>
+                  <div className="text-sm text-gray-600">Q₂ (тис. грн)</div>
+                  <div className="text-xs text-gray-500">Місцеві дороги</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-700">
+                    {(q1Results.value + q2Results.value).toLocaleString()}
+                  </div>
+                  <div className="text-sm text-gray-600">Загальний бюджет (тис. грн)</div>
+                  <div className="text-xs text-gray-500">Q₁ + Q₂</div>
+                </div>
+              </div>
+              
+              <Button 
+                onClick={saveResults}
+                className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white py-3 text-lg h-auto"
+              >
+                💾 Зберегти результати в сесію розрахунків
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

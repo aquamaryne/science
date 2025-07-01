@@ -1013,9 +1013,6 @@ const TemplateFillerApp = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Заповнення шаблону "Шаблон _21.xlsx"
-          </h1>
           <p className="text-gray-600">
             Ввід даних та автоматичне заповнення шаблону з використанням модуля block_three.ts згідно з ДБН В.2.3-4:2015
           </p>

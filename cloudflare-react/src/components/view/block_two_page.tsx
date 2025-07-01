@@ -600,9 +600,12 @@ const Block2MaintenanceCalculator: React.FC = () => {
                   <InfoIcon className="h-4 w-4" />
                   <AlertTitle>Формула розрахунку</AlertTitle>
                   <AlertDescription>
-                    H<sub>j</sub><sup>д</sup> = H<sup>д</sup> × K<sub>j</sub><sup>д</sup> × K<sub>інф</sub>
-                    <br />
-                    де H<sup>д</sup> = {stateRoadBaseRate} тис. грн/км, K<sub>j</sub><sup>д</sup> - коефіцієнт диференціювання за категорією, K<sub>інф</sub> = {calculateCumulativeInflationIndex(stateInflationIndexes).toFixed(4)}
+                    <div className="font-mono text-center py-2">
+                      H<sub>j</sub><sup>д</sup> = H<sup>д</sup> × K<sub>j</sub><sup>д</sup> × K<sub>інф</sub>
+                    </div>
+                    <div className="text-sm text-gray-600 mt-2">
+                      де H<sup>д</sup> = {stateRoadBaseRate} тис. грн/км, K<sub>j</sub><sup>д</sup> - коефіцієнт диференціювання за категорією, K<sub>інф</sub> = {calculateCumulativeInflationIndex(stateInflationIndexes).toFixed(4)}
+                    </div>
                   </AlertDescription>
                 </Alert>
               </div>
@@ -757,9 +760,12 @@ const Block2MaintenanceCalculator: React.FC = () => {
                   <InfoIcon className="h-4 w-4" />
                   <AlertTitle>Формула розрахунку</AlertTitle>
                   <AlertDescription>
-                    H<sub>j</sub><sup>м</sup> = H<sup>м</sup> × K<sub>j</sub><sup>м</sup> × K<sub>інф</sub>
-                    <br />
-                    де H<sup>м</sup> = {localRoadBaseRate} тис. грн/км, K<sub>j</sub><sup>м</sup> - коефіцієнт диференціювання за категорією, K<sub>інф</sub> = {calculateCumulativeInflationIndex(localInflationIndexes).toFixed(4)}
+                    <div className="font-mono text-center py-2">
+                      H<sub>j</sub><sup>м</sup> = H<sup>м</sup> × K<sub>j</sub><sup>м</sup> × K<sub>інф</sub>
+                    </div>
+                    <div className="text-sm text-gray-600 mt-2">
+                      де H<sup>м</sup> = {localRoadBaseRate} тис. грн/км, K<sub>j</sub><sup>м</sup> - коефіцієнт диференціювання за категорією, K<sub>інф</sub> = {calculateCumulativeInflationIndex(localInflationIndexes).toFixed(4)}
+                    </div>
                   </AlertDescription>
                 </Alert>
                 
@@ -1088,7 +1094,9 @@ const Block2MaintenanceCalculator: React.FC = () => {
                       <InfoIcon className="h-4 w-4" />
                       <AlertTitle>Державні дороги (п. 3.5)</AlertTitle>
                       <AlertDescription className="text-sm">
-                        Q<sub>i</sub><sup>д</sup> = Σ(H<sub>j</sub><sup>д</sup> × L<sub>ij</sub><sup>д</sup>) × K<sub>д</sub> × K<sub>г</sub> × K<sub>уе</sub> × K<sub>інт.д</sub> × K<sub>е.д</sub> × K<sub>мпп.д</sub> × K<sub>осв</sub> × K<sub>рем</sub> × K<sub>кр.і</sub>
+                        <div className="font-mono text-center py-2 bg-white rounded border my-2">
+                          Q<sub>i</sub><sup>д</sup> = Σ(H<sub>j</sub><sup>д</sup> × L<sub>ij</sub><sup>д</sup>) × K<sub>д</sub> × K<sub>г</sub> × K<sub>уе</sub> × K<sub>інт.д</sub> × K<sub>е.д</sub> × K<sub>мпп.д</sub> × K<sub>осв</sub> × K<sub>рем</sub> × K<sub>кр.і</sub>
+                        </div>
                       </AlertDescription>
                     </Alert>
                     
@@ -1096,7 +1104,9 @@ const Block2MaintenanceCalculator: React.FC = () => {
                       <InfoIcon className="h-4 w-4" />
                       <AlertTitle>Місцеві дороги (п. 3.6)</AlertTitle>
                       <AlertDescription className="text-sm">
-                        Q<sub>i</sub><sup>м</sup> = Σ(H<sub>j</sub><sup>м</sup> × L<sub>ij</sub><sup>м</sup>) × K<sub>г</sub> × K<sub>уе</sub> × K<sub>інт.м</sub>
+                        <div className="font-mono text-center py-2 bg-white rounded border my-2">
+                          Q<sub>i</sub><sup>м</sup> = Σ(H<sub>j</sub><sup>м</sup> × L<sub>ij</sub><sup>м</sup>) × K<sub>г</sub> × K<sub>уе</sub> × K<sub>інт.м</sub>
+                        </div>
                       </AlertDescription>
                     </Alert>
                   </div>

@@ -406,14 +406,81 @@ const ExcelTemplateExporter = ({ sections }: { sections: RoadSectionData[] }) =>
     ];
 
     if (reconstructionAndCapitalSections.length > 0) {
+      const firstSection = reconstructionAndCapitalSections[0];
+      
+      // Используем данные первой секции для расчетов
+      const averageDailyTraffic = firstSection.trafficIntensity;
+      const sectionLength = firstSection.length;
+      const capitalCost = firstSection.estimatedCost || 0; // млн грн
+      
+      // Ежегодные операционные расходы (2.5% от капитальных затрат)
+      const annualOperatingCost = capitalCost * 0.025;
+      
+      // Экономический эффект от улучшения дороги
+      const economicBenefitPerVehicleKm = 0.05; // грн за авт*км
+      const annualEconomicBenefit = (averageDailyTraffic * 365 * sectionLength * economicBenefitPerVehicleKm) / 1000000; // млн грн
+      
+      let totalPresentValue = 0;
+      let totalDiscountedBenefits = 0;
+      let totalDiscountedCosts = 0;
+      
       for (let year = 2025; year <= 2044; year++) {
-        const discountFactor = Number((1 / Math.pow(1.05, year - 2024)).toFixed(3));
+        const yearIndex = year - 2024;
+        const discountFactor = Number((1 / Math.pow(1.05, yearIndex)).toFixed(3));
+        
+        // Капитальные затраты только в первый год
+        const capitalExpenditure = year === 2025 ? capitalCost : 0;
+        
+        // Операционные расходы каждый год (с 2026 года)
+        const operatingCosts = year >= 2026 ? annualOperatingCost : 0;
+        
+        // Экономические выгоды (с 2026 года)
+        const economicBenefits = year >= 2026 ? annualEconomicBenefit : 0;
+        
+        // Чистый денежный поток
+        const netCashFlow = economicBenefits - operatingCosts - capitalExpenditure;
+        
+        // Приведенная стоимость
+        const presentValue = netCashFlow * discountFactor;
+        totalPresentValue += presentValue;
+        
+        // Дисконтированные выгоды и затраты отдельно
+        const discountedBenefits = economicBenefits * discountFactor;
+        const discountedCosts = (operatingCosts + capitalExpenditure) * discountFactor;
+        totalDiscountedBenefits += discountedBenefits;
+        totalDiscountedCosts += discountedCosts;
+        
         ws5_data.push([
           year.toString(),
-          '', '', '', '', discountFactor.toString(), ''
+          year === 2025 ? averageDailyTraffic.toString() : '', // Показываем интенсивность только в первый год
+          capitalExpenditure > 0 ? capitalExpenditure.toFixed(2) : (operatingCosts > 0 ? operatingCosts.toFixed(2) : ''),
+          economicBenefits > 0 ? economicBenefits.toFixed(2) : '',
+          netCashFlow.toFixed(2),
+          discountFactor.toString(),
+          presentValue.toFixed(2)
         ]);
       }
-      ws5_data.push(['Разом', '', '', '', '', '', '']);
+      
+      // Итоговая строка с реальными суммами
+      ws5_data.push([
+        'Разом', 
+        '',
+        capitalCost.toFixed(2), // Общие капитальные затраты
+        (annualEconomicBenefit * 19).toFixed(2), // 19 лет экономических выгод
+        totalPresentValue.toFixed(2), // Чистая приведенная стоимость
+        '',
+        totalPresentValue.toFixed(2) // ENPV
+      ]);
+      
+      // Обновляем показатели в секции
+      firstSection.enpv = totalPresentValue * 1000000; // переводим в грн
+      
+      // Рассчитываем экономические показатели
+      const bcr = totalDiscountedCosts > 0 ? totalDiscountedBenefits / totalDiscountedCosts : 0;
+      const eirr = totalDiscountedCosts > 0 ? ((Math.pow(totalDiscountedBenefits / totalDiscountedCosts, 1/20) - 1) * 100) : 0;
+      
+      firstSection.bcr = bcr;
+      firstSection.eirr = eirr;
     }
 
     const ws5 = XLSX.utils.aoa_to_sheet(ws5_data);

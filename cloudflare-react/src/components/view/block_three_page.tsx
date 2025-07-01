@@ -406,68 +406,14 @@ const ExcelTemplateExporter = ({ sections }: { sections: RoadSectionData[] }) =>
     ];
 
     if (reconstructionAndCapitalSections.length > 0) {
-      const firstSection = reconstructionAndCapitalSections[0];
-      
-      // Базовые параметры для расчета
-      const averageDailyTraffic = firstSection.trafficIntensity;
-      const sectionLength = firstSection.length;
-      const capitalCost = firstSection.estimatedCost || 0; // млн грн
-      
-      // Ежегодные операционные расходы (примерно 2-3% от капитальных затрат)
-      const annualOperatingCost = capitalCost * 0.025;
-      
-      // Экономический эффект от улучшения дороги (экономия на топливе, времени и т.д.)
-      // Примерно 50-100 грн на 1000 авт*км в год
-      const economicBenefitPerVehicleKm = 0.075; // грн за авт*км
-      const annualEconomicBenefit = (averageDailyTraffic * 365 * sectionLength * economicBenefitPerVehicleKm) / 1000000; // млн грн
-      
-      let totalPresentValue = 0;
-      
       for (let year = 2025; year <= 2044; year++) {
-        const yearIndex = year - 2024;
-        const discountFactor = Number((1 / Math.pow(1.05, yearIndex)).toFixed(3));
-        
-        // Капитальные затраты только в первый год
-        const capitalExpenditure = year === 2025 ? capitalCost : 0;
-        
-        // Операционные расходы каждый год (с 2026 года)
-        const operatingCosts = year >= 2026 ? annualOperatingCost : 0;
-        
-        // Экономические выгоды (с 2026 года после завершения строительства)
-        const economicBenefits = year >= 2026 ? annualEconomicBenefit : 0;
-        
-        // Чистый операционный доход
-        const netOperatingIncome = economicBenefits - operatingCosts;
-        
-        // Приведенная стоимость
-        const presentValue = netOperatingIncome * discountFactor;
-        totalPresentValue += presentValue;
-        
+        const discountFactor = Number((1 / Math.pow(1.05, year - 2024)).toFixed(3));
         ws5_data.push([
           year.toString(),
-          capitalExpenditure.toFixed(2),
-          operatingCosts.toFixed(2),
-          economicBenefits.toFixed(2),
-          netOperatingIncome.toFixed(2),
-          discountFactor.toString(),
-          presentValue.toFixed(2)
+          '', '', '', '', discountFactor.toString(), ''
         ]);
       }
-      
-      // Итоговая строка
-      const netPresentValue = totalPresentValue - capitalCost;
-      ws5_data.push([
-        'Разом', 
-        capitalCost.toFixed(2), 
-        (annualOperatingCost * 19).toFixed(2), // 19 лет операционных расходов
-        (annualEconomicBenefit * 19).toFixed(2), // 19 лет выгод
-        '', 
-        '', 
-        netPresentValue.toFixed(2)
-      ]);
-      
-      // Обновляем ENPV в секции
-      firstSection.enpv = netPresentValue * 1000000; // переводим обратно в грн
+      ws5_data.push(['Разом', '', '', '', '', '', '']);
     }
 
     const ws5 = XLSX.utils.aoa_to_sheet(ws5_data);

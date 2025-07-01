@@ -309,86 +309,302 @@ const Block2MaintenanceCalculator: React.FC = () => {
   };
   
   // Handle export to Excel
-  const handleExport = () => {
-    try {
-      // Создаем новую рабочую книгу
-      const workbook = XLSX.utils.book_new();
+  // Handle export to Excel
+const handleExport = () => {
+  try {
+    // Создаем новую рабочую книгу
+    const workbook = XLSX.utils.book_new();
+    
+    // Получаем все регионы для создания полной таблицы
+    const allRegions = regionCoefficients.map(r => r.regionalName);
+    
+    // Лист 1: Протяжність доріг місцевого значення
+    const localRoadsData = [
+      ['', '', '', 'Розподіл витрат на експлуатаційне утримання (ЕУ)', '', '', '', '', 'Протяжність', 'Протяжність', 'Протяжність'],
+      ['', '', '', 'Протяжність доріг місцевого значення (км)', '', '', '', '', 'доріг з', 'доріг з', 'доріг з'],
+      ['Найменування області', '', '', '', '', '', '', '', 'середньодобово', 'середньодобово', 'середньодобово'],
+      ['', 'I', 'II', 'III', 'IV', 'V', 'Разом', '', 'інтенсивністю', 'інтенсивністю', 'інтенсивністю'],
+      ['', '', '', '', '', '', '', '', '15000-20000', '20001-30000', '30001 і більше'],
+    ];
+    
+    // Добавляем данные по регионам для местных дорог
+    allRegions.forEach(region => {
+      const regionData = generateSampleRegionData(region);
+      const localRoadsByCategory = [1, 2, 3, 4, 5].map(category => {
+        return regionData.roadSections
+          .filter(s => !s.stateImportance && s.category === category)
+          .reduce((sum, s) => sum + s.length, 0);
+      });
+      const totalLocal = localRoadsByCategory.reduce((sum, length) => sum + length, 0);
       
-      // Создаем лист с результатами расчетов
-      const wsData = [
-        ['Результати розрахунку експлуатаційного утримання доріг'],
-        ['Область:', selectedRegion],
-        ['Дата розрахунку:', new Date().toLocaleDateString('uk-UA')],
-        [],
-        ['1. БАЗОВІ НОРМАТИВИ'],
-        ['Базовий норматив (держ., ціни 2023):', stateRoadBaseRate + ' тис. грн/км'],
-        ['Базовий норматив (місц., ціни 2023):', localRoadBaseRate + ' тис. грн/км'],
-        ['Індекс інфляції (держ.):', calculateCumulativeInflationIndex(stateInflationIndexes).toFixed(4)],
-        ['Індекс інфляції (місц.):', calculateCumulativeInflationIndex(localInflationIndexes).toFixed(4)],
-        [],
-        ['2. НОРМАТИВИ ДЛЯ ДОРІГ ДЕРЖАВНОГО ЗНАЧЕННЯ'],
-        ['Категорія', 'Норматив (тис. грн/км)'],
-        ['I категорія', stateRoadRates.category1.toFixed(2)],
-        ['II категорія', stateRoadRates.category2.toFixed(2)],
-        ['III категорія', stateRoadRates.category3.toFixed(2)],
-        ['IV категорія', stateRoadRates.category4.toFixed(2)],
-        ['V категорія', stateRoadRates.category5.toFixed(2)],
-        [],
-        ['3. НОРМАТИВИ ДЛЯ ДОРІГ МІСЦЕВОГО ЗНАЧЕННЯ'],
-        ['Категорія', 'Норматив (тис. грн/км)'],
-        ['I категорія', localRoadRates.category1.toFixed(2)],
-        ['II категорія', localRoadRates.category2.toFixed(2)],
-        ['III категорія', localRoadRates.category3.toFixed(2)],
-        ['IV категорія', localRoadRates.category4.toFixed(2)],
-        ['V категорія', localRoadRates.category5.toFixed(2)],
-        [],
-        ['4. ДЕТАЛЬНІ КОЕФІЦІЄНТИ РОЗРАХУНКУ'],
-        ['Коефіцієнт', 'Держ. дороги', 'Місц. дороги'],
-        ['Kг (гірська місцевість)', detailedCoefficients.common.mountainous.toFixed(4), detailedCoefficients.common.mountainous.toFixed(4)],
-        ['Kуе (умови експлуатації)', detailedCoefficients.common.operatingConditions.toFixed(4), detailedCoefficients.common.operatingConditions.toFixed(4)],
-        ['Kінт (інтенсивність руху)', detailedCoefficients.state.trafficIntensity.toFixed(4), detailedCoefficients.local.trafficIntensity.toFixed(4)],
-        ['Kе.д (дороги з індексом Е)', detailedCoefficients.state.europeanRoad.toFixed(4), 'н/д'],
-        ['Kмпп.д (пункти пропуску)', detailedCoefficients.state.borderCrossing.toFixed(4), 'н/д'],
-        ['Kосв (освітлення)', detailedCoefficients.state.lighting.toFixed(4), 'враховано окремо'],
-        ['Kрем (нещодавній ремонт)', detailedCoefficients.state.repair.toFixed(4), 'враховано окремо'],
-        ['Kкр.і (критич. інфраструктура)', detailedCoefficients.common.criticalInfrastructure.toFixed(4), 'н/д'],
-        ['Kд (обслуговування)', '1.16', 'н/д'],
-        [],
-        ['5. РЕЗУЛЬТАТИ РОЗРАХУНКУ ФІНАНСУВАННЯ'],
-        ['Показник', 'Значення'],
-        ['Протяжність доріг державного значення (км)', fundingResults.details.stateRoadLength.toFixed(2)],
-        ['Протяжність доріг місцевого значення (км)', fundingResults.details.localRoadLength.toFixed(2)],
-        ['Фінансування доріг державного значення (тис. грн)', fundingResults.stateFunding.toFixed(2)],
-        ['Фінансування доріг місцевого значення (тис. грн)', fundingResults.localFunding.toFixed(2)],
-        ['ЗАГАЛЬНИЙ ОБСЯГ ФІНАНСУВАННЯ (тис. грн)', fundingResults.totalFunding.toFixed(2)],
-      ];
+      // Протяжность дорог с разной интенсивностью
+      const intensity15000_20000 = regionData.roadSections
+        .filter(s => !s.stateImportance && s.trafficIntensity >= 15000 && s.trafficIntensity <= 20000)
+        .reduce((sum, s) => sum + s.length, 0);
+      const intensity20001_30000 = regionData.roadSections
+        .filter(s => !s.stateImportance && s.trafficIntensity >= 20001 && s.trafficIntensity <= 30000)
+        .reduce((sum, s) => sum + s.length, 0);
+      const intensity30001Plus = regionData.roadSections
+        .filter(s => !s.stateImportance && s.trafficIntensity >= 30001)
+        .reduce((sum, s) => sum + s.length, 0);
       
-      // Создаем лист
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      localRoadsData.push([
+        region,
+        (localRoadsByCategory[0] !== undefined && localRoadsByCategory[0] !== null ? localRoadsByCategory[0].toString() : ''),
+        (localRoadsByCategory[1] !== undefined && localRoadsByCategory[1] !== null ? localRoadsByCategory[1].toString() : ''),
+        (localRoadsByCategory[2] !== undefined && localRoadsByCategory[2] !== null ? localRoadsByCategory[2].toString() : ''),
+        (localRoadsByCategory[3] !== undefined && localRoadsByCategory[3] !== null ? localRoadsByCategory[3].toString() : ''),
+        (localRoadsByCategory[4] !== undefined && localRoadsByCategory[4] !== null ? localRoadsByCategory[4].toString() : ''),
+        (totalLocal !== undefined && totalLocal !== null ? totalLocal.toString() : ''),
+        '',
+        (intensity15000_20000 !== undefined && intensity15000_20000 !== null ? intensity15000_20000.toString() : ''),
+        (intensity20001_30000 !== undefined && intensity20001_30000 !== null ? intensity20001_30000.toString() : ''),
+        (intensity30001Plus !== undefined && intensity30001Plus !== null ? intensity30001Plus.toString() : '')
+      ]);
+    });
+    
+    const wsLocal = XLSX.utils.aoa_to_sheet(localRoadsData);
+    wsLocal['!cols'] = Array(11).fill({ width: 12 });
+    wsLocal['!merges'] = [
+      { s: { r: 0, c: 3 }, e: { r: 0, c: 6 } }, // Заголовок ЕУ
+      { s: { r: 1, c: 3 }, e: { r: 1, c: 6 } }, // Протяжність доріг
+      { s: { r: 0, c: 8 }, e: { r: 0, c: 10 } }, // Протяжність
+      { s: { r: 1, c: 8 }, e: { r: 1, c: 10 } }, // доріг з
+      { s: { r: 2, c: 8 }, e: { r: 2, c: 10 } }, // середньодобово
+      { s: { r: 3, c: 8 }, e: { r: 3, c: 10 } }  // інтенсивністю
+    ];
+    XLSX.utils.book_append_sheet(workbook, wsLocal, 'Місцеві дороги');
+    
+    // Лист 2: Протяжність доріг державного значення з коефіцієнтами
+    const stateRoadsData = [
+      ['', '', '', 'Розподіл витрат на експлуатаційне утримання (ЕУ)', '', '', '', '', '', '', '', '', 'Середньозважені коефіцієнти', '', '', '', '', '', '', '', '', 'Мінімальна потреба в фінансових ресурсах на 20XX рік, тис.грн', '', '', '', '', ''],
+      ['', '', 'Протяжність доріг державного значення (км)', '', '', '', '', 'Протяжність', 'Протяжність', 'Протяжність', 'Протяжність', 'Протяжність', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+      ['Найменування', '', '', '', '', '', '', 'доріг з', 'доріг з', 'доріг з', 'доріг з', 'доріг з', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+      ['області', 'I', 'II', 'III', 'IV', 'V', 'Разом', 'середньодобово', 'середньодобово', 'середньодобово', 'середньодобово', 'Європейські', 'Kг', 'Kу', 'Kінт', 'Kу', 'Kінт', 'Кук', 'Ков', 'Кур', 'Кор', 'I', 'II', 'III', 'IV', 'V', 'Разом'],
+      ['', '', '', '', '', '', '', 'інтенсивністю', 'інтенсивністю', 'інтенсивністю', 'інтенсивністю', 'маршрути', '', '', '', '', '', '', '', '', '', 'коефіцієнт', '', '', '', '', '', '%'],
+      ['', '', '', '', '', '', '', '15000-20000', '20001-30000', '30001-50000', '50001 і більше', 'дорожні', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
+    ];
+    
+    // Добавляем данные по регионам для государственных дорог
+    allRegions.forEach(region => {
+      const regionData = generateSampleRegionData(region);
+      const regionCoeff = regionCoefficients.find(r => r.regionalName === region);
       
-      // Устанавливаем ширину колонок
-      ws['!cols'] = [
-        { width: 40 }, // Первая колонка шире для названий
-        { width: 20 },
-        { width: 20 }
-      ];
+      const stateRoadsByCategory = [1, 2, 3, 4, 5].map(category => {
+        return regionData.roadSections
+          .filter(s => s.stateImportance && s.category === category)
+          .reduce((sum, s) => sum + s.length, 0);
+      });
+      const totalState = stateRoadsByCategory.reduce((sum, length) => sum + length, 0);
       
-      // Добавляем лист в книгу
-      XLSX.utils.book_append_sheet(workbook, ws, 'Результати розрахунку');
+      // Интенсивность движения
+      const intensity15000_20000 = regionData.roadSections
+        .filter(s => s.stateImportance && s.trafficIntensity >= 15000 && s.trafficIntensity <= 20000)
+        .reduce((sum, s) => sum + s.length, 0);
+      const intensity20001_30000 = regionData.roadSections
+        .filter(s => s.stateImportance && s.trafficIntensity >= 20001 && s.trafficIntensity <= 30000)
+        .reduce((sum, s) => sum + s.length, 0);
+      const intensity30001_50000 = regionData.roadSections
+        .filter(s => s.stateImportance && s.trafficIntensity >= 30001 && s.trafficIntensity <= 50000)
+        .reduce((sum, s) => sum + s.length, 0);
+      const intensity50001Plus = regionData.roadSections
+        .filter(s => s.stateImportance && s.trafficIntensity >= 50001)
+        .reduce((sum, s) => sum + s.length, 0);
       
-      // Генерируем файл и скачиваем
-      const fileName = `Розрахунок_ЕУ_${selectedRegion}_${new Date().toLocaleDateString('uk-UA').replace(/\./g, '_')}.xlsx`;
-      XLSX.writeFile(workbook, fileName);
+      // Европейские маршруты
+      const europeanRoutes = regionData.roadSections
+        .filter(s => s.stateImportance && s.hasEuropeanStatus)
+        .reduce((sum, s) => sum + s.length, 0);
       
-      setSaveStatus("Excel файл успішно згенеровано та завантажено");
-      setTimeout(() => setSaveStatus(""), 3000);
+      // Рассчитываем коефициенты для конкретного региона
+      const stateRoadSections = regionData.roadSections.filter(section => section.stateImportance);
+      const totalStateRoadLength = stateRoadSections.reduce((sum, section) => sum + section.length, 0);
       
-    } catch (error) {
-      console.error('Помилка при експорті:', error);
-      setSaveStatus("Помилка при експорті в Excel");
-      setTimeout(() => setSaveStatus(""), 3000);
-    }
-  };
+      const coefficients = {
+        mountainous: regionCoeff?.mountainous || 1,
+        operatingConditions: regionCoeff?.operatingConditions || 1,
+        trafficIntensity: calculateTrafficIntensityCoefficient(stateRoadSections, totalStateRoadLength),
+        europeanRoad: calculateEuropeanRoadCoefficient(stateRoadSections, totalStateRoadLength),
+        borderCrossing: calculateBorderCrossingCoefficient(stateRoadSections, totalStateRoadLength),
+        lighting: calculateLightingCoefficient(stateRoadSections, totalStateRoadLength),
+        repair: calculateRepairCoefficient(stateRoadSections, totalStateRoadLength),
+        criticalInfrastructure: calculateCriticalInfrastructureCoefficient(regionData.criticalInfrastructureCount)
+      };
+      
+      // Рассчитываем потребность в финансировании по категориям
+      const cumInflationIndex = calculateCumulativeInflationIndex(stateInflationIndexes);
+      const funding = [1, 2, 3, 4, 5].map(category => {
+        const length = stateRoadsByCategory[category - 1];
+        const rate = calculateStateRoadMaintenanceRate(category, cumInflationIndex);
+        const totalCoeff = coefficients.mountainous * coefficients.operatingConditions * 
+                          coefficients.trafficIntensity * coefficients.europeanRoad * 
+                          coefficients.borderCrossing * coefficients.lighting * 
+                          coefficients.repair * coefficients.criticalInfrastructure * 1.16;
+        return length * rate * totalCoeff;
+      });
+      const totalFunding = funding.reduce((sum, f) => sum + f, 0);
+      
+      stateRoadsData.push([
+        region,
+        (stateRoadsByCategory[0] !== undefined && stateRoadsByCategory[0] !== null ? stateRoadsByCategory[0].toString() : ''),
+        (stateRoadsByCategory[1] !== undefined && stateRoadsByCategory[1] !== null ? stateRoadsByCategory[1].toString() : ''),
+        (stateRoadsByCategory[2] !== undefined && stateRoadsByCategory[2] !== null ? stateRoadsByCategory[2].toString() : ''),
+        (stateRoadsByCategory[3] !== undefined && stateRoadsByCategory[3] !== null ? stateRoadsByCategory[3].toString() : ''),
+        (stateRoadsByCategory[4] !== undefined && stateRoadsByCategory[4] !== null ? stateRoadsByCategory[4].toString() : ''),
+        (totalState !== undefined && totalState !== null ? totalState.toString() : ''),
+        (intensity15000_20000 !== undefined && intensity15000_20000 !== null ? intensity15000_20000.toString() : ''),
+        (intensity20001_30000 !== undefined && intensity20001_30000 !== null ? intensity20001_30000.toString() : ''),
+        (intensity30001_50000 !== undefined && intensity30001_50000 !== null ? intensity30001_50000.toString() : ''),
+        (intensity50001Plus !== undefined && intensity50001Plus !== null ? intensity50001Plus.toString() : ''),
+        (europeanRoutes !== undefined && europeanRoutes !== null ? europeanRoutes.toString() : ''),
+        coefficients.mountainous.toFixed(3),
+        coefficients.operatingConditions.toFixed(3),
+        coefficients.trafficIntensity.toFixed(3),
+        '', // Kу (пустой столбец)
+        '', // Kінт (пустой столбец)
+        '', // Кук (пустой столбец)
+        coefficients.lighting.toFixed(3),
+        coefficients.repair.toFixed(3),
+        coefficients.criticalInfrastructure.toFixed(3),
+        funding[0].toFixed(2),
+        funding[1].toFixed(2),
+        funding[2].toFixed(2),
+        funding[3].toFixed(2),
+        funding[4].toFixed(2),
+        totalFunding.toFixed(2)
+      ]);
+    });
+    
+    const wsState = XLSX.utils.aoa_to_sheet(stateRoadsData);
+    wsState['!cols'] = Array(27).fill({ width: 10 });
+    wsState['!merges'] = [
+      { s: { r: 0, c: 3 }, e: { r: 0, c: 6 } }, // Розподіл витрат на ЕУ
+      { s: { r: 1, c: 2 }, e: { r: 1, c: 6 } }, // Протяжність доріг державного значення
+      { s: { r: 0, c: 12 }, e: { r: 0, c: 20 } }, // Середньозважені коефіцієнти
+      { s: { r: 0, c: 21 }, e: { r: 0, c: 26 } }, // Мінімальна потреба
+      { s: { r: 1, c: 7 }, e: { r: 1, c: 11 } }, // Протяжність доріг з
+      { s: { r: 2, c: 7 }, e: { r: 2, c: 11 } }, // доріг з
+      { s: { r: 1, c: 21 }, e: { r: 1, c: 26 } }, // фінансових ресурсах
+      { s: { r: 2, c: 21 }, e: { r: 2, c: 26 } }  // тис.грн
+    ];
+    XLSX.utils.book_append_sheet(workbook, wsState, 'Державні дороги');
+    
+    // Лист 3: Потреба в фінансуванні місцевих доріг
+    const localFundingData = [
+      ['', '', 'Розподіл витрат на експлуатаційне утримання (ЕУ) доріг місцевого значення', '', '', '', '', 'Мінімальна потреба в фінансових ресурсах на 20XX рік, тис.грн', '', '', '', '', '', ''],
+      ['', '', 'Протяжність доріг місцевого значення (км)', '', '', '', '', '', '', '', '', '', '', ''],
+      ['Найменування області', '', '', '', '', '', 'Разом', 'I', 'II', 'III', 'IV', 'V', 'Разом', '%']
+    ];
+    
+    // Добавляем данные по регионам для местных дорог с финансированием
+    allRegions.forEach(region => {
+      const regionData = generateSampleRegionData(region);
+      const regionCoeff = regionCoefficients.find(r => r.regionalName === region);
+      
+      const localRoadsByCategory = [1, 2, 3, 4, 5].map(category => {
+        return regionData.roadSections
+          .filter(s => !s.stateImportance && s.category === category)
+          .reduce((sum, s) => sum + s.length, 0);
+      });
+      const totalLocal = localRoadsByCategory.reduce((sum, length) => sum + length, 0);
+      
+      // Рассчитываем финансирование для местных дорог
+      const localRoadSections = regionData.roadSections.filter(section => !section.stateImportance);
+      const totalLocalRoadLength = localRoadSections.reduce((sum, section) => sum + section.length, 0);
+      
+      const localCoefficients = {
+        mountainous: regionCoeff?.mountainous || 1,
+        operatingConditions: regionCoeff?.operatingConditions || 1,
+        trafficIntensity: calculateTrafficIntensityCoefficient(localRoadSections, totalLocalRoadLength)
+      };
+      
+      const cumInflationIndexLocal = calculateCumulativeInflationIndex(localInflationIndexes);
+      const localFunding = [1, 2, 3, 4, 5].map(category => {
+        const length = localRoadsByCategory[category - 1];
+        const rate = calculateLocalRoadMaintenanceRate(category, cumInflationIndexLocal);
+        const totalCoeff = localCoefficients.mountainous * localCoefficients.operatingConditions * localCoefficients.trafficIntensity;
+        return length * rate * totalCoeff;
+      });
+      const totalLocalFunding = localFunding.reduce((sum, f) => sum + f, 0);
+      
+      localFundingData.push([
+        region,
+        (localRoadsByCategory[0] !== undefined && localRoadsByCategory[0] !== null ? localRoadsByCategory[0].toString() : ''),
+        (localRoadsByCategory[1] !== undefined && localRoadsByCategory[1] !== null ? localRoadsByCategory[1].toString() : ''),
+        (localRoadsByCategory[2] !== undefined && localRoadsByCategory[2] !== null ? localRoadsByCategory[2].toString() : ''),
+        (localRoadsByCategory[3] !== undefined && localRoadsByCategory[3] !== null ? localRoadsByCategory[3].toString() : ''),
+        (localRoadsByCategory[4] !== undefined && localRoadsByCategory[4] !== null ? localRoadsByCategory[4].toString() : ''),
+        (totalLocal !== undefined && totalLocal !== null ? totalLocal.toString() : ''),
+        localFunding[0].toFixed(2),
+        localFunding[1].toFixed(2),
+        localFunding[2].toFixed(2),
+        localFunding[3].toFixed(2),
+        localFunding[4].toFixed(2),
+        totalLocalFunding.toFixed(2),
+        '100' // процент
+      ]);
+    });
+    
+    const wsLocalFunding = XLSX.utils.aoa_to_sheet(localFundingData);
+    wsLocalFunding['!cols'] = Array(14).fill({ width: 12 });
+    wsLocalFunding['!merges'] = [
+      { s: { r: 0, c: 2 }, e: { r: 0, c: 6 } }, // Розподіл витрат на ЕУ
+      { s: { r: 1, c: 2 }, e: { r: 1, c: 6 } }, // Протяжність доріг
+      { s: { r: 0, c: 7 }, e: { r: 0, c: 13 } }  // Мінімальна потреба
+    ];
+    XLSX.utils.book_append_sheet(workbook, wsLocalFunding, 'Фінансування місцевих');
+    
+    // Лист 4: Сводная таблица нормативов и коэффициентов
+    const summaryData = [
+      ['СВОДКА РЕЗУЛЬТАТОВ РАСЧЕТА'],
+      [],
+      ['1. БАЗОВЫЕ НОРМАТИВЫ'],
+      ['Базовый норматив (держ., цены 2023):', stateRoadBaseRate + ' тыс. грн/км'],
+      ['Базовый норматив (местн., цены 2023):', localRoadBaseRate + ' тыс. грн/км'],
+      ['Индекс инфляции (держ.):', calculateCumulativeInflationIndex(stateInflationIndexes).toFixed(4)],
+      ['Индекс инфляции (местн.):', calculateCumulativeInflationIndex(localInflationIndexes).toFixed(4)],
+      [],
+      ['2. НОРМАТИВЫ ДЛЯ ДОРОГ ГОСУДАРСТВЕННОГО ЗНАЧЕНИЯ'],
+      ['Категория', 'Норматив (тыс. грн/км)'],
+      ['I категория', stateRoadRates.category1.toFixed(2)],
+      ['II категория', stateRoadRates.category2.toFixed(2)],
+      ['III категория', stateRoadRates.category3.toFixed(2)],
+      ['IV категория', stateRoadRates.category4.toFixed(2)],
+      ['V категория', stateRoadRates.category5.toFixed(2)],
+      [],
+      ['3. НОРМАТИВЫ ДЛЯ ДОРОГ МЕСТНОГО ЗНАЧЕНИЯ'],
+      ['Категория', 'Норматив (тыс. грн/км)'],
+      ['I категория', localRoadRates.category1.toFixed(2)],
+      ['II категория', localRoadRates.category2.toFixed(2)],
+      ['III категория', localRoadRates.category3.toFixed(2)],
+      ['IV категория', localRoadRates.category4.toFixed(2)],
+      ['V категория', localRoadRates.category5.toFixed(2)],
+      [],
+      ['4. РЕЗУЛЬТАТЫ ДЛЯ ВЫБРАННОГО РЕГИОНА: ' + selectedRegion],
+      ['Протяженность дорог государственного значения:', fundingResults.details.stateRoadLength.toFixed(2) + ' км'],
+      ['Протяженность дорог местного значения:', fundingResults.details.localRoadLength.toFixed(2) + ' км'],
+      ['Финансирование дорог государственного значения:', fundingResults.stateFunding.toFixed(2) + ' тыс. грн'],
+      ['Финансирование дорог местного значения:', fundingResults.localFunding.toFixed(2) + ' тыс. грн'],
+      ['ОБЩИЙ ОБЪЕМ ФИНАНСИРОВАНИЯ:', fundingResults.totalFunding.toFixed(2) + ' тыс. грн']
+    ];
+    
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+    wsSummary['!cols'] = [{ width: 50 }, { width: 25 }];
+    XLSX.utils.book_append_sheet(workbook, wsSummary, 'Сводка');
+    
+    // Генерируем файл и скачиваем
+    const fileName = `Розподіл_витрат_ЕУ_${new Date().toLocaleDateString('uk-UA').replace(/\./g, '_')}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+    
+    setSaveStatus("Excel файл з детальними таблицями успішно згенеровано");
+    setTimeout(() => setSaveStatus(""), 3000);
+    
+  } catch (error) {
+    console.error('Помилка при експорті:', error);
+    setSaveStatus("Помилка при експорті в Excel");
+    setTimeout(() => setSaveStatus(""), 3000);
+  }
+};
   
   // Handle save results
   const handleSaveResults = () => {

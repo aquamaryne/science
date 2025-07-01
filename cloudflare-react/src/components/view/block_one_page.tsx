@@ -6,7 +6,7 @@ import {
   calculateQ1,
   calculateQ2
 } from '../../modules/block_one';
-import { calculationResultsService } from '../../settings/resultLocalStorage';
+import { calculationResultsService } from '../../service/resultLocalStorage';
 // shadcn/ui components
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,11 +16,159 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { UploadIcon, FileIcon, XIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
+import { setBlockOneBudgetData, getBudgetStatistics } from '../../modules/block_three';
 // Расширенный интерфейс для BudgetItem с файлами
 interface ExtendedBudgetItem extends BudgetItem {
   attachedFiles?: File[];
 }
+
+const BlockThreeIntegration: React.FC<{
+  q1Results: { value: number; items: ExtendedBudgetItem[] } | null;
+  q2Results: { value: number; items: ExtendedBudgetItem[] } | null;
+  sessionId: string | null;
+}> = ({ q1Results, q2Results, sessionId }) => {
+  const [isDataSent, setIsDataSent] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  // Функция передачи данных в Блок 3
+  const sendDataToBlockThree = () => {
+    if (!q1Results || !q2Results || !sessionId) {
+      alert("Спочатку виконайте всі розрахунки!");
+      return;
+    }
+
+    // Конвертируем ExtendedBudgetItem обратно в BudgetItem
+    const convertToBasicItems = (items: ExtendedBudgetItem[]): BudgetItem[] => {
+      return items.map(({ attachedFiles, ...item }) => item);
+    };
+
+    try {
+      // Передаем данные в модуль block_three
+      setBlockOneBudgetData({
+        q1Value: q1Results.value,
+        q2Value: q2Results.value,
+        q1Items: convertToBasicItems(q1Results.items),
+        q2Items: convertToBasicItems(q2Results.items),
+        sessionId: sessionId
+      });
+
+      setIsDataSent(true);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+
+      console.log('Дані успішно передані в Блок 3');
+    } catch (error) {
+      console.error('Помилка при передачі даних в Блок 3:', error);
+      alert('Помилка при передачі даних в Блок 3');
+    }
+  };
+
+  // Проверяем статус данных в Блоке 3
+  const budgetStats = getBudgetStatistics();
+
+  return (
+    <Card className="mt-8 w-full border-blue-500 shadow-sm rounded-none">
+      <CardHeader className="bg-blue-50 border-b border-blue-500">
+        <CardTitle className="text-xl font-bold text-blue-800 flex items-center justify-between">
+          <div>Інтеграція з Блоком 3: Планування ремонтів</div>
+          <div className="text-sm font-normal">
+            {budgetStats.hasData ? (
+              <span className="text-green-600">🟢 Дані передані</span>
+            ) : (
+              <span className="text-orange-600">🟡 Очікує передачі</span>
+            )}
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-6">
+        {showSuccess && (
+          <Alert className="mb-4 border-green-500 bg-green-50">
+            <AlertDescription className="text-green-700">
+              ✅ Дані успішно передані в Блок 3 для планування ремонтів!
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <div className="space-y-4">
+          <div className="text-sm text-gray-600">
+            <strong>Дані для передачі в Блок 3:</strong>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="p-3 bg-gray-50 rounded">
+              <div className="text-lg font-bold text-gray-800">
+                {q1Results?.value.toLocaleString() || '—'} тис. грн
+              </div>
+              <div className="text-xs text-gray-600">Q₁ (Державні дороги)</div>
+            </div>
+            
+            <div className="p-3 bg-gray-50 rounded">
+              <div className="text-lg font-bold text-gray-800">
+                {q2Results?.value.toLocaleString() || '—'} тис. грн
+              </div>
+              <div className="text-xs text-gray-600">Q₂ (Місцеві дороги)</div>
+            </div>
+            
+            <div className="p-3 bg-blue-50 rounded border border-blue-200">
+              <div className="text-lg font-bold text-blue-800">
+                {(q1Results && q2Results) ? 
+                  (q1Results.value + q2Results.value).toLocaleString() : '—'} тис. грн
+              </div>
+              <div className="text-xs text-blue-600">Загальний бюджет</div>
+            </div>
+          </div>
+
+          {budgetStats.hasData && (
+            <div className="mt-4 p-3 bg-green-50 rounded border border-green-200">
+              <div className="text-sm text-green-700">
+                <strong>Статус в Блоці 3:</strong>
+              </div>
+              <div className="grid grid-cols-2 gap-4 mt-2 text-xs">
+                <div>
+                  <div>Загальний бюджет: <strong>{budgetStats.totalBudget.toLocaleString()}</strong> тис. грн</div>
+                  <div>Q₁: <strong>{budgetStats.q1Budget.toLocaleString()}</strong> тис. грн</div>
+                  <div>Q₂: <strong>{budgetStats.q2Budget.toLocaleString()}</strong> тис. грн</div>
+                </div>
+                {budgetStats.allocation && (
+                  <div>
+                    <div>Поточний ремонт: <strong>{budgetStats.allocation.currentRepair.toLocaleString()}</strong> тис. грн</div>
+                    <div>Капітальний ремонт: <strong>{budgetStats.allocation.capitalRepair.toLocaleString()}</strong> тис. грн</div>
+                    <div>Реконструкція: <strong>{budgetStats.allocation.reconstruction.toLocaleString()}</strong> тис. грн</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <div className="text-xs text-gray-500">
+            Сесія: {sessionId} | 
+            Стан: {isDataSent ? 'Передано' : 'Готово до передачі'}
+          </div>
+          
+          <Button 
+            onClick={sendDataToBlockThree}
+            disabled={!q1Results || !q2Results || !sessionId}
+            className={`w-full py-3 text-lg h-auto ${
+              isDataSent 
+                ? 'bg-green-600 hover:bg-green-700' 
+                : 'bg-blue-600 hover:bg-blue-700'
+            } text-white`}
+          >
+            {isDataSent ? (
+              <>✅ Дані передані - Перерахувати і передати знову</>
+            ) : (
+              <>📤 Передати дані в Блок 3 для планування ремонтів</>
+            )}
+          </Button>
+
+          <div className="text-xs text-gray-500 text-center">
+            💡 Після передачі даних ви зможете використовувати їх для планування ремонтних робіт у Блоці 3
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 // Модифицированные данные с переносом на новую строку
 const modifyItemsWithLineBreak = (items: BudgetItem[]): ExtendedBudgetItem[] => {
@@ -535,6 +683,11 @@ const RoadFundingApp: React.FC = () => {
         {q1Results && q2Results && (
           <Card className="mt-8 w-full border-green-500 shadow-sm rounded-none">
             <CardHeader className="bg-green-50 border-b border-green-500">
+              <BlockThreeIntegration 
+                q1Results={q1Results}
+                q2Results={q2Results}
+                sessionId={sessionId}
+              />
               <CardTitle className="text-xl font-bold text-green-800">
                 Сводка результатів Блоку 1
               </CardTitle>

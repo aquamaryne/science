@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,23 @@ import {
   AlertTriangleIcon,
   CalculatorIcon,
   RefreshCwIcon,
-  DownloadIcon
+  DownloadIcon,
+  ArrowLeftIcon,
+  DollarSignIcon
 } from "lucide-react";
 
-// Типы данных
+// ИМПОРТЫ ИНТЕГРАЦИИ С БЛОКОМ 1
+import { 
+  hasBlockOneBudgetData, 
+  getBlockOneBudgetData, 
+  getBudgetStatistics,
+  getBlockOneBudgetSources,
+  planRepairWorksWithBlockOneData,
+  generateDetailedRepairPlanReport,
+  type RoadSection,
+} from '../../modules/block_three';
+
+// Типы данных (расширенные для интеграции)
 export interface RoadSectionData {
   id: string;
   name: string;
@@ -45,9 +58,14 @@ export interface RoadSectionData {
   enpv?: number;
   eirr?: number;
   bcr?: number;
+  
+  // НОВОЕ: Интеграция с Блоком 1
+  significance?: 'state' | 'local';
+  budgetSource?: 'q1' | 'q2';
+  priority?: number;
 }
 
-// Константы
+// Константы (остаются без изменений)
 const MAX_DESIGN_INTENSITY_BY_CATEGORY = {
   1: 7000, 2: 6000, 3: 4000, 4: 2000, 5: 500
 };
@@ -69,7 +87,339 @@ const CATEGORY_NORMS = {
   maxRutDepth: { 1: 5, 2: 8, 3: 12, 4: 15, 5: 20 }
 };
 
-// Функции расчетов
+// НОВЫЙ КОМПОНЕНТ: Отображение бюджета из Блока 1
+const BlockOneBudgetDisplay: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
+  const [budgetData, setBudgetData] = useState<any>(null);
+  const [budgetStats, setBudgetStats] = useState<any>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    const checkData = () => {
+      const hasData = hasBlockOneBudgetData();
+      setIsReady(hasData);
+      
+      if (hasData) {
+        const data = getBlockOneBudgetData();
+        const stats = getBudgetStatistics();
+        setBudgetData(data);
+        setBudgetStats(stats);
+      }
+    };
+
+    checkData();
+    const interval = setInterval(checkData, 2000); // Проверяем каждые 2 секунды
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!isReady) {
+    return (
+      <Alert className="mb-6 border-yellow-500 bg-yellow-50">
+        <AlertTriangleIcon className="h-4 w-4" />
+        <AlertDescription className="text-yellow-700">
+          ⚠️ Немає даних з Блоку 1. Спочатку виконайте розрахунки бюджету в Блоці 1 та передайте дані.
+          {onBack && (
+            <Button onClick={onBack} variant="link" className="ml-2 p-0 h-auto text-yellow-700 underline">
+              Повернутися до Блоку 1
+            </Button>
+          )}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  const budgetSources = getBlockOneBudgetSources();
+
+  return (
+    <Card className="mb-6 w-full border-green-500 shadow-sm rounded-none">
+      <CardHeader className="bg-green-50 border-b border-green-500">
+        <CardTitle className="text-xl font-bold text-green-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <DollarSignIcon className="h-5 w-5" />
+            Бюджет з Блоку 1 (Сесія: {budgetData?.sessionId})
+          </div>
+          {onBack && (
+            <Button onClick={onBack} variant="outline" size="sm" className="border-green-300">
+              <ArrowLeftIcon className="h-4 w-4 mr-1" />
+              До Блоку 1
+            </Button>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="text-center p-4 bg-white border rounded">
+            <div className="text-2xl font-bold text-gray-800">
+              {budgetStats?.q1Budget.toLocaleString()}
+            </div>
+            <div className="text-sm text-gray-600">Q₁ (тис. грн)</div>
+            <div className="text-xs text-gray-500">Державні дороги</div>
+          </div>
+          
+          <div className="text-center p-4 bg-white border rounded">
+            <div className="text-2xl font-bold text-gray-800">
+              {budgetStats?.q2Budget.toLocaleString()}
+            </div>
+            <div className="text-sm text-gray-600">Q₂ (тис. грн)</div>
+            <div className="text-xs text-gray-500">Місцеві дороги</div>
+          </div>
+          
+          <div className="text-center p-4 bg-green-50 border border-green-200 rounded">
+            <div className="text-2xl font-bold text-green-800">
+              {budgetStats?.totalBudget.toLocaleString()}
+            </div>
+            <div className="text-sm text-green-600">Загальний бюджет</div>
+            <div className="text-xs text-green-500">Для ремонтів</div>
+          </div>
+          
+          <div className="text-center p-4 bg-blue-50 border border-blue-200 rounded">
+            <div className="text-lg font-bold text-blue-800">
+              {budgetData?.timestamp ? new Date(budgetData.timestamp).toLocaleDateString('uk-UA') : '—'}
+            </div>
+            <div className="text-sm text-blue-600">Дата розрахунку</div>
+            <div className="text-xs text-blue-500">Блок 1</div>
+          </div>
+        </div>
+
+        {/* Распределение бюджета */}
+        {budgetStats?.allocation && (
+          <div className="mt-6">
+            <h4 className="font-semibold text-gray-700 mb-3">Автоматичний розподіл бюджету:</h4>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="text-center p-3 bg-yellow-50 border border-yellow-200 rounded">
+                <div className="text-lg font-bold text-yellow-800">
+                  {budgetStats.allocation.currentRepair.toLocaleString()}
+                </div>
+                <div className="text-xs text-yellow-600">Поточний ремонт (30%)</div>
+              </div>
+              
+              <div className="text-center p-3 bg-orange-50 border border-orange-200 rounded">
+                <div className="text-lg font-bold text-orange-800">
+                  {budgetStats.allocation.capitalRepair.toLocaleString()}
+                </div>
+                <div className="text-xs text-orange-600">Капітальний ремонт (45%)</div>
+              </div>
+              
+              <div className="text-center p-3 bg-red-50 border border-red-200 rounded">
+                <div className="text-lg font-bold text-red-800">
+                  {budgetStats.allocation.reconstruction.toLocaleString()}
+                </div>
+                <div className="text-xs text-red-600">Реконструкція (20%)</div>
+              </div>
+              
+              <div className="text-center p-3 bg-gray-50 border border-gray-200 rounded">
+                <div className="text-lg font-bold text-gray-800">
+                  {budgetStats.allocation.reserve.toLocaleString()}
+                </div>
+                <div className="text-xs text-gray-600">Резерв (5%)</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Источники финансирования */}
+        {budgetSources && (
+          <div className="mt-6 text-xs text-gray-600">
+            <details className="cursor-pointer">
+              <summary className="font-medium">Джерела фінансування (розгорнути)</summary>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                <div>
+                  <strong>Q₁ (Державні дороги):</strong>
+                  <ul className="list-disc list-inside ml-2 space-y-1">
+                    {budgetSources.q1Sources.map(source => (
+                      <li key={source.id}>
+                        {source.id}: {source.value.toLocaleString()} тис. грн
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <strong>Q₂ (Місцеві дороги):</strong>
+                  <ul className="list-disc list-inside ml-2 space-y-1">
+                    {budgetSources.q2Sources.map(source => (
+                      <li key={source.id}>
+                        {source.id}: {source.value.toLocaleString()} тис. грн
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </details>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// НОВЫЙ КОМПОНЕНТ: Планирование с использованием бюджета Блока 1
+const BudgetBasedPlanning: React.FC<{ sections: RoadSectionData[] }> = ({ sections }) => {
+  const [planResults, setPlanResults] = useState<any>(null);
+  const [isPlanning, setIsPlanning] = useState(false);
+
+  // Конвертация RoadSectionData в RoadSection для Блока 3
+  const convertToRoadSections = (sectionData: RoadSectionData[]): RoadSection[] => {
+    return sectionData.map(section => ({
+      id: section.id,
+      name: section.name,
+      category: section.category,
+      length: section.length,
+      significance: section.significance || (section.category <= 2 ? 'state' : 'local'),
+      technicalCondition: {
+        intensityCoefficient: section.intensityCoeff || 1.0,
+        strengthCoefficient: section.strengthCoeff || 1.0,
+        evennessCoefficient: section.evennessCoeff || 1.0,
+        rutCoefficient: section.rutCoeff || 1.0,
+        frictionCoefficient: section.frictionFactorCoeff || 1.0
+      },
+      trafficIntensity: section.trafficIntensity,
+      estimatedCost: section.estimatedCost
+    }));
+  };
+
+  const runBudgetBasedPlanning = async () => {
+    if (!hasBlockOneBudgetData()) {
+      alert('Немає даних з Блоку 1!');
+      return;
+    }
+
+    if (sections.length === 0) {
+      alert('Додайте дорожні секції для планування!');
+      return;
+    }
+
+    setIsPlanning(true);
+
+    try {
+      const roadSections = convertToRoadSections(sections);
+      const results = planRepairWorksWithBlockOneData(roadSections);
+      setPlanResults(results);
+      
+      console.log('Результати планування з бюджетом Блоку 1:', results);
+    } catch (error) {
+      console.error('Помилка планування:', error);
+      if (error instanceof Error) {
+        alert('Помилка при плануванні: ' + error.message);
+      } else {
+        alert('Помилка при плануванні: ' + String(error));
+      }
+    } finally {
+      setIsPlanning(false);
+    }
+  };
+
+  const generateBudgetReport = () => {
+    if (!hasBlockOneBudgetData()) return;
+    
+    const report = generateDetailedRepairPlanReport();
+    
+    // Создаем и скачиваем файл
+    const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `budget-repair-plan-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CalculatorIcon className="h-5 w-5" />
+          Планування з урахуванням бюджету Блоку 1
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex gap-4">
+          <Button 
+            onClick={runBudgetBasedPlanning}
+            disabled={!hasBlockOneBudgetData() || sections.length === 0 || isPlanning}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            {isPlanning ? (
+              <RefreshCwIcon className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <CalculatorIcon className="h-4 w-4 mr-2" />
+            )}
+            Планувати ремонти з бюджетом
+          </Button>
+          
+          <Button 
+            onClick={generateBudgetReport}
+            disabled={!hasBlockOneBudgetData()}
+            variant="outline"
+          >
+            <DownloadIcon className="h-4 w-4 mr-2" />
+            Звіт з бюджетом
+          </Button>
+        </div>
+
+        {planResults && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded">
+                <div className="text-lg font-bold text-yellow-800">
+                  {planResults.currentRepairProjects.length}
+                </div>
+                <div className="text-sm text-yellow-600">Поточний ремонт</div>
+                <div className="text-xs text-gray-500">
+                  {planResults.budgetBreakdown.currentRepairUsed.toLocaleString()} тис. грн
+                </div>
+              </div>
+              
+              <div className="p-4 bg-orange-50 border border-orange-200 rounded">
+                <div className="text-lg font-bold text-orange-800">
+                  {planResults.capitalRepairProjects.length}
+                </div>
+                <div className="text-sm text-orange-600">Капітальний ремонт</div>
+                <div className="text-xs text-gray-500">
+                  {planResults.budgetBreakdown.capitalRepairUsed.toLocaleString()} тис. грн
+                </div>
+              </div>
+              
+              <div className="p-4 bg-red-50 border border-red-200 rounded">
+                <div className="text-lg font-bold text-red-800">
+                  {planResults.reconstructionProjects.length}
+                </div>
+                <div className="text-sm text-red-600">Реконструкція</div>
+                <div className="text-xs text-gray-500">
+                  {planResults.budgetBreakdown.reconstructionUsed.toLocaleString()} тис. грн
+                </div>
+              </div>
+              
+              <div className="p-4 bg-green-50 border border-green-200 rounded">
+                <div className="text-lg font-bold text-green-800">
+                  {planResults.budgetUtilization.toFixed(1)}%
+                </div>
+                <div className="text-sm text-green-600">Використання бюджету</div>
+                <div className="text-xs text-gray-500">
+                  Резерв: {planResults.budgetBreakdown.reserveRemaining.toLocaleString()} тис. грн
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 p-4 rounded border border-blue-200">
+              <h4 className="font-semibold text-blue-800 mb-2">Результати планування:</h4>
+              <div className="grid grid-cols-2 gap-4 text-sm text-blue-700">
+                <div>
+                  <strong>Загальна вартість:</strong> {planResults.totalCost.toLocaleString()} тис. грн
+                </div>
+                <div>
+                  <strong>Сесія Блоку 1:</strong> {planResults.blockOneBudgetInfo?.sessionId}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// Функции расчетов (остаются без изменений)
 const calculateCoefficients = (section: RoadSectionData): RoadSectionData => {
   const maxIntensity = MAX_DESIGN_INTENSITY_BY_CATEGORY[section.category as keyof typeof MAX_DESIGN_INTENSITY_BY_CATEGORY] || 500;
   const intensityCoeff = Number((maxIntensity / section.trafficIntensity).toFixed(2));
@@ -126,12 +476,13 @@ const calculateCost = (section: RoadSectionData): number => {
   return Number((costPerKm * section.length).toFixed(2));
 };
 
-// Компонент формы ввода данных
+// ОБНОВЛЕННАЯ ФОРМА с выбором значимости дороги
 const RoadSectionForm = ({ onAdd }: { onAdd: (section: RoadSectionData) => void }) => {
   const [formData, setFormData] = useState({
     name: '',
     length: 1.0,
     category: 3,
+    significance: 'local' as 'state' | 'local',
     trafficIntensity: 3000,
     strengthModulus: 300,
     roughnessProfile: 1.5,
@@ -148,6 +499,8 @@ const RoadSectionForm = ({ onAdd }: { onAdd: (section: RoadSectionData) => void 
       name: formData.name || `Ділянка ${Date.now()}`,
       length: formData.length,
       category: formData.category,
+      significance: formData.significance,
+      budgetSource: formData.significance === 'state' ? 'q1' : 'q2',
       trafficIntensity: formData.trafficIntensity,
       strengthModulus: formData.strengthModulus,
       roughnessProfile: formData.roughnessProfile,
@@ -171,6 +524,7 @@ const RoadSectionForm = ({ onAdd }: { onAdd: (section: RoadSectionData) => void 
       name: '',
       length: 1.0,
       category: 3,
+      significance: 'local',
       trafficIntensity: 3000,
       strengthModulus: 300,
       roughnessProfile: 1.5,
@@ -182,7 +536,7 @@ const RoadSectionForm = ({ onAdd }: { onAdd: (section: RoadSectionData) => void 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
           <label className="block text-sm font-medium mb-1">Найменування ділянки дороги</label>
           <Input
@@ -221,8 +575,26 @@ const RoadSectionForm = ({ onAdd }: { onAdd: (section: RoadSectionData) => void 
             </SelectContent>
           </Select>
         </div>
+
+        {/* НОВОЕ ПОЛЕ: Значимость дороги */}
+        <div>
+          <label className="block text-sm font-medium mb-1">Значення дороги (джерело бюджету)</label>
+          <Select 
+            value={formData.significance} 
+            onValueChange={(value: 'state' | 'local') => setFormData(prev => ({ ...prev, significance: value }))}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="state">🏛️ Державна (Q₁)</SelectItem>
+              <SelectItem value="local">🏘️ Місцева (Q₂)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
+      {/* Остальные поля остаются без изменений */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div>
           <label className="block text-sm font-medium mb-1">Інтенсивність руху (авт./добу)</label>
@@ -296,7 +668,7 @@ const RoadSectionForm = ({ onAdd }: { onAdd: (section: RoadSectionData) => void 
   );
 };
 
-// Экспортер в Excel точно по шаблону
+// Экспортер в Excel точно по шаблону (остается без изменений)
 const ExcelTemplateExporter = ({ sections }: { sections: RoadSectionData[] }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
@@ -628,7 +1000,7 @@ const ExcelTemplateExporter = ({ sections }: { sections: RoadSectionData[] }) =>
   );
 };
 
-// Генератор тестових даних
+// Генератор тестовых данных с обновленными данными
 const TestDataGenerator = ({ onAddTestData }: { onAddTestData: (sections: RoadSectionData[]) => void }) => {
   const generateTestData = () => {
     const testSections: RoadSectionData[] = [
@@ -637,6 +1009,8 @@ const TestDataGenerator = ({ onAddTestData }: { onAddTestData: (sections: RoadSe
         name: 'М-06 Київ-Чернігів (км 0-15)',
         length: 15.0,
         category: 1,
+        significance: 'state',
+        budgetSource: 'q1',
         trafficIntensity: 18000,
         strengthModulus: 280,
         roughnessProfile: 1.2,
@@ -649,6 +1023,8 @@ const TestDataGenerator = ({ onAddTestData }: { onAddTestData: (sections: RoadSe
         name: 'Н-31 Дніпро-Решетилівка (км 25-40)',
         length: 15.0,
         category: 2,
+        significance: 'state',
+        budgetSource: 'q1',
         trafficIntensity: 8500,
         strengthModulus: 250,
         roughnessProfile: 1.8,
@@ -661,6 +1037,8 @@ const TestDataGenerator = ({ onAddTestData }: { onAddTestData: (sections: RoadSe
         name: 'Р-25 Полтава-Кременчук (км 10-25)',
         length: 15.0,
         category: 3,
+        significance: 'local',
+        budgetSource: 'q2',
         trafficIntensity: 4500,
         strengthModulus: 320,
         roughnessProfile: 1.5,
@@ -673,6 +1051,8 @@ const TestDataGenerator = ({ onAddTestData }: { onAddTestData: (sections: RoadSe
         name: 'Т-1504 Біла Церква-Васильків',
         length: 8.5,
         category: 4,
+        significance: 'local',
+        budgetSource: 'q2',
         trafficIntensity: 1200,
         strengthModulus: 200,
         roughnessProfile: 2.5,
@@ -682,7 +1062,6 @@ const TestDataGenerator = ({ onAddTestData }: { onAddTestData: (sections: RoadSe
       }
     ];
 
-    // Обробляємо тестові секції
     const processedSections = testSections.map(section => {
       const sectionWithCoeffs = calculateCoefficients(section);
       sectionWithCoeffs.workType = determineWorkType(sectionWithCoeffs);
@@ -705,10 +1084,10 @@ const TestDataGenerator = ({ onAddTestData }: { onAddTestData: (sections: RoadSe
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-600 mb-2">
-              Додайте тестові дані різних категорій доріг для демонстрації роботи системи
+              Додайте тестові дані різних категорій доріг для демонстрації роботи системи з бюджетом Блоку 1
             </p>
             <p className="text-xs text-gray-500">
-              Буде додано 4 дорожні секції з автоматичним розрахунком згідно з ДБН В.2.3-4:2015
+              Буде додано 4 дорожні секції: 2 державні (Q₁) та 2 місцеві (Q₂)
             </p>
           </div>
           <Button onClick={generateTestData} variant="outline">
@@ -721,7 +1100,7 @@ const TestDataGenerator = ({ onAddTestData }: { onAddTestData: (sections: RoadSe
   );
 };
 
-// Аналіз відповідності нормативам
+// Аналіз відповідності нормативам (остается без изменений)
 const ComplianceAnalysis = ({ sections }: { sections: RoadSectionData[] }) => {
   if (sections.length === 0) return null;
 
@@ -742,7 +1121,15 @@ const ComplianceAnalysis = ({ sections }: { sections: RoadSectionData[] }) => {
             
             return (
               <div key={section.id} className="border rounded-lg p-4">
-                <div className="font-medium mb-2">{section.name}</div>
+                <div className="font-medium mb-2 flex items-center justify-between">
+                  <span>{section.name}</span>
+                  <Badge 
+                    variant="outline" 
+                    className={section.significance === 'state' ? 'border-blue-500 text-blue-700' : 'border-green-500 text-green-700'}
+                  >
+                    {section.significance === 'state' ? '🏛️ Державна (Q₁)' : '🏘️ Місцева (Q₂)'}
+                  </Badge>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-gray-600">Інтенсивність руху: </span>
@@ -778,8 +1165,8 @@ const ComplianceAnalysis = ({ sections }: { sections: RoadSectionData[] }) => {
   );
 };
 
-// Основний компонент додатку
-const TemplateFillerApp = () => {
+// ГЛАВНЫЙ ИНТЕГРИРОВАННЫЙ КОМПОНЕНТ
+const IntegratedTemplateFillerApp: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [sections, setSections] = useState<RoadSectionData[]>([]);
 
   const addSection = (section: RoadSectionData) => {
@@ -809,18 +1196,22 @@ const TemplateFillerApp = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Отображение бюджета из Блока 1 */}
+        <BlockOneBudgetDisplay onBack={onBack} />
+
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Заповнювач шаблону 21 ДБН В.2.3-4:2015
+            Блок 3: Планування ремонтів з урахуванням бюджету
           </h1>
           <p className="text-gray-600">
-            Автоматичне заповнення Excel-шаблонів для визначення ефективності капітальних вкладень в дорожню інфраструктуру
+            Автоматичне планування ремонтних робіт на основі розрахунків Блоку 1 згідно з ДБН В.2.3-4:2015
           </p>
         </div>
 
         <Tabs defaultValue="input" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="input">📊 Ввід даних ({sections.length})</TabsTrigger>
+            <TabsTrigger value="budget-planning">💰 Планування з бюджетом</TabsTrigger>
             <TabsTrigger value="analysis">📈 Аналіз результатів</TabsTrigger>
             <TabsTrigger value="ranking">🏆 Ранжування</TabsTrigger>
             <TabsTrigger value="export">💾 Експорт Excel</TabsTrigger>
@@ -861,6 +1252,12 @@ const TemplateFillerApp = () => {
                             <div className="font-medium">{section.name}</div>
                             <div className="text-sm text-gray-600">
                               {section.category} категорія • {section.length} км • {section.trafficIntensity} авт./добу
+                              <Badge 
+                                variant="outline" 
+                                className={`ml-2 ${section.significance === 'state' ? 'border-blue-500 text-blue-700' : 'border-green-500 text-green-700'}`}
+                              >
+                                {section.significance === 'state' ? '🏛️ Державна (Q₁)' : '🏘️ Місцева (Q₂)'}
+                              </Badge>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -927,6 +1324,70 @@ const TemplateFillerApp = () => {
             )}
           </TabsContent>
 
+          {/* НОВАЯ ВКЛАДКА: Планування з бюджетом */}
+          <TabsContent value="budget-planning" className="space-y-6">
+            <BudgetBasedPlanning sections={sections} />
+            
+            {hasBlockOneBudgetData() && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Розподіл секцій за джерелами фінансування</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-semibold text-blue-700 mb-3">
+                        🏛️ Державні дороги (фінансуються з Q₁)
+                      </h4>
+                      <div className="space-y-2">
+                        {sections.filter(s => s.significance === 'state').map(section => (
+                          <div key={section.id} className="p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+                            <div className="font-medium">{section.name}</div>
+                            <div className="text-xs text-gray-600">
+                              Категорія {section.category} • {section.length} км • {section.workType}
+                              {section.estimatedCost && section.estimatedCost > 0 && (
+                                <span className="ml-2 text-blue-600 font-medium">
+                                  {section.estimatedCost.toFixed(1)} млн грн
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {sections.filter(s => s.significance === 'state').length === 0 && (
+                          <div className="text-gray-500 text-sm italic">Немає державних доріг</div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-semibold text-green-700 mb-3">
+                        🏘️ Місцеві дороги (фінансуються з Q₂)
+                      </h4>
+                      <div className="space-y-2">
+                        {sections.filter(s => s.significance === 'local').map(section => (
+                          <div key={section.id} className="p-3 bg-green-50 border border-green-200 rounded text-sm">
+                            <div className="font-medium">{section.name}</div>
+                            <div className="text-xs text-gray-600">
+                              Категорія {section.category} • {section.length} км • {section.workType}
+                              {section.estimatedCost && section.estimatedCost > 0 && (
+                                <span className="ml-2 text-green-600 font-medium">
+                                  {section.estimatedCost.toFixed(1)} млн грн
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {sections.filter(s => s.significance === 'local').length === 0 && (
+                          <div className="text-gray-500 text-sm italic">Немає місцевих доріг</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
           {/* Вкладка: Аналіз результатів */}
           <TabsContent value="analysis" className="space-y-6">
             <Card>
@@ -943,7 +1404,7 @@ const TemplateFillerApp = () => {
                   </Alert>
                 ) : (
                   <div className="space-y-6">
-                    {/* Зведена статистика */}
+                    {/* Статистика с учетом бюджета */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {['Не потрібно', 'Поточний ремонт', 'Капітальний ремонт', 'Реконструкція'].map(type => {
                         const count = sections.filter(s => s.workType === type).length;
@@ -970,6 +1431,40 @@ const TemplateFillerApp = () => {
                       })}
                     </div>
 
+                    {/* Анализ бюджета */}
+                    {hasBlockOneBudgetData() && (
+                      <div className="bg-blue-50 p-4 rounded border border-blue-200">
+                        <h4 className="font-semibold text-blue-800 mb-3">Порівняння з бюджетом Блоку 1:</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <div className="font-medium">Загальна потреба в коштах:</div>
+                            <div className="text-lg font-bold text-blue-700">
+                              {sections.filter(s => s.workType !== 'Не потрібно')
+                                      .reduce((sum, s) => sum + (s.estimatedCost || 0), 0)
+                                      .toFixed(1)} млн грн
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-medium">Доступний бюджет:</div>
+                            <div className="text-lg font-bold text-green-700">
+                              {(getBudgetStatistics()?.totalBudget / 1000).toFixed(1)} млн грн
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-medium">Покриття потреб:</div>
+                            <div className="text-lg font-bold text-purple-700">
+                              {(() => {
+                                const totalNeed = sections.filter(s => s.workType !== 'Не потрібно')
+                                                         .reduce((sum, s) => sum + (s.estimatedCost || 0), 0);
+                                const availableBudget = (getBudgetStatistics()?.totalBudget / 1000) || 0;
+                                return totalNeed > 0 ? ((availableBudget / totalNeed) * 100).toFixed(1) : 0;
+                              })()}%
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Детальна таблиця */}
                     <div>
                       <h4 className="font-medium mb-3">Детальний аналіз секцій:</h4>
@@ -977,6 +1472,7 @@ const TemplateFillerApp = () => {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Назва дороги</TableHead>
+                            <TableHead>Тип/Джерело</TableHead>
                             <TableHead>Категорія</TableHead>
                             <TableHead>Довжина (км)</TableHead>
                             <TableHead>Вид робіт</TableHead>
@@ -997,6 +1493,14 @@ const TemplateFillerApp = () => {
                             return (
                               <TableRow key={section.id}>
                                 <TableCell className="font-medium">{section.name}</TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant="outline" 
+                                    className={section.significance === 'state' ? 'border-blue-500 text-blue-700' : 'border-green-500 text-green-700'}
+                                  >
+                                    {section.significance === 'state' ? 'Державна' : 'Місцева'}
+                                  </Badge>
+                                </TableCell>
                                 <TableCell>{section.category}</TableCell>
                                 <TableCell>{section.length}</TableCell>
                                 <TableCell>
@@ -1074,6 +1578,7 @@ const TemplateFillerApp = () => {
                         <TableRow>
                           <TableHead>Пріоритет</TableHead>
                           <TableHead>Назва дороги</TableHead>
+                          <TableHead>Тип дороги</TableHead>
                           <TableHead>Тип робіт</TableHead>
                           <TableHead>Довжина (км)</TableHead>
                           <TableHead>Вартість (млн грн)</TableHead>
@@ -1092,6 +1597,14 @@ const TemplateFillerApp = () => {
                                 <Badge variant="outline">#{index + 1}</Badge>
                               </TableCell>
                               <TableCell className="font-medium">{section.name}</TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant="outline" 
+                                  className={section.significance === 'state' ? 'border-blue-500 text-blue-700' : 'border-green-500 text-green-700'}
+                                >
+                                  {section.significance === 'state' ? 'Державна' : 'Місцева'}
+                                </Badge>
+                              </TableCell>
                               <TableCell>
                                 <Badge variant={
                                   section.workType === 'Поточний ремонт' ? 'default' :
@@ -1129,4 +1642,4 @@ const TemplateFillerApp = () => {
   );
 };
 
-export default TemplateFillerApp;
+export default IntegratedTemplateFillerApp;

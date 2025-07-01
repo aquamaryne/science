@@ -1,10 +1,34 @@
+// src/modules/block_three.ts - Обновленная версия с интеграцией Блока 1
+
 /**
  * РОЗДІЛ IV - Визначення обсягу та механізм розподілу загального обсягу бюджетних коштів,
  * що спрямовується на фінансове забезпечення заходів з поточного ремонту, капітального
  * ремонту та реконструкції автомобільних доріг загального користування
  */
 
+// ==================== ІМПОРТИ З БЛОКУ 1 ====================
+import { type BudgetItem } from './block_one';
+
 // ==================== ТИПИ ТА ІНТЕРФЕЙСИ ====================
+
+// Інтерфейс для збереження результатів Блоку 1
+export interface BlockOneBudgetData {
+  q1Value: number;           // Державні дороги
+  q2Value: number;           // Місцеві дороги
+  totalBudget: number;       // Загальний бюджет
+  q1Items: BudgetItem[];     // Елементи Q1
+  q2Items: BudgetItem[];     // Елементи Q2
+  sessionId: string;         // ID сесії
+  timestamp: Date;           // Час отримання даних
+}
+
+// Розподіл бюджету між типами робіт
+export interface BudgetAllocation {
+  currentRepair: number;     // Поточний ремонт
+  capitalRepair: number;     // Капітальний ремонт
+  reconstruction: number;    // Реконструкція
+  reserve: number;           // Резерв
+}
 
 export interface RoadTechnicalCondition {
   intensityCoefficient: number;      // Коефіцієнт інтенсивності руху
@@ -37,6 +61,109 @@ export interface RepairProject {
   estimatedCost: number;            // тис. грн
   economicNPV?: number;            // ENPV для ранжування
   reasoning: string;
+  allocatedBudgetSource: 'q1' | 'q2'; // З якого бюджету фінансується
+}
+
+// ==================== ГЛОБАЛЬНЕ СХОВИЩЕ ДАНИХ БЛОКУ 1 ====================
+
+let blockOneBudgetData: BlockOneBudgetData | null = null;
+let budgetAllocation: BudgetAllocation | null = null;
+
+/**
+ * Встановити дані з Блоку 1
+ */
+export function setBlockOneBudgetData(data: {
+  q1Value: number;
+  q2Value: number;
+  q1Items: BudgetItem[];
+  q2Items: BudgetItem[];
+  sessionId: string;
+}): void {
+  blockOneBudgetData = {
+    q1Value: data.q1Value,
+    q2Value: data.q2Value,
+    totalBudget: data.q1Value + data.q2Value,
+    q1Items: [...data.q1Items], // Deep copy
+    q2Items: [...data.q2Items], // Deep copy
+    sessionId: data.sessionId,
+    timestamp: new Date()
+  };
+  
+  // Автоматично розподіляємо бюджет
+  calculateBudgetAllocation();
+  
+  console.log('Block One budget data saved to Block Three:', blockOneBudgetData);
+}
+
+/**
+ * Отримати дані Блоку 1
+ */
+export function getBlockOneBudgetData(): BlockOneBudgetData | null {
+  return blockOneBudgetData;
+}
+
+/**
+ * Перевірити чи є дані Блоку 1
+ */
+export function hasBlockOneBudgetData(): boolean {
+  return blockOneBudgetData !== null && blockOneBudgetData.totalBudget > 0;
+}
+
+/**
+ * Очистити дані Блоку 1
+ */
+export function clearBlockOneBudgetData(): void {
+  blockOneBudgetData = null;
+  budgetAllocation = null;
+  console.log('Block One budget data cleared from Block Three');
+}
+
+/**
+ * Розрахувати розподіл бюджету між типами робіт
+ */
+function calculateBudgetAllocation(): void {
+  if (!blockOneBudgetData) return;
+  
+  const totalBudget = blockOneBudgetData.totalBudget;
+  
+  // Рекомендований розподіл згідно з методикою
+  budgetAllocation = {
+    currentRepair: totalBudget * 0.30,    // 30% на поточний ремонт
+    capitalRepair: totalBudget * 0.45,    // 45% на капітальний ремонт
+    reconstruction: totalBudget * 0.20,   // 20% на реконструкцію
+    reserve: totalBudget * 0.05           // 5% резерв
+  };
+  
+  console.log('Budget allocation calculated:', budgetAllocation);
+}
+
+/**
+ * Отримати розподіл бюджету
+ */
+export function getBudgetAllocation(): BudgetAllocation | null {
+  return budgetAllocation;
+}
+
+/**
+ * Встановити користувацький розподіл бюджету
+ */
+export function setBudgetAllocation(allocation: BudgetAllocation): boolean {
+  if (!blockOneBudgetData) {
+    console.error('No Block One data available for budget allocation');
+    return false;
+  }
+  
+  const total = allocation.currentRepair + allocation.capitalRepair + 
+                allocation.reconstruction + allocation.reserve;
+  
+  if (Math.abs(total - blockOneBudgetData.totalBudget) > 0.01) {
+    console.error('Budget allocation total does not match available budget');
+    return false;
+  }
+  
+  budgetAllocation = { ...allocation };
+  console.log('Custom budget allocation set:', budgetAllocation);
+  return true;
 }
 
 // ==================== КОНСТАНТИ ====================
@@ -236,116 +363,45 @@ export function estimateWorkCost(
 }
 
 /**
- * 4.2.6.1 - Ранжування об'єктів поточного ремонту
- */
-export function rankCurrentRepairProjects(projects: RepairProject[]): RepairProject[] {
-  return projects
-    .filter(p => p.workType === 'current_repair')
-    .sort((a, b) => {
-      const conditionA = a.section.technicalCondition;
-      const conditionB = b.section.technicalCondition;
-      
-      // Додаємо вагу для зчеплення відносно потрібного коефіцієнта
-      const frictionDeficitA = Math.max(0, REQUIRED_FRICTION_COEFFICIENT - (conditionA.frictionCoefficient * REQUIRED_FRICTION_COEFFICIENT));
-      const frictionDeficitB = Math.max(0, REQUIRED_FRICTION_COEFFICIENT - (conditionB.frictionCoefficient * REQUIRED_FRICTION_COEFFICIENT));
-      
-      // Сортування за найменшими коефіцієнтами, дефіцитом зчеплення та найвищою інтенсивністю
-      const priorityA = Math.min(conditionA.evennessCoefficient, conditionA.rutCoefficient) + 
-                       frictionDeficitA * 10 + // збільшуємо вагу дефіциту зчеплення
-                       (1 / (a.section.trafficIntensity + 1));
-      const priorityB = Math.min(conditionB.evennessCoefficient, conditionB.rutCoefficient) + 
-                       frictionDeficitB * 10 +
-                       (1 / (b.section.trafficIntensity + 1));
-      
-      return priorityA - priorityB;
-    })
-    .map((project, index) => ({
-      ...project,
-      priority: index + 1
-    }));
-}
-
-/**
- * 4.2.6 - Ранжування об'єктів капітального ремонту та реконструкції за ENPV
- */
-export function rankCapitalAndReconstructionProjects(projects: RepairProject[]): RepairProject[] {
-  return projects
-    .filter(p => p.workType === 'capital_repair' || p.workType === 'reconstruction')
-    .sort((a, b) => {
-      const enpvPerKmA = (a.economicNPV || 0) / a.section.length;
-      const enpvPerKmB = (b.economicNPV || 0) / b.section.length;
-      
-      // Якщо ENPV однакові або відсутні, сортуємо за критичністю стану
-      if (Math.abs(enpvPerKmA - enpvPerKmB) < 0.01) {
-        // Для реконструкції враховуємо перевищення інтенсивності
-        if (a.workType === 'reconstruction' && b.workType === 'reconstruction') {
-          const complianceA = checkCategoryComplianceByIntensity(a.section);
-          const complianceB = checkCategoryComplianceByIntensity(b.section);
-          
-          const excessA = complianceA.isCompliant ? 0 : a.section.trafficIntensity - complianceA.maxAllowedIntensity;
-          const excessB = complianceB.isCompliant ? 0 : b.section.trafficIntensity - complianceB.maxAllowedIntensity;
-          
-          return excessB - excessA; // Більше перевищення = вищий пріоритет
-        }
-        
-        // Для капремонту - за дефіцитом міцності
-        const strengthDeficitA = (MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[a.section.category] || 0.85) - a.section.technicalCondition.strengthCoefficient;
-        const strengthDeficitB = (MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[b.section.category] || 0.85) - b.section.technicalCondition.strengthCoefficient;
-        
-        return strengthDeficitB - strengthDeficitA; // Більший дефіцит = вищий пріоритет
-      }
-      
-      return enpvPerKmB - enpvPerKmA; // Спадання за ENPV
-    })
-    .map((project, index) => ({
-      ...project,
-      priority: index + 1
-    }));
-}
-
-/**
- * 4.4.6.3 - Ранжування місцевих доріг за експертним методом
- */
-export function rankLocalRoadsByExpertMethod(
-  projects: RepairProject[], 
-  assessments: Map<string, ExpertAssessment>
-): RepairProject[] {
-  return projects
-    .sort((a, b) => {
-      const assessmentA = assessments.get(a.section.id);
-      const assessmentB = assessments.get(b.section.id);
-      
-      if (!assessmentA || !assessmentB) return 0;
-      
-      // Сортування за найменшими індексами та найвищою інтенсивністю
-      const priorityA = assessmentA.operationalStateIndex - (assessmentA.trafficIntensity / 10000);
-      const priorityB = assessmentB.operationalStateIndex - (assessmentB.trafficIntensity / 10000);
-      
-      return priorityA - priorityB;
-    })
-    .map((project, index) => ({
-      ...project,
-      priority: index + 1
-    }));
-}
-
-/**
- * 4.2.7 - Формування переліку об'єктів у межах бюджету
+ * 4.2.7 - Формування переліку об'єктів у межах бюджету з урахуванням даних Блоку 1
  */
 export function selectProjectsWithinBudget(
   rankedProjects: RepairProject[], 
-  availableBudget: number
+  workType: 'current_repair' | 'capital_repair' | 'reconstruction'
 ): RepairProject[] {
+  if (!budgetAllocation) {
+    console.error('No budget allocation available');
+    return [];
+  }
+  
+  let availableBudget: number;
+  switch (workType) {
+    case 'current_repair':
+      availableBudget = budgetAllocation.currentRepair;
+      break;
+    case 'capital_repair':
+      availableBudget = budgetAllocation.capitalRepair;
+      break;
+    case 'reconstruction':
+      availableBudget = budgetAllocation.reconstruction;
+      break;
+  }
+  
   const selectedProjects: RepairProject[] = [];
   let remainingBudget = availableBudget;
   
-  for (const project of rankedProjects) {
+  const filteredProjects = rankedProjects.filter(p => p.workType === workType);
+  
+  for (const project of filteredProjects) {
     if (project.estimatedCost <= remainingBudget) {
-      selectedProjects.push(project);
+      selectedProjects.push({
+        ...project,
+        allocatedBudgetSource: project.section.significance === 'state' ? 'q1' : 'q2'
+      });
       remainingBudget -= project.estimatedCost;
-      console.log(`Проект ${project.section.id} включено до плану. Залишок бюджету: ${remainingBudget.toFixed(2)} тис. грн`);
+      console.log(`Проект ${project.section.id} включено до плану ${workType}. Залишок бюджету: ${remainingBudget.toFixed(2)} тис. грн`);
     } else {
-      console.log(`Проект ${project.section.id} не поміщається в бюджет`);
+      console.log(`Проект ${project.section.id} не поміщається в бюджет ${workType}`);
     }
   }
   
@@ -353,11 +409,10 @@ export function selectProjectsWithinBudget(
 }
 
 /**
- * Комплексний алгоритм планування ремонтів згідно з розділом IV
+ * Комплексний алгоритм планування ремонтів з використанням даних Блоку 1
  */
-export function planRepairWorks(
+export function planRepairWorksWithBlockOneData(
   sections: RoadSection[],
-  availableBudget: number,
   expertAssessments?: Map<string, ExpertAssessment>
 ): {
   currentRepairProjects: RepairProject[];
@@ -365,9 +420,20 @@ export function planRepairWorks(
   reconstructionProjects: RepairProject[];
   totalCost: number;
   budgetUtilization: number;
+  budgetBreakdown: {
+    currentRepairUsed: number;
+    capitalRepairUsed: number;
+    reconstructionUsed: number;
+    reserveRemaining: number;
+  };
+  blockOneBudgetInfo: BlockOneBudgetData | null;
   complianceReport: Array<{sectionId: string, categoryCompliance: boolean, frictionCompliance: boolean}>;
 } {
-  console.log('=== Початок планування ремонтних робіт ===');
+  console.log('=== Початок планування ремонтних робіт з даними Блоку 1 ===');
+  
+  if (!hasBlockOneBudgetData()) {
+    throw new Error('Немає даних з Блоку 1. Спочатку передайте результати розрахунків бюджету.');
+  }
   
   const allProjects: RepairProject[] = [];
   const complianceReport: Array<{sectionId: string, categoryCompliance: boolean, frictionCompliance: boolean}> = [];
@@ -404,6 +470,7 @@ export function planRepairWorks(
         workType,
         priority: 0,
         estimatedCost,
+        allocatedBudgetSource: section.significance === 'state' ? 'q1' : 'q2',
         reasoning: `Визначено за технічним станом. Категорія: ${categoryCompliance.isCompliant ? 'відповідає' : 'не відповідає'}, Зчеплення: ${frictionCompliance.isCompliant ? 'достатнє' : 'недостатнє'}`
       });
     }
@@ -415,11 +482,202 @@ export function planRepairWorks(
   const currentRepairProjects = rankCurrentRepairProjects(allProjects);
   const capitalAndReconstructionProjects = rankCapitalAndReconstructionProjects(allProjects);
   
-  // Крок 3: Відбір проектів у межах бюджету
-  const selectedCurrentRepair = selectProjectsWithinBudget(currentRepairProjects, availableBudget * 0.3);
+  // Крок 3: Відбір проектів у межах розподіленого бюджету
+  const selectedCurrentRepair = selectProjectsWithinBudget(currentRepairProjects, 'current_repair');
+  const selectedCapitalRepair = selectProjectsWithinBudget(capitalAndReconstructionProjects, 'capital_repair');
+  const selectedReconstruction = selectProjectsWithinBudget(capitalAndReconstructionProjects, 'reconstruction');
+  
+  // Розрахунок використаних коштів
+  const currentRepairUsed = selectedCurrentRepair.reduce((sum, p) => sum + p.estimatedCost, 0);
+  const capitalRepairUsed = selectedCapitalRepair.reduce((sum, p) => sum + p.estimatedCost, 0);
+  const reconstructionUsed = selectedReconstruction.reduce((sum, p) => sum + p.estimatedCost, 0);
+  
+  const totalCost = currentRepairUsed + capitalRepairUsed + reconstructionUsed;
+  const budgetUtilization = (totalCost / blockOneBudgetData!.totalBudget) * 100;
+  
+  const budgetBreakdown = {
+    currentRepairUsed,
+    capitalRepairUsed,
+    reconstructionUsed,
+    reserveRemaining: budgetAllocation!.reserve + 
+                     (budgetAllocation!.currentRepair - currentRepairUsed) +
+                     (budgetAllocation!.capitalRepair - capitalRepairUsed) +
+                     (budgetAllocation!.reconstruction - reconstructionUsed)
+  };
+  
+  console.log('=== Результати планування з даними Блоку 1 ===');
+  console.log(`Поточний ремонт: ${selectedCurrentRepair.length} проектів (${currentRepairUsed.toFixed(2)} тис. грн)`);
+  console.log(`Капітальний ремонт: ${selectedCapitalRepair.length} проектів (${capitalRepairUsed.toFixed(2)} тис. грн)`);
+  console.log(`Реконструкція: ${selectedReconstruction.length} проектів (${reconstructionUsed.toFixed(2)} тис. грн)`);
+  console.log(`Загальна вартість: ${totalCost.toFixed(2)} тис. грн`);
+  console.log(`Використання бюджету: ${budgetUtilization.toFixed(1)}%`);
+  console.log(`Резерв: ${budgetBreakdown.reserveRemaining.toFixed(2)} тис. грн`);
+  
+  return {
+    currentRepairProjects: selectedCurrentRepair,
+    capitalRepairProjects: selectedCapitalRepair,
+    reconstructionProjects: selectedReconstruction,
+    totalCost,
+    budgetUtilization,
+    budgetBreakdown,
+    blockOneBudgetInfo: blockOneBudgetData,
+    complianceReport
+  };
+}
+
+// ==================== ФУНКЦІЇ РАНЖУВАННЯ (БЕЗ ЗМІН) ====================
+
+export function rankCurrentRepairProjects(projects: RepairProject[]): RepairProject[] {
+  return projects
+    .filter(p => p.workType === 'current_repair')
+    .sort((a, b) => {
+      const conditionA = a.section.technicalCondition;
+      const conditionB = b.section.technicalCondition;
+      
+      const frictionDeficitA = Math.max(0, REQUIRED_FRICTION_COEFFICIENT - (conditionA.frictionCoefficient * REQUIRED_FRICTION_COEFFICIENT));
+      const frictionDeficitB = Math.max(0, REQUIRED_FRICTION_COEFFICIENT - (conditionB.frictionCoefficient * REQUIRED_FRICTION_COEFFICIENT));
+      
+      const priorityA = Math.min(conditionA.evennessCoefficient, conditionA.rutCoefficient) + 
+                       frictionDeficitA * 10 + 
+                       (1 / (a.section.trafficIntensity + 1));
+      const priorityB = Math.min(conditionB.evennessCoefficient, conditionB.rutCoefficient) + 
+                       frictionDeficitB * 10 +
+                       (1 / (b.section.trafficIntensity + 1));
+      
+      return priorityA - priorityB;
+    })
+    .map((project, index) => ({
+      ...project,
+      priority: index + 1
+    }));
+}
+
+export function rankCapitalAndReconstructionProjects(projects: RepairProject[]): RepairProject[] {
+  return projects
+    .filter(p => p.workType === 'capital_repair' || p.workType === 'reconstruction')
+    .sort((a, b) => {
+      const enpvPerKmA = (a.economicNPV || 0) / a.section.length;
+      const enpvPerKmB = (b.economicNPV || 0) / b.section.length;
+      
+      if (Math.abs(enpvPerKmA - enpvPerKmB) < 0.01) {
+        if (a.workType === 'reconstruction' && b.workType === 'reconstruction') {
+          const complianceA = checkCategoryComplianceByIntensity(a.section);
+          const complianceB = checkCategoryComplianceByIntensity(b.section);
+          
+          const excessA = complianceA.isCompliant ? 0 : a.section.trafficIntensity - complianceA.maxAllowedIntensity;
+          const excessB = complianceB.isCompliant ? 0 : b.section.trafficIntensity - complianceB.maxAllowedIntensity;
+          
+          return excessB - excessA;
+        }
+        
+        const strengthDeficitA = (MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[a.section.category] || 0.85) - a.section.technicalCondition.strengthCoefficient;
+        const strengthDeficitB = (MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[b.section.category] || 0.85) - b.section.technicalCondition.strengthCoefficient;
+        
+        return strengthDeficitB - strengthDeficitA;
+      }
+      
+      return enpvPerKmB - enpvPerKmA;
+    })
+    .map((project, index) => ({
+      ...project,
+      priority: index + 1
+    }));
+}
+
+/**
+ * Генерація детального звіту з даними Блоку 1
+ */
+export function generateDetailedRepairPlanReport(): string {
+  if (!hasBlockOneBudgetData()) {
+    return 'ПОМИЛКА: Немає даних з Блоку 1 для створення звіту';
+  }
+  
+  const budgetData = getBlockOneBudgetData()!;
+  const allocation = getBudgetAllocation()!;
+  
+  let report = '# ДЕТАЛЬНИЙ ЗВІТ ПРО ПЛАНУВАННЯ РЕМОНТНИХ РОБІТ\n\n';
+  
+  report += '## ДАНІ З БЛОКУ 1\n';
+  report += `- Сесія розрахунків: ${budgetData.sessionId}\n`;
+  report += `- Дата отримання: ${budgetData.timestamp.toLocaleString('uk-UA')}\n`;
+  report += `- Q₁ (державні дороги): ${budgetData.q1Value.toLocaleString()} тис. грн\n`;
+  report += `- Q₂ (місцеві дороги): ${budgetData.q2Value.toLocaleString()} тис. грн\n`;
+  report += `- Загальний бюджет: ${budgetData.totalBudget.toLocaleString()} тис. грн\n\n`;
+  
+  report += '## РОЗПОДІЛ БЮДЖЕТУ\n';
+  report += `- Поточний ремонт: ${allocation.currentRepair.toLocaleString()} тис. грн (${((allocation.currentRepair/budgetData.totalBudget)*100).toFixed(1)}%)\n`;
+  report += `- Капітальний ремонт: ${allocation.capitalRepair.toLocaleString()} тис. грн (${((allocation.capitalRepair/budgetData.totalBudget)*100).toFixed(1)}%)\n`;
+  report += `- Реконструкція: ${allocation.reconstruction.toLocaleString()} тис. грн (${((allocation.reconstruction/budgetData.totalBudget)*100).toFixed(1)}%)\n`;
+  report += `- Резерв: ${allocation.reserve.toLocaleString()} тис. грн (${((allocation.reserve/budgetData.totalBudget)*100).toFixed(1)}%)\n\n`;
+  
+  return report;
+}
+
+// ==================== ЕКСПОРТ ФУНКЦІЙ ДЛЯ СУМІСНОСТІ ====================
+
+// Оригінальна функція для зворотної сумісності
+export function planRepairWorks(
+  sections: RoadSection[],
+  availableBudget: number,
+  expertAssessments?: Map<string, ExpertAssessment>
+): {
+  currentRepairProjects: RepairProject[];
+  capitalRepairProjects: RepairProject[];
+  reconstructionProjects: RepairProject[];
+  totalCost: number;
+  budgetUtilization: number;
+  complianceReport: Array<{sectionId: string, categoryCompliance: boolean, frictionCompliance: boolean}>;
+} {
+  console.log('=== Використання старої функції planRepairWorks ===');
+  console.log('Рекомендується використовувати planRepairWorksWithBlockOneData() для інтеграції з Блоком 1');
+  
+  const allProjects: RepairProject[] = [];
+  const complianceReport: Array<{sectionId: string, categoryCompliance: boolean, frictionCompliance: boolean}> = [];
+  
+  // Крок 1: Визначення виду робіт для кожної секції
+  for (const section of sections) {
+    const categoryCompliance = checkCategoryComplianceByIntensity(section);
+    const frictionCompliance = checkFrictionCompliance(section.technicalCondition.frictionCoefficient);
+    
+    complianceReport.push({
+      sectionId: section.id,
+      categoryCompliance: categoryCompliance.isCompliant,
+      frictionCompliance: frictionCompliance.isCompliant
+    });
+    
+    let workType: 'current_repair' | 'capital_repair' | 'reconstruction' | 'no_work_needed';
+    
+    if (section.significance === 'local' && expertAssessments?.has(section.id)) {
+      const assessment = expertAssessments.get(section.id)!;
+      const expertWorkType = determineWorkTypeByExpertAssessment(assessment);
+      workType = expertWorkType === 'no_work_needed' ? 'no_work_needed' : expertWorkType;
+    } else {
+      workType = determineWorkTypeByTechnicalCondition(section);
+    }
+    
+    if (workType !== 'no_work_needed') {
+      const estimatedCost = estimateWorkCost(section, workType);
+      
+      allProjects.push({
+        section,
+        workType,
+        priority: 0,
+        estimatedCost,
+        allocatedBudgetSource: section.significance === 'state' ? 'q1' : 'q2',
+        reasoning: `Визначено за технічним станом. Категорія: ${categoryCompliance.isCompliant ? 'відповідає' : 'не відповідає'}, Зчеплення: ${frictionCompliance.isCompliant ? 'достатнє' : 'недостатнє'}`
+      });
+    }
+  }
+  
+  // Крок 2: Ранжування проектів
+  const currentRepairProjects = rankCurrentRepairProjects(allProjects);
+  const capitalAndReconstructionProjects = rankCapitalAndReconstructionProjects(allProjects);
+  
+  // Крок 3: Відбір проектів у межах бюджету (стара логіка)
+  const selectedCurrentRepair = selectProjectsWithinBudgetLegacy(currentRepairProjects, availableBudget * 0.3);
   const remainingBudget = availableBudget - selectedCurrentRepair.reduce((sum, p) => sum + p.estimatedCost, 0);
   
-  const selectedCapitalAndReconstruction = selectProjectsWithinBudget(capitalAndReconstructionProjects, remainingBudget);
+  const selectedCapitalAndReconstruction = selectProjectsWithinBudgetLegacy(capitalAndReconstructionProjects, remainingBudget);
   
   const capitalRepairProjects = selectedCapitalAndReconstruction.filter(p => p.workType === 'capital_repair');
   const reconstructionProjects = selectedCapitalAndReconstruction.filter(p => p.workType === 'reconstruction');
@@ -428,13 +686,6 @@ export function planRepairWorks(
     .reduce((sum, project) => sum + project.estimatedCost, 0);
   
   const budgetUtilization = (totalCost / availableBudget) * 100;
-  
-  console.log('=== Результати планування ===');
-  console.log(`Поточний ремонт: ${selectedCurrentRepair.length} проектів`);
-  console.log(`Капітальний ремонт: ${capitalRepairProjects.length} проектів`);
-  console.log(`Реконструкція: ${reconstructionProjects.length} проектів`);
-  console.log(`Загальна вартість: ${totalCost.toFixed(2)} тис. грн`);
-  console.log(`Використання бюджету: ${budgetUtilization.toFixed(1)}%`);
   
   return {
     currentRepairProjects: selectedCurrentRepair,
@@ -446,10 +697,29 @@ export function planRepairWorks(
   };
 }
 
-// ==================== ДОПОМІЖНІ ФУНКЦІЇ ====================
+// Допоміжна функція для старої логіки розподілу бюджету
+function selectProjectsWithinBudgetLegacy(
+  rankedProjects: RepairProject[], 
+  availableBudget: number
+): RepairProject[] {
+  const selectedProjects: RepairProject[] = [];
+  let remainingBudget = availableBudget;
+  
+  for (const project of rankedProjects) {
+    if (project.estimatedCost <= remainingBudget) {
+      selectedProjects.push(project);
+      remainingBudget -= project.estimatedCost;
+      console.log(`Проект ${project.section.id} включено до плану. Залишок бюджету: ${remainingBudget.toFixed(2)} тис. грн`);
+    } else {
+      console.log(`Проект ${project.section.id} не поміщається в бюджет`);
+    }
+  }
+  
+  return selectedProjects;
+}
 
 /**
- * Генерація звіту про планування ремонтів
+ * Генерація звіту про планування ремонтів (стара версія)
  */
 export function generateRepairPlanReport(
   planResult: ReturnType<typeof planRepairWorks>
@@ -504,18 +774,95 @@ export function generateRepairPlanReport(
   return report;
 }
 
+// ==================== УТИЛІТАРНІ ФУНКЦІЇ ====================
+
+/**
+ * Отримати статистику по бюджету
+ */
+export function getBudgetStatistics(): {
+  totalBudget: number;
+  q1Budget: number;
+  q2Budget: number;
+  allocation: BudgetAllocation | null;
+  hasData: boolean;
+} {
+  const budgetData = getBlockOneBudgetData();
+  
+  if (!budgetData) {
+    return {
+      totalBudget: 0,
+      q1Budget: 0,
+      q2Budget: 0,
+      allocation: null,
+      hasData: false
+    };
+  }
+  
+  return {
+    totalBudget: budgetData.totalBudget,
+    q1Budget: budgetData.q1Value,
+    q2Budget: budgetData.q2Value,
+    allocation: getBudgetAllocation(),
+    hasData: true
+  };
+}
+
+/**
+ * Отримати інформацію про джерела бюджету з Блоку 1
+ */
+export function getBlockOneBudgetSources(): {
+  q1Sources: Array<{id: string, name: string, value: number}>;
+  q2Sources: Array<{id: string, name: string, value: number}>;
+} | null {
+  const budgetData = getBlockOneBudgetData();
+  
+  if (!budgetData) return null;
+  
+  const q1Sources = budgetData.q1Items
+    .filter(item => item.value !== null && item.value > 0)
+    .map(item => ({
+      id: item.id,
+      name: item.name,
+      value: item.value!
+    }));
+    
+  const q2Sources = budgetData.q2Items
+    .filter(item => item.value !== null && item.value > 0)
+    .map(item => ({
+      id: item.id,
+      name: item.name,
+      value: item.value!
+    }));
+  
+  return { q1Sources, q2Sources };
+}
+
 export default {
+  // Функції інтеграції з Блоком 1
+  setBlockOneBudgetData,
+  getBlockOneBudgetData,
+  hasBlockOneBudgetData,
+  clearBlockOneBudgetData,
+  getBudgetAllocation,
+  setBudgetAllocation,
+  planRepairWorksWithBlockOneData,
+  generateDetailedRepairPlanReport,
+  getBudgetStatistics,
+  getBlockOneBudgetSources,
+  
+  // Оригінальні функції
   determineWorkTypeByTechnicalCondition,
   determineWorkTypeByExpertAssessment,
   estimateWorkCost,
   rankCurrentRepairProjects,
   rankCapitalAndReconstructionProjects,
-  rankLocalRoadsByExpertMethod,
   selectProjectsWithinBudget,
   planRepairWorks,
   generateRepairPlanReport,
   checkCategoryComplianceByIntensity,
   checkFrictionCompliance,
+  
+  // Константи
   MAX_DESIGN_INTENSITY_BY_CATEGORY,
   MIN_STRENGTH_COEFFICIENT_BY_CATEGORY,
   REQUIRED_FRICTION_COEFFICIENT

@@ -407,10 +407,10 @@ const ExcelTemplateExporter = ({ sections }: { sections: RoadSectionData[] }) =>
 
     if (reconstructionAndCapitalSections.length > 0) {
       for (let year = 2025; year <= 2044; year++) {
-        const discountFactor = Number((1 / Math.pow(1.05, year - 2024)).toFixed(3));
+        const discountFactor = (1 / Math.pow(1.05, year - 2024)).toFixed(3);
         ws5_data.push([
           year.toString(),
-          '', '', '', '', discountFactor.toString(), ''
+          '', '', '', '', discountFactor, ''
         ]);
       }
       ws5_data.push(['Разом', '', '', '', '', '', '']);

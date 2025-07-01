@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 
 // Типы данных
-interface RoadSectionData {
+export interface RoadSectionData {
   id: string;
   name: string;
   length: number;

@@ -144,7 +144,40 @@ const Block2MaintenanceCalculator: React.FC = () => {
     }
   });
 
+  // ДОДАНО: Стан для полів вводу коефіцієнтів
+  const [inputValues, setInputValues] = useState({
+    mountainous: '1.0000',
+    operatingConditions: '1.0000',
+    criticalInfrastructure: '1.0000',
+    stateServiceCoefficient: '1.1600',
+    stateTrafficIntensity: '1.0000',
+    europeanRoad: '1.0000',
+    borderCrossing: '1.0000',
+    lighting: '1.0000',
+    repair: '1.0000',
+    localTrafficIntensity: '1.0000'
+  });
+
   const [saveStatus, setSaveStatus] = useState<string>("");
+
+  // ДОДАНО: Функція синхронізації полів вводу з коефіцієнтами (тільки при зміні регіону)
+  const syncInputValues = (forceUpdate = false) => {
+    // Синхронізуємо тільки якщо це примусове оновлення (зміна регіону) або поля ще не заповнені
+    if (forceUpdate || inputValues.mountainous === '1.0000') {
+      setInputValues({
+        mountainous: detailedCoefficients.common.mountainous.toFixed(4),
+        operatingConditions: detailedCoefficients.common.operatingConditions.toFixed(4),
+        criticalInfrastructure: detailedCoefficients.common.criticalInfrastructure.toFixed(4),
+        stateServiceCoefficient: '1.1600',
+        stateTrafficIntensity: detailedCoefficients.state.trafficIntensity.toFixed(4),
+        europeanRoad: detailedCoefficients.state.europeanRoad.toFixed(4),
+        borderCrossing: detailedCoefficients.state.borderCrossing.toFixed(4),
+        lighting: detailedCoefficients.state.lighting.toFixed(4),
+        repair: detailedCoefficients.state.repair.toFixed(4),
+        localTrafficIntensity: detailedCoefficients.local.trafficIntensity.toFixed(4)
+      });
+    }
+  };
 
   // Initialize calculations on component mount
   useEffect(() => {
@@ -155,6 +188,12 @@ const Block2MaintenanceCalculator: React.FC = () => {
   useEffect(() => {
     calculateLocalRoadRates();
   }, [localRoadBaseRate, localInflationIndexes]);
+
+  // ДОДАНО: Синхронізація полів вводу тільки при першому завантаженні
+  useEffect(() => {
+    // Синхронізуємо тільки при першому завантаженні або якщо це зміна регіону
+    syncInputValues(true);
+  }, [selectedRegion]); // Залежність тільки від регіону
 
   // Add inflation index for state roads
   const addStateInflationIndex = () => {
@@ -252,6 +291,12 @@ const Block2MaintenanceCalculator: React.FC = () => {
     setSelectedRegion(value);
     const newRegionData = generateSampleRegionData(value);
     setRegionData(newRegionData);
+    
+    // Примусово оновлюємо поля при зміні регіону
+    setTimeout(() => {
+      calculateDetailedCoefficients();
+      syncInputValues(true);
+    }, 100);
   };
 
   // Calculate detailed coefficients
@@ -297,8 +342,44 @@ const Block2MaintenanceCalculator: React.FC = () => {
       inflationIndex: stateTotalInflationIndex // Используем индекс государственных дорог для общих расчетов
     };
 
-    // Calculate detailed coefficients first
-    calculateDetailedCoefficients();
+    // Calculate detailed coefficients first (але не синхронізуємо поля)
+    const newDetailedCoefficients = {
+      state: {
+        trafficIntensity: calculateTrafficIntensityCoefficient(
+          regionData.roadSections.filter(section => section.stateImportance),
+          regionData.roadSections.filter(section => section.stateImportance).reduce((sum, section) => sum + section.length, 0)
+        ),
+        europeanRoad: calculateEuropeanRoadCoefficient(
+          regionData.roadSections.filter(section => section.stateImportance),
+          regionData.roadSections.filter(section => section.stateImportance).reduce((sum, section) => sum + section.length, 0)
+        ),
+        borderCrossing: calculateBorderCrossingCoefficient(
+          regionData.roadSections.filter(section => section.stateImportance),
+          regionData.roadSections.filter(section => section.stateImportance).reduce((sum, section) => sum + section.length, 0)
+        ),
+        lighting: calculateLightingCoefficient(
+          regionData.roadSections.filter(section => section.stateImportance),
+          regionData.roadSections.filter(section => section.stateImportance).reduce((sum, section) => sum + section.length, 0)
+        ),
+        repair: calculateRepairCoefficient(
+          regionData.roadSections.filter(section => section.stateImportance),
+          regionData.roadSections.filter(section => section.stateImportance).reduce((sum, section) => sum + section.length, 0)
+        ),
+      },
+      local: {
+        trafficIntensity: calculateTrafficIntensityCoefficient(
+          regionData.roadSections.filter(section => !section.stateImportance),
+          regionData.roadSections.filter(section => !section.stateImportance).reduce((sum, section) => sum + section.length, 0)
+        ),
+      },
+      common: {
+        mountainous: selectedRegionCoeff.mountainous,
+        operatingConditions: selectedRegionCoeff.operatingConditions,
+        criticalInfrastructure: calculateCriticalInfrastructureCoefficient(regionData.criticalInfrastructureCount),
+      }
+    };
+
+    setDetailedCoefficients(newDetailedCoefficients);
 
     // Calculate total funding using the module functions
     const results = calculateTotalFunding(regionData, selectedRegionCoeff, priceIndexes);
@@ -998,7 +1079,7 @@ const handleExport = () => {
           </Card>
         </TabsContent>
         
-       {/* Stage 2.3-2.8: Funding Calculation */}
+        {/* Stage 2.3-2.8: Funding Calculation */}
         <TabsContent value="step3">
           <Card>
             <CardHeader>
@@ -1045,7 +1126,6 @@ const handleExport = () => {
                 <div className="grid md:grid-cols-2 gap-8">
                   <div>
                     <h3 className="text-lg font-bold mb-4">Детальний розрахунок коефіцієнтів</h3>
-                    
                     <div className="mb-6">
                       <h4 className="font-semibold mb-2">Загальні коефіцієнти:</h4>
                       <Table>
@@ -1062,7 +1142,25 @@ const handleExport = () => {
                               <Input
                                 type="number"
                                 step="0.0001"
-                                defaultValue={detailedCoefficients.common.mountainous.toFixed(4)}
+                                value={inputValues.mountainous}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  // Дозволяємо тільки цифри, крапку та знак мінус
+                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+                                    setInputValues(prev => ({
+                                      ...prev,
+                                      mountainous: value
+                                    }));
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const newValue = parseFloat(e.target.value) || 1;
+                                  setDetailedCoefficients(prev => ({
+                                    ...prev,
+                                    common: { ...prev.common, mountainous: newValue }
+                                  }));
+                                  setTimeout(() => calculateFunding(), 300);
+                                }}
                                 className="w-20 text-right"
                               />
                             </TableCell>
@@ -1073,7 +1171,24 @@ const handleExport = () => {
                               <Input
                                 type="number"
                                 step="0.0001"
-                                defaultValue={detailedCoefficients.common.operatingConditions.toFixed(4)}
+                                value={inputValues.operatingConditions}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+                                    setInputValues(prev => ({
+                                      ...prev,
+                                      operatingConditions: value
+                                    }));
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const newValue = parseFloat(e.target.value) || 1;
+                                  setDetailedCoefficients(prev => ({
+                                    ...prev,
+                                    common: { ...prev.common, operatingConditions: newValue }
+                                  }));
+                                  setTimeout(() => calculateFunding(), 300);
+                                }}
                                 className="w-20 text-right"
                               />
                             </TableCell>
@@ -1084,7 +1199,24 @@ const handleExport = () => {
                               <Input
                                 type="number"
                                 step="0.0001"
-                                defaultValue={detailedCoefficients.common.criticalInfrastructure.toFixed(4)}
+                                value={inputValues.criticalInfrastructure}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+                                    setInputValues(prev => ({
+                                      ...prev,
+                                      criticalInfrastructure: value
+                                    }));
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const newValue = parseFloat(e.target.value) || 1;
+                                  setDetailedCoefficients(prev => ({
+                                    ...prev,
+                                    common: { ...prev.common, criticalInfrastructure: newValue }
+                                  }));
+                                  setTimeout(() => calculateFunding(), 300);
+                                }}
                                 className="w-20 text-right"
                               />
                             </TableCell>
@@ -1108,8 +1240,24 @@ const handleExport = () => {
                             <TableCell className="text-right">
                               <Input
                                 type="number"
-                                disabled
-                                className="w-20 text-right bg-gray-100"
+                                step="0.0001"
+                                value={inputValues.stateServiceCoefficient}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setInputValues(prev => ({
+                                    ...prev,
+                                    stateServiceCoefficient: value
+                                  }));
+                                }}
+                                onBlur={(e) => {
+                                  const newValue = parseFloat(e.target.value) || 1.16;
+                                  setInputValues(prev => ({
+                                    ...prev,
+                                    stateServiceCoefficient: newValue.toFixed(4)
+                                  }));
+                                  setTimeout(() => calculateFunding(), 300);
+                                }}
+                                className="w-20 text-right"
                               />
                             </TableCell>
                           </TableRow>
@@ -1118,7 +1266,25 @@ const handleExport = () => {
                             <TableCell className="text-right">
                               <Input
                                 type="number"
-                                defaultValue={detailedCoefficients.state.trafficIntensity.toFixed(4)}
+                                step="0.0001"
+                                value={inputValues.stateTrafficIntensity}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+                                    setInputValues(prev => ({
+                                      ...prev,
+                                      stateTrafficIntensity: value
+                                    }));
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const newValue = parseFloat(e.target.value) || 1;
+                                  setDetailedCoefficients(prev => ({
+                                    ...prev,
+                                    state: { ...prev.state, trafficIntensity: newValue }
+                                  }));
+                                  setTimeout(() => calculateFunding(), 300);
+                                }}
                                 className="w-20 text-right"
                               />
                             </TableCell>
@@ -1128,7 +1294,25 @@ const handleExport = () => {
                             <TableCell className="text-right">
                               <Input
                                 type="number"
-                                defaultValue={detailedCoefficients.state.europeanRoad.toFixed(4)}
+                                step="0.0001"
+                                value={inputValues.europeanRoad}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+                                    setInputValues(prev => ({
+                                      ...prev,
+                                      europeanRoad: value
+                                    }));
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const newValue = parseFloat(e.target.value) || 1;
+                                  setDetailedCoefficients(prev => ({
+                                    ...prev,
+                                    state: { ...prev.state, europeanRoad: newValue }
+                                  }));
+                                  setTimeout(() => calculateFunding(), 300);
+                                }}
                                 className="w-20 text-right"
                               />
                             </TableCell>
@@ -1138,7 +1322,25 @@ const handleExport = () => {
                             <TableCell className="text-right">
                               <Input
                                 type="number"
-                                defaultValue={detailedCoefficients.state.borderCrossing.toFixed(4)}
+                                step="0.0001"
+                                value={inputValues.borderCrossing}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+                                    setInputValues(prev => ({
+                                      ...prev,
+                                      borderCrossing: value
+                                    }));
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const newValue = parseFloat(e.target.value) || 1;
+                                  setDetailedCoefficients(prev => ({
+                                    ...prev,
+                                    state: { ...prev.state, borderCrossing: newValue }
+                                  }));
+                                  setTimeout(() => calculateFunding(), 300);
+                                }}
                                 className="w-20 text-right"
                               />
                             </TableCell>
@@ -1148,7 +1350,25 @@ const handleExport = () => {
                             <TableCell className="text-right">
                               <Input
                                 type="number"
-                                defaultValue={detailedCoefficients.state.lighting.toFixed(4)}
+                                step="0.0001"
+                                value={inputValues.lighting}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+                                    setInputValues(prev => ({
+                                      ...prev,
+                                      lighting: value
+                                    }));
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const newValue = parseFloat(e.target.value) || 1;
+                                  setDetailedCoefficients(prev => ({
+                                    ...prev,
+                                    state: { ...prev.state, lighting: newValue }
+                                  }));
+                                  setTimeout(() => calculateFunding(), 300);
+                                }}
                                 className="w-20 text-right"
                               />
                             </TableCell>
@@ -1158,7 +1378,25 @@ const handleExport = () => {
                             <TableCell className="text-right">
                               <Input
                                 type="number"
-                                defaultValue={detailedCoefficients.state.repair.toFixed(4)}
+                                step="0.0001"
+                                value={inputValues.repair}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+                                    setInputValues(prev => ({
+                                      ...prev,
+                                      repair: value
+                                    }));
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const newValue = parseFloat(e.target.value) || 1;
+                                  setDetailedCoefficients(prev => ({
+                                    ...prev,
+                                    state: { ...prev.state, repair: newValue }
+                                  }));
+                                  setTimeout(() => calculateFunding(), 300);
+                                }}
                                 className="w-20 text-right"
                               />
                             </TableCell>
@@ -1182,13 +1420,45 @@ const handleExport = () => {
                             <TableCell className="text-right">
                               <Input
                                 type="number"
-                                defaultValue={detailedCoefficients.local.trafficIntensity.toFixed(4)}
+                                step="0.0001"
+                                value={inputValues.localTrafficIntensity}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+                                    setInputValues(prev => ({
+                                      ...prev,
+                                      localTrafficIntensity: value
+                                    }));
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const newValue = parseFloat(e.target.value) || 1;
+                                  setDetailedCoefficients(prev => ({
+                                    ...prev,
+                                    local: { ...prev.local, trafficIntensity: newValue }
+                                  }));
+                                  setTimeout(() => calculateFunding(), 300);
+                                }}
                                 className="w-20 text-right"
                               />
                             </TableCell>
                           </TableRow>
                         </TableBody>
                       </Table>
+                    </div>
+                    
+                    <div className="mt-4">
+                      <Button 
+                        onClick={() => {
+                          calculateFunding();
+                          setSaveStatus("Перерахунок з новими коефіцієнтами виконано!");
+                          setTimeout(() => setSaveStatus(""), 3000);
+                        }}
+                        className="w-full bg-orange-600 hover:bg-orange-700"
+                      >
+                        <Calculator className="h-4 w-4 mr-2" />
+                        Перерахувати з новими коефіцієнтами
+                      </Button>
                     </div>
                   </div>
                   
@@ -1212,7 +1482,7 @@ const handleExport = () => {
                           <div>
                             <p className="text-sm text-gray-600">Базове фінансування (без коефіцієнтів):</p>
                             <p className="text-sm text-blue-600">
-                              Держ.: {(fundingResults.stateFunding / (detailedCoefficients.common.mountainous * detailedCoefficients.common.operatingConditions * detailedCoefficients.state.trafficIntensity * detailedCoefficients.state.europeanRoad * detailedCoefficients.state.borderCrossing * detailedCoefficients.state.lighting * detailedCoefficients.state.repair * detailedCoefficients.common.criticalInfrastructure * 1.16)).toFixed(2)} тис. грн
+                              Держ.: {(fundingResults.stateFunding / (detailedCoefficients.common.mountainous * detailedCoefficients.common.operatingConditions * detailedCoefficients.state.trafficIntensity * detailedCoefficients.state.europeanRoad * detailedCoefficients.state.borderCrossing * detailedCoefficients.state.lighting * detailedCoefficients.state.repair * detailedCoefficients.common.criticalInfrastructure * parseFloat(inputValues.stateServiceCoefficient))).toFixed(2)} тис. грн
                             </p>
                             <p className="text-sm text-blue-600">
                               Місц.: {(fundingResults.localFunding / (detailedCoefficients.common.mountainous * detailedCoefficients.common.operatingConditions * detailedCoefficients.local.trafficIntensity)).toFixed(2)} тис. грн

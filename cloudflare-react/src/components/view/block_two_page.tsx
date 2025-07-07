@@ -998,7 +998,7 @@ const handleExport = () => {
           </Card>
         </TabsContent>
         
-        {/* Stage 2.3-2.8: Funding Calculation */}
+       {/* Stage 2.3-2.8: Funding Calculation */}
         <TabsContent value="step3">
           <Card>
             <CardHeader>
@@ -1058,15 +1058,36 @@ const handleExport = () => {
                         <TableBody>
                           <TableRow>
                             <TableCell>K<sub>г</sub> (гірська місцевість)</TableCell>
-                            <TableCell className="text-right">{detailedCoefficients.common.mountainous.toFixed(4)}</TableCell>
+                            <TableCell className="text-right">
+                              <Input
+                                type="number"
+                                step="0.0001"
+                                defaultValue={detailedCoefficients.common.mountainous.toFixed(4)}
+                                className="w-20 text-right"
+                              />
+                            </TableCell>
                           </TableRow>
                           <TableRow>
                             <TableCell>K<sub>уе</sub> (умови експлуатації)</TableCell>
-                            <TableCell className="text-right">{detailedCoefficients.common.operatingConditions.toFixed(4)}</TableCell>
+                            <TableCell className="text-right">
+                              <Input
+                                type="number"
+                                step="0.0001"
+                                defaultValue={detailedCoefficients.common.operatingConditions.toFixed(4)}
+                                className="w-20 text-right"
+                              />
+                            </TableCell>
                           </TableRow>
                           <TableRow>
                             <TableCell>K<sub>кр.і</sub> (критич. інфраструктура)</TableCell>
-                            <TableCell className="text-right">{detailedCoefficients.common.criticalInfrastructure.toFixed(4)}</TableCell>
+                            <TableCell className="text-right">
+                              <Input
+                                type="number"
+                                step="0.0001"
+                                defaultValue={detailedCoefficients.common.criticalInfrastructure.toFixed(4)}
+                                className="w-20 text-right"
+                              />
+                            </TableCell>
                           </TableRow>
                         </TableBody>
                       </Table>
@@ -1084,27 +1105,63 @@ const handleExport = () => {
                         <TableBody>
                           <TableRow>
                             <TableCell>K<sub>д</sub> (обслуговування доріг)</TableCell>
-                            <TableCell className="text-right">1.1600</TableCell>
+                            <TableCell className="text-right">
+                              <Input
+                                type="number"
+                                disabled
+                                className="w-20 text-right bg-gray-100"
+                              />
+                            </TableCell>
                           </TableRow>
                           <TableRow>
                             <TableCell>K<sub>інт.д</sub> (інтенсивність)</TableCell>
-                            <TableCell className="text-right">{detailedCoefficients.state.trafficIntensity.toFixed(4)}</TableCell>
+                            <TableCell className="text-right">
+                              <Input
+                                type="number"
+                                defaultValue={detailedCoefficients.state.trafficIntensity.toFixed(4)}
+                                className="w-20 text-right"
+                              />
+                            </TableCell>
                           </TableRow>
                           <TableRow>
                             <TableCell>K<sub>е.д</sub> (дороги з індексом Е)</TableCell>
-                            <TableCell className="text-right">{detailedCoefficients.state.europeanRoad.toFixed(4)}</TableCell>
+                            <TableCell className="text-right">
+                              <Input
+                                type="number"
+                                defaultValue={detailedCoefficients.state.europeanRoad.toFixed(4)}
+                                className="w-20 text-right"
+                              />
+                            </TableCell>
                           </TableRow>
                           <TableRow>
                             <TableCell>K<sub>мпп.д</sub> (пункти пропуску)</TableCell>
-                            <TableCell className="text-right">{detailedCoefficients.state.borderCrossing.toFixed(4)}</TableCell>
+                            <TableCell className="text-right">
+                              <Input
+                                type="number"
+                                defaultValue={detailedCoefficients.state.borderCrossing.toFixed(4)}
+                                className="w-20 text-right"
+                              />
+                            </TableCell>
                           </TableRow>
                           <TableRow>
                             <TableCell>K<sub>осв</sub> (освітлення)</TableCell>
-                            <TableCell className="text-right">{detailedCoefficients.state.lighting.toFixed(4)}</TableCell>
+                            <TableCell className="text-right">
+                              <Input
+                                type="number"
+                                defaultValue={detailedCoefficients.state.lighting.toFixed(4)}
+                                className="w-20 text-right"
+                              />
+                            </TableCell>
                           </TableRow>
                           <TableRow>
                             <TableCell>K<sub>рем</sub> (нещодавній ремонт)</TableCell>
-                            <TableCell className="text-right">{detailedCoefficients.state.repair.toFixed(4)}</TableCell>
+                            <TableCell className="text-right">
+                              <Input
+                                type="number"
+                                defaultValue={detailedCoefficients.state.repair.toFixed(4)}
+                                className="w-20 text-right"
+                              />
+                            </TableCell>
                           </TableRow>
                         </TableBody>
                       </Table>
@@ -1122,7 +1179,13 @@ const handleExport = () => {
                         <TableBody>
                           <TableRow>
                             <TableCell>K<sub>інт.м</sub> (інтенсивність)</TableCell>
-                            <TableCell className="text-right">{detailedCoefficients.local.trafficIntensity.toFixed(4)}</TableCell>
+                            <TableCell className="text-right">
+                              <Input
+                                type="number"
+                                defaultValue={detailedCoefficients.local.trafficIntensity.toFixed(4)}
+                                className="w-20 text-right"
+                              />
+                            </TableCell>
                           </TableRow>
                         </TableBody>
                       </Table>

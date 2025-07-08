@@ -364,7 +364,7 @@ const StateRoadFundingBlock = ({
     <Card className="mb-8 w-full border-black shadow-sm rounded-none">
       <CardHeader className="bg-white border-b border-black">
         <CardTitle className="text-xl font-bold text-gray-800">
-          Етап 1.1 Блоку 1 Визначення загального обсягу бюджетних коштів Q<sub>1</sub>, що спрямовується на фінансове забезпечення заходів з розвитку та утримання автомобільних доріг загального користування державного значення (п.2.1.1 Методики)
+          Визначення обсягу бюджетного фінансування розвитку та утримання автомобільних доріг державного значення        
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
@@ -515,7 +515,7 @@ const LocalRoadFundingBlock = ({
     <Card className="w-full border-black shadow-sm rounded-none">
       <CardHeader className="bg-white border-b border-black">
         <CardTitle className="text-xl font-bold text-gray-900">
-          Етап 1.2 Блоку 1 Визначення загального обсягу бюджетних коштів Q<sub>2</sub>, що спрямовується на фінансове забезпечення заходів з розвитку та утримання автомобільних доріг загального користування місцевого значення (п.2.1.2 Методики)
+          Визначення обсягу бюджетного фінансування розвитку та утримання автомобільних доріг місцевого значенняRetryM        
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
@@ -652,7 +652,7 @@ const RoadFundingApp: React.FC = () => {
         <Card className="mb-8 w-full border-black shadow-sm rounded-none">
           <CardHeader>
             <CardTitle className="text-3xl font-bold text-gray-800">
-              Блок 1: Визначення загального обсягу бюджетних коштів, що спрямовується на фінансове забезпечення заходів з розвитку та утримання автомобільних доріг загального користування державного та місцевого значення
+              Визначення загального обсягу бюджетного фінансування розвитку та утримання автомобільних доріг державного та місцевого значення            
             </CardTitle>
             <div className="text-lg text-gray-600 mt-2">
               (Розділ ІІ Методики)

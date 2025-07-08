@@ -7,6 +7,7 @@ import {
   calculateQ2
 } from '../../modules/block_one';
 import { calculationResultsService } from '../../service/resultLocalStorage';
+// shadcn/ui components
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -363,22 +364,20 @@ const StateRoadFundingBlock = ({
     <Card className="mb-8 w-full border-black shadow-sm rounded-none">
       <CardHeader className="bg-white border-b border-black">
         <CardTitle className="text-xl font-bold text-gray-800">
-          Визначення обсягу бюджетного фінансування розвитку та утримання автомобільних доріг державного значення        
+          Етап 1.1 Блоку 1 Визначення загального обсягу бюджетних коштів Q<sub>1</sub>, що спрямовується на фінансове забезпечення заходів з розвитку та утримання автомобільних доріг загального користування державного значення (п.2.1.1 Методики)
         </CardTitle>
       </CardHeader>
-      
       <CardContent className="p-6">
         <div className="w-full overflow-x-auto">
           <Table className="w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16 bg-white">Показник</TableHead>
+                <TableHead className="w-2/5 bg-white">*Назва показника нехай підсвічується при наведені на сам показник</TableHead>
                 <TableHead className="w-16 bg-white">Показник</TableHead>
                 <TableHead className="w-32 bg-white">Обсяг, тис.грн.</TableHead>
                 <TableHead className="w-1/4 bg-white">Нормативний документ / Файли</TableHead>
               </TableRow>
             </TableHeader>
-            
             <TableBody>
               {stateRoadBudget.map((item) => (
                 <TableRow key={item.id} className="hover:bg-gray-50">
@@ -387,9 +386,7 @@ const StateRoadFundingBlock = ({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div className="flex items-start">
-                            <div style={{ whiteSpace: 'pre-line' }}>
-                              {item.name}
-                            </div>
+                            <div style={{ whiteSpace: 'pre-line' }}>{item.name}</div>
                             <InfoCircledIcon className="ml-2 h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
                           </div>
                         </TooltipTrigger>
@@ -399,11 +396,7 @@ const StateRoadFundingBlock = ({
                       </Tooltip>
                     </TooltipProvider>
                   </TableCell>
-                  
-                  <TableCell className="text-center font-medium py-3">
-                    {item.id}
-                  </TableCell>
-                  
+                  <TableCell className="text-center font-medium py-3">{item.id}</TableCell>
                   <TableCell>
                     <Input 
                       type="number" 
@@ -413,7 +406,6 @@ const StateRoadFundingBlock = ({
                       className="w-full border-black rounded-none"
                     />
                   </TableCell>
-                  
                   <TableCell className="space-y-2">
                     <Input 
                       value={item.normativeDocument || ""}
@@ -441,19 +433,15 @@ const StateRoadFundingBlock = ({
 
         <Button 
           onClick={handleCalculate} 
-          className="mt-2 w-36 bg-black text-white py-3 text-xl h-auto rounded-none hover:bg-gray-800 transition-colors"
+          className="mt-2 w-36 bg-black text-white py-3 text-xl h-auto rounded-none"
         >
           Розрахувати
         </Button>
 
         {q1Result !== null && (
           <div className="mt-4 p-4 bg-white rounded-none w-full border border-green-700">
-            <div className="font-bold text-xl text-center text-gray-800">
-              РЕЗУЛЬТАТ!
-            </div>
-            <div className="text-lg mt-2 text-center text-gray-800">
-              Q<sub>1</sub> = {q1Result.toLocaleString()} тис. грн
-            </div>
+            <div className="font-bold text-xl text-center text-gray-800">РЕЗУЛЬТАТ!</div>
+            <div className="text-lg mt-2 text-center text-gray-800">Q<sub>1</sub> = {q1Result.toLocaleString()} тис. грн</div>
           </div>
         )}
       </CardContent>
@@ -527,22 +515,20 @@ const LocalRoadFundingBlock = ({
     <Card className="w-full border-black shadow-sm rounded-none">
       <CardHeader className="bg-white border-b border-black">
         <CardTitle className="text-xl font-bold text-gray-900">
-          Визначення обсягу бюджетного фінансування розвитку та утримання автомобільних доріг місцевого значення        
+          Етап 1.2 Блоку 1 Визначення загального обсягу бюджетних коштів Q<sub>2</sub>, що спрямовується на фінансове забезпечення заходів з розвитку та утримання автомобільних доріг загального користування місцевого значення (п.2.1.2 Методики)
         </CardTitle>
       </CardHeader>
-      
       <CardContent className="p-6">
         <div className="w-full overflow-x-auto">
           <Table className="w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16 bg-white">Показник</TableHead>
+                <TableHead className="w-2/5 bg-white">*Назва показника нехай підсвічується при наведені на сам показник</TableHead>
                 <TableHead className="w-16 bg-white">Показник</TableHead>
                 <TableHead className="w-32 bg-white">Обсяг, тис.грн.</TableHead>
                 <TableHead className="w-1/4 bg-white">Нормативний документ / Файли</TableHead>
               </TableRow>
             </TableHeader>
-            
             <TableBody>
               {localRoadBudget.map((item) => (
                 <TableRow key={item.id} className="hover:bg-gray-50">
@@ -551,9 +537,7 @@ const LocalRoadFundingBlock = ({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div className="flex items-start">
-                            <div style={{ whiteSpace: 'pre-line' }}>
-                              {item.name}
-                            </div>
+                            <div style={{ whiteSpace: 'pre-line' }}>{item.name}</div>
                             <InfoCircledIcon className="ml-2 h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
                           </div>
                         </TooltipTrigger>
@@ -563,11 +547,7 @@ const LocalRoadFundingBlock = ({
                       </Tooltip>
                     </TooltipProvider>
                   </TableCell>
-                  
-                  <TableCell className="text-center font-medium py-3">
-                    {item.id}
-                  </TableCell>
-                  
+                  <TableCell className="text-center font-medium py-3">{item.id}</TableCell>
                   <TableCell>
                     <Input 
                       type="number" 
@@ -577,7 +557,6 @@ const LocalRoadFundingBlock = ({
                       className="w-full border-black rounded-none"
                     />
                   </TableCell>
-                  
                   <TableCell className="space-y-2">
                     <Input 
                       value={item.normativeDocument || ""}
@@ -605,19 +584,15 @@ const LocalRoadFundingBlock = ({
 
         <Button 
           onClick={handleCalculate} 
-          className="mt-4 w-36 bg-black text-white py-3 text-xl h-auto rounded-none hover:bg-gray-800 transition-colors"
+          className="mt-4 w-36 bg-black text-white py-3 text-xl h-auto rounded-none"
         >
           Розрахувати
         </Button>
 
         {q2Result !== null && (
           <div className="mt-4 p-4 bg-white rounded-none w-full border border-green-700">
-            <div className="font-bold text-xl text-center text-gray-800">
-              РЕЗУЛЬТАТ!
-            </div>
-            <div className="text-lg mt-2 text-center text-gray-800">
-              Q<sub>2</sub> = {q2Result.toLocaleString()} тис. грн
-            </div>
+            <div className="font-bold text-xl text-center text-gray-800">РЕЗУЛЬТАТ!</div>
+            <div className="text-lg mt-2 text-center text-gray-800">Q<sub>2</sub> = {q2Result.toLocaleString()} тис. грн</div>
           </div>
         )}
       </CardContent>
@@ -677,8 +652,11 @@ const RoadFundingApp: React.FC = () => {
         <Card className="mb-8 w-full border-black shadow-sm rounded-none">
           <CardHeader>
             <CardTitle className="text-3xl font-bold text-gray-800">
-              Визначення загального обсягу бюджетного фінансування розвитку та утримання автомобільних доріг державного та місцевого значення            
+              Блок 1: Визначення загального обсягу бюджетних коштів, що спрямовується на фінансове забезпечення заходів з розвитку та утримання автомобільних доріг загального користування державного та місцевого значення
             </CardTitle>
+            <div className="text-lg text-gray-600 mt-2">
+              (Розділ ІІ Методики)
+            </div>
             {sessionId && (
               <div className="text-sm text-gray-500 mt-2">
                 Сесія розрахунків: {sessionId}
@@ -701,24 +679,19 @@ const RoadFundingApp: React.FC = () => {
         {/* Блок 1.2: Дороги местного значения */}
         <LocalRoadFundingBlock onResultsChange={handleQ2Results} />
 
-        {/* Интеграция с блоком 3 - вынесено из CardHeader */}
-        {q1Results && q2Results && (
-          <BlockThreeIntegration 
-            q1Results={q1Results}
-            q2Results={q2Results}
-            sessionId={sessionId}
-          />
-        )}
-
         {/* Сводка и сохранение результатов */}
         {q1Results && q2Results && (
           <Card className="mt-8 w-full border-green-500 shadow-sm rounded-none">
             <CardHeader className="bg-green-50 border-b border-green-500">
+              <BlockThreeIntegration 
+                q1Results={q1Results}
+                q2Results={q2Results}
+                sessionId={sessionId}
+              />
               <CardTitle className="text-xl font-bold text-green-800">
                 Сводка результатів Блоку 1
               </CardTitle>
             </CardHeader>
-            
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="text-center">
@@ -728,7 +701,6 @@ const RoadFundingApp: React.FC = () => {
                   <div className="text-sm text-gray-600">Q₁ (тис. грн)</div>
                   <div className="text-xs text-gray-500">Державні дороги</div>
                 </div>
-                
                 <div className="text-center">
                   <div className="text-3xl font-bold text-gray-800">
                     {q2Results.value.toLocaleString()}
@@ -736,7 +708,6 @@ const RoadFundingApp: React.FC = () => {
                   <div className="text-sm text-gray-600">Q₂ (тис. грн)</div>
                   <div className="text-xs text-gray-500">Місцеві дороги</div>
                 </div>
-                
                 <div className="text-center">
                   <div className="text-3xl font-bold text-green-700">
                     {(q1Results.value + q2Results.value).toLocaleString()}
@@ -748,7 +719,7 @@ const RoadFundingApp: React.FC = () => {
               
               <Button 
                 onClick={saveResults}
-                className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white py-3 text-lg h-auto transition-colors"
+                className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white py-3 text-lg h-auto"
               >
                 💾 Зберегти результати в сесію розрахунків
               </Button>

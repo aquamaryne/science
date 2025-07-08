@@ -10,7 +10,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-    { to: "/block_one_page", label: "Блок один" },
+    { to: "/block_one_page", label: "Розрахунок бюджетного фінансування доріг" },
     { to: "/block_two_page", label: "Блок два" },
     { to: "/block_three_page", label: "Блок три" },
 ]

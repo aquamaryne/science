@@ -373,6 +373,7 @@ const StateRoadFundingBlock = ({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-16 bg-white">Показник</TableHead>
+                <TableHead className="w-16 bg-white">Показник</TableHead>
                 <TableHead className="w-32 bg-white">Обсяг, тис.грн.</TableHead>
                 <TableHead className="w-1/4 bg-white">Нормативний документ / Файли</TableHead>
               </TableRow>
@@ -535,6 +536,7 @@ const LocalRoadFundingBlock = ({
           <Table className="w-full">
             <TableHeader>
               <TableRow>
+                <TableHead className="w-16 bg-white">Показник</TableHead>
                 <TableHead className="w-16 bg-white">Показник</TableHead>
                 <TableHead className="w-32 bg-white">Обсяг, тис.грн.</TableHead>
                 <TableHead className="w-1/4 bg-white">Нормативний документ / Файли</TableHead>

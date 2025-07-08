@@ -699,15 +699,19 @@ const RoadFundingApp: React.FC = () => {
         {/* Блок 1.2: Дороги местного значения */}
         <LocalRoadFundingBlock onResultsChange={handleQ2Results} />
 
+        {/* Интеграция с блоком 3 - вынесено из CardHeader */}
+        {q1Results && q2Results && (
+          <BlockThreeIntegration 
+            q1Results={q1Results}
+            q2Results={q2Results}
+            sessionId={sessionId}
+          />
+        )}
+
         {/* Сводка и сохранение результатов */}
         {q1Results && q2Results && (
           <Card className="mt-8 w-full border-green-500 shadow-sm rounded-none">
             <CardHeader className="bg-green-50 border-b border-green-500">
-              <BlockThreeIntegration 
-                q1Results={q1Results}
-                q2Results={q2Results}
-                sessionId={sessionId}
-              />
               <CardTitle className="text-xl font-bold text-green-800">
                 Сводка результатів Блоку 1
               </CardTitle>

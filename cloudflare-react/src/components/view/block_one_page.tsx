@@ -524,7 +524,7 @@ const LocalRoadFundingBlock = ({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-2/5 bg-white"></TableHead>
-                <TableHead className="w-16 bg-white">Показник</TableHead>
+                <TableHead className="w-20 bg-white">Показник</TableHead>
                 <TableHead className="w-32 bg-white">Обсяг, тис.грн.</TableHead>
                 <TableHead className="w-1/4 bg-white">Нормативний документ / Файли</TableHead>
               </TableRow>
@@ -654,9 +654,6 @@ const RoadFundingApp: React.FC = () => {
             <CardTitle className="text-3xl font-bold text-gray-800">
               Визначення загального обсягу бюджетного фінансування розвитку та утримання автомобільних доріг державного та місцевого значення            
             </CardTitle>
-            <div className="text-lg text-gray-600 mt-2">
-              (Розділ ІІ Методики)
-            </div>
             {sessionId && (
               <div className="text-sm text-gray-500 mt-2">
                 Сесія розрахунків: {sessionId}

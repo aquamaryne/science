@@ -1,13 +1,13 @@
-// Полные алгоритмы вместо заглушек для всех функций
+// src/modules/block_three_algorithm.ts - АЛГОРИТМИЧЕСКИЙ МОДУЛЬ
 
 /**
  * ПОВНА РЕАЛІЗАЦІЯ ВСІХ АЛГОРИТМІВ РОЗДІЛУ IV
- * Заміна всіх заглушок на повноцінні алгоритми згідно методики
+ * Детальні алгоритми для інтеграції з основним модулем block_three.ts
  */
 
-// ==================== ИМПОРТЫ И ТИПЫ ====================
+// ==================== ЕКСПОРТ ТИПІВ ====================
 
-// Расширенные типы для полной реализации
+// Детальні технічні характеристики дороги
 export interface DetailedTechnicalCondition {
   // 4.2.2.1 - Коефіцієнт інтенсивності руху
   intensityCoefficient: number;
@@ -37,28 +37,7 @@ export interface DetailedTechnicalCondition {
   requiredFrictionValue: number;
 }
 
-export interface RoadSection {
-  id: string;
-  name: string;
-  category: 1 | 2 | 3 | 4 | 5;
-  length: number;
-  significance: 'state' | 'local';
-  region: string;
-  detailedCondition: DetailedTechnicalCondition;
-  trafficIntensity: number;
-  estimatedCost?: number;
-  isDefenseRoad?: boolean;
-  isInternationalRoad?: boolean;
-  isEuropeanNetwork?: boolean;
-  isAccessRoad?: boolean;
-  
-  // Додаткові поля для розрахунків
-  lastRepairYear?: number;
-  hasLighting?: boolean;
-  nearBorderCrossing?: boolean;
-  criticalInfrastructureCount?: number;
-}
-
+// Повна оцінка секції дороги
 export interface ComprehensiveRoadAssessment {
   sectionId: string;
   currentInspections: boolean;
@@ -89,39 +68,50 @@ export interface ComprehensiveRoadAssessment {
     enpv: number;
     eirr: number;
     bcr: number;
+    vehicleFleetReduction: number;
+    transportCostSavings: number;
+    accidentReduction: number;
+    environmentalBenefits: number;
+    totalBenefits: number;
+    totalCosts: number;
+    discountRate: number;
+    paybackPeriod: number;
   };
   priority: number;
   rankingCriteria: string;
 }
 
+// Експертна оцінка
 export interface ExpertAssessment {
   operationalStateIndex: number;
   trafficIntensity: number;
-  detailedDescription: string;
+  detailedDescription?: string;
 }
 
-export interface CostBenefitAnalysis {
-  // Вигоди
-  vehicleFleetReduction: number;
-  transportCostSavings: number;
-  accidentReduction: number;
-  environmentalBenefits: number;
-  totalBenefits: number;
-  
-  // Витрати
-  totalCosts: number;
-  
-  // Показники ефективності
-  enpv: number;
-  eirr: number;
-  bcr: number;
-  discountRate: number;
-  paybackPeriod: number;
+// Тип секції дороги для алгоритмів
+export interface RoadSection {
+  id: string;
+  name: string;
+  category: 1 | 2 | 3 | 4 | 5;
+  length: number;
+  significance: 'state' | 'local';
+  region: string;
+  detailedCondition: DetailedTechnicalCondition;
+  trafficIntensity: number;
+  estimatedCost?: number;
+  isDefenseRoad?: boolean;
+  isInternationalRoad?: boolean;
+  isEuropeanNetwork?: boolean;
+  isAccessRoad?: boolean;
+  lastRepairYear?: number;
+  hasLighting?: boolean;
+  nearBorderCrossing?: boolean;
+  criticalInfrastructureCount?: number;
 }
 
 // ==================== КОНСТАНТИ З МЕТОДИКИ ====================
 
-const MAX_DESIGN_INTENSITY_BY_CATEGORY: Record<1 | 2 | 3 | 4 | 5, number> = {
+export const MAX_DESIGN_INTENSITY_BY_CATEGORY: Record<1 | 2 | 3 | 4 | 5, number> = {
   1: 20000,
   2: 12000,
   3: 6000,
@@ -129,7 +119,7 @@ const MAX_DESIGN_INTENSITY_BY_CATEGORY: Record<1 | 2 | 3 | 4 | 5, number> = {
   5: 500
 };
 
-const MIN_STRENGTH_COEFFICIENT_BY_CATEGORY: Record<1 | 2 | 3 | 4 | 5, number> = {
+export const MIN_STRENGTH_COEFFICIENT_BY_CATEGORY: Record<1 | 2 | 3 | 4 | 5, number> = {
   1: 1.0,
   2: 1.0,
   3: 0.95,
@@ -137,10 +127,10 @@ const MIN_STRENGTH_COEFFICIENT_BY_CATEGORY: Record<1 | 2 | 3 | 4 | 5, number> = 
   5: 0.85
 };
 
-const REQUIRED_FRICTION_COEFFICIENT = 0.35;
+export const REQUIRED_FRICTION_COEFFICIENT = 0.35;
 
 // Базові норми вартості робіт (тис. грн/км, ціни 2023 року)
-const BASE_REPAIR_COSTS: Record<'current_repair' | 'capital_repair' | 'reconstruction', Record<1 | 2 | 3 | 4 | 5, number>> = {
+export const BASE_REPAIR_COSTS: Record<'current_repair' | 'capital_repair' | 'reconstruction', Record<1 | 2 | 3 | 4 | 5, number>> = {
   current_repair: {
     1: 3500,
     2: 2500,
@@ -165,7 +155,7 @@ const BASE_REPAIR_COSTS: Record<'current_repair' | 'capital_repair' | 'reconstru
 };
 
 // Рівні вимог до якості доріг (Таблиця 9.1-9.3)
-const ROAD_QUALITY_LEVELS = {
+export const ROAD_QUALITY_LEVELS = {
   level1: { maxIRI: 2.7, maxBumpIndex: 100, maxRutDepth: 20 },
   level2: { maxIRI: 3.1, maxBumpIndex: 130, maxRutDepth: 25 },
   level3: { maxIRI: 3.5, maxBumpIndex: 170, maxRutDepth: 30 },
@@ -173,7 +163,7 @@ const ROAD_QUALITY_LEVELS = {
 };
 
 // Експертна оцінка (Таблиця 11.2)
-const EXPERT_ASSESSMENT_THRESHOLDS = {
+export const EXPERT_ASSESSMENT_THRESHOLDS = {
   NO_REPAIR_NEEDED: 8,
   CURRENT_REPAIR_MIN: 5,
   CURRENT_REPAIR_MAX: 7,
@@ -183,13 +173,15 @@ const EXPERT_ASSESSMENT_THRESHOLDS = {
 // ==================== ОСНОВНІ АЛГОРИТМИ ====================
 
 /**
- * ПОВНА РЕАЛІЗАЦІЯ executeComprehensiveAssessment (замість заглушки)
+ * ГОЛОВНА ФУНКЦІЯ - комплексна оцінка секції дороги
  * Алгоритм 4.2.1-4.2.7 з методики
  */
 export function executeComprehensiveAssessment(
   section: RoadSection,
   hasInstrumentalData: boolean = true
 ): ComprehensiveRoadAssessment {
+  
+  console.log(`=== Комплексна оцінка секції ${section.id} ===`);
   
   // 4.2.1 - Формування загального переліку об'єктів
   const assessment: ComprehensiveRoadAssessment = {
@@ -246,27 +238,26 @@ export function executeComprehensiveAssessment(
   assessment.priority = ranking.priority;
   assessment.rankingCriteria += `, пріоритет: ${ranking.criteria}`;
   
+  console.log(`Секція ${section.id}: ${assessment.recommendedWorkType}, вартість: ${assessment.estimatedCost.toFixed(0)} тис. грн, пріоритет: ${assessment.priority}`);
+  
   return assessment;
 }
 
 /**
- * ПОВНА РЕАЛІЗАЦІЯ calculateAllTechnicalCoefficients
- * Розрахунок всіх коефіцієнтів згідно 4.2.2.1-4.2.2.5
+ * Розрахунок всіх технічних коефіцієнтів згідно 4.2.2.1-4.2.2.5
  */
 function calculateAllTechnicalCoefficients(section: RoadSection): any {
   const condition = section.detailedCondition;
   
   // 4.2.2.1 - Коефіцієнт інтенсивності руху
   const maxDesignIntensity = MAX_DESIGN_INTENSITY_BY_CATEGORY[section.category];
-  const intensityCoefficient = maxDesignIntensity / section.trafficIntensity;
+  const intensityCoefficient = maxDesignIntensity / Math.max(section.trafficIntensity, 1);
   
   // 4.2.2.2 - Коефіцієнт міцності дорожнього одягу
   let strengthCoefficient: number;
   if (condition.isRigidPavement) {
-    // Для жорсткого дорожнього одягу
     strengthCoefficient = calculateRigidPavementStrength(section);
   } else {
-    // Для нежорсткого дорожнього одягу
     if (condition.actualElasticModulus && condition.requiredElasticModulus) {
       strengthCoefficient = condition.actualElasticModulus / condition.requiredElasticModulus;
     } else {
@@ -278,7 +269,7 @@ function calculateAllTechnicalCoefficients(section: RoadSection): any {
   const evennessCoefficient = calculateEvennessCoefficient(section);
   
   // 4.2.2.4 - Коефіцієнт колійності
-  const rutCoefficient = condition.maxAllowedRutDepth / condition.actualRutDepth;
+  const rutCoefficient = condition.maxAllowedRutDepth / Math.max(condition.actualRutDepth, 1);
   
   // 4.2.2.5 - Коефіцієнт зчеплення
   const frictionCoefficient = condition.actualFrictionValue / condition.requiredFrictionValue;
@@ -296,12 +287,9 @@ function calculateAllTechnicalCoefficients(section: RoadSection): any {
  * Розрахунок міцності жорсткого дорожнього одягу
  */
 function calculateRigidPavementStrength(section: RoadSection): number {
-  // Спрощений розрахунок згідно ГБН В.2.3-37641918-557:2016
   const trafficCategory = getTrafficCategory(section.trafficIntensity);
   const designLoad = getDesignLoad(trafficCategory);
   const actualStrength = section.detailedCondition.strengthCoefficient;
-  
-  // Коефіцієнт запасу міцності для жорсткого одягу
   const safetyFactor = getSafetyFactorForRigidPavement(section.category);
   
   return actualStrength / (designLoad * safetyFactor);
@@ -337,13 +325,10 @@ function calculateEvennessCoefficient(section: RoadSection): number {
   const qualityLevel = determineRoadQualityLevel(section);
   
   if (condition.iriIndex !== undefined) {
-    // Пріоритетний метод - використовуємо IRI
-    return qualityLevel.maxIRI / condition.iriIndex;
+    return qualityLevel.maxIRI / Math.max(condition.iriIndex, 0.1);
   } else if (condition.bumpIndex !== undefined) {
-    // Альтернативний метод - поштовхомір
-    return qualityLevel.maxBumpIndex / condition.bumpIndex;
+    return qualityLevel.maxBumpIndex / Math.max(condition.bumpIndex, 1);
   } else {
-    // Використовуємо готовий коефіцієнт
     return condition.evennessCoefficient;
   }
 }
@@ -355,7 +340,6 @@ function determineRoadQualityLevel(section: RoadSection): typeof ROAD_QUALITY_LE
   const intensity = section.trafficIntensity;
   const roadCode = section.name.substring(0, 2).toUpperCase();
   
-  // Визначаємо рівень вимог згідно таблиці 9.1
   if (roadCode.startsWith('М-') || roadCode.startsWith('Н-')) {
     return intensity > 7000 ? ROAD_QUALITY_LEVELS.level1 : ROAD_QUALITY_LEVELS.level2;
   } else if (roadCode.startsWith('Р-') || roadCode.startsWith('Т-')) {
@@ -368,7 +352,7 @@ function determineRoadQualityLevel(section: RoadSection): typeof ROAD_QUALITY_LE
 }
 
 /**
- * ПОВНА РЕАЛІЗАЦІЯ compareWithNormativeValues
+ * Порівняння з нормативними значеннями
  */
 function compareWithNormativeValues(section: RoadSection, technicalState: any): any {
   const minStrength = MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[section.category];
@@ -383,7 +367,6 @@ function compareWithNormativeValues(section: RoadSection, technicalState: any): 
 }
 
 /**
- * ПОВНА РЕАЛІЗАЦІЯ determineWorkTypeDetailed
  * Детальне визначення виду робіт згідно 4.2.3.1-4.2.3.5
  */
 function determineWorkTypeDetailed(comparisonResults: any, section: RoadSection): {
@@ -432,10 +415,9 @@ function determineWorkTypeDetailed(comparisonResults: any, section: RoadSection)
 }
 
 /**
- * ПОВНА РЕАЛІЗАЦІЯ calculateDetailedWorkCost
- * Детальний розрахунок вартості робіт згідно 4.2.4
+ * ЕКСПОРТ - детальний розрахунок вартості робіт згідно 4.2.4
  */
-function calculateDetailedWorkCost(
+export function calculateDetailedWorkCost(
   section: RoadSection, 
   workType: 'current_repair' | 'capital_repair' | 'reconstruction'
 ): number {
@@ -472,7 +454,6 @@ function calculateComplexityFactor(section: RoadSection, workType: string): numb
   let factor = 1.0;
   
   if (workType === 'reconstruction') {
-    // Для реконструкції враховуємо перевищення інтенсивності
     const maxIntensity = MAX_DESIGN_INTENSITY_BY_CATEGORY[section.category];
     if (section.trafficIntensity > maxIntensity) {
       const excessRatio = section.trafficIntensity / maxIntensity;
@@ -481,7 +462,6 @@ function calculateComplexityFactor(section: RoadSection, workType: string): numb
   }
   
   if (workType === 'capital_repair') {
-    // Для капремонту враховуємо дефіцит міцності
     const minStrength = MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[section.category];
     const actualStrength = section.detailedCondition.strengthCoefficient;
     if (actualStrength < minStrength) {
@@ -501,7 +481,6 @@ function calculateComplexityFactor(section: RoadSection, workType: string): numb
 }
 
 function getRegionalCostFactor(region: string): number {
-  // Коефіцієнти вартості по регіонах (умовні)
   const factors: Record<string, number> = {
     'Київська': 1.20,
     'Львівська': 1.10,
@@ -516,29 +495,21 @@ function getRegionalCostFactor(region: string): number {
 }
 
 /**
- * ПОВНА РЕАЛІЗАЦІЯ performDetailedCostBenefitAnalysis
- * Детальний аналіз витрат та вигод згідно Додатка 10
+ * ЕКСПОРТ - детальний аналіз витрат та вигод згідно Додатка 10
  */
-function performDetailedCostBenefitAnalysis(
+export function performDetailedCostBenefitAnalysis(
   section: RoadSection,
   projectCost: number
-): CostBenefitAnalysis {
-  const discountRate = 0.05; // 5% соціальна ставка дисконтування
+): ComprehensiveRoadAssessment['costBenefitAnalysis'] {
+  const discountRate = 0.05;
   const analysisYears = 15;
   
-  // Розрахунок річних вигод
   const annualTrafficVolume = section.trafficIntensity * 365 * section.length;
   
-  // 10.1.1 - Ефект від зменшення кількості рухомого складу
+  // Розрахунок річних вигод
   const vehicleFleetReduction = calculateVehicleFleetReduction(section, annualTrafficVolume);
-  
-  // 10.1.2 - Ефект від зменшення витрат на перевезення
   const transportCostSavings = calculateTransportCostSavings(section, annualTrafficVolume);
-  
-  // 10.1.3 - Ефект від зниження втрат від ДТП
   const accidentReduction = calculateAccidentReduction(section, annualTrafficVolume);
-  
-  // 10.1.4 - Ефект від зменшення негативного впливу на довкілля
   const environmentalBenefits = calculateEnvironmentalBenefits(section, annualTrafficVolume);
   
   const totalAnnualBenefits = vehicleFleetReduction + transportCostSavings + 
@@ -546,23 +517,17 @@ function performDetailedCostBenefitAnalysis(
   
   // Розрахунок NPV
   let totalDiscountedBenefits = 0;
-  let totalDiscountedCosts = projectCost; // Початкові витрати
+  let totalDiscountedCosts = projectCost;
   
   for (let year = 1; year <= analysisYears; year++) {
     const discountFactor = Math.pow(1 + discountRate, -year);
     totalDiscountedBenefits += totalAnnualBenefits * discountFactor;
-    
-    // Витрати на утримання (3% від початкової вартості щорічно)
     totalDiscountedCosts += (projectCost * 0.03) * discountFactor;
   }
   
   const enpv = totalDiscountedBenefits - totalDiscountedCosts;
   const bcr = totalDiscountedCosts > 0 ? totalDiscountedBenefits / totalDiscountedCosts : 0;
-  
-  // Розрахунок EIRR (метод Ньютона)
   const eirr = calculateEIRR(totalAnnualBenefits, projectCost, analysisYears);
-  
-  // Розрахунок терміну окупності
   const paybackPeriod = calculatePaybackPeriod(totalAnnualBenefits, projectCost);
   
   return {
@@ -581,37 +546,31 @@ function performDetailedCostBenefitAnalysis(
 }
 
 function calculateVehicleFleetReduction(section: RoadSection, annualVolume: number): number {
-  // Спрощений розрахунок ефекту від підвищення швидкості
   const speedImprovement = estimateSpeedImprovement(section);
-  const reductionFactor = speedImprovement * 0.15; // 15% зменшення потреби в транспорті за кожні 10% швидкості
-  return annualVolume * reductionFactor * 0.5; // 0.5 грн за авт-км економії
+  const reductionFactor = speedImprovement * 0.15;
+  return annualVolume * reductionFactor * 0.5;
 }
 
 function calculateTransportCostSavings(_section: RoadSection, annualVolume: number): number {
-  // Економія витрат на паливо та зношення
-  const fuelSavings = annualVolume * 0.3; // 30 коп на авт-км
-  const wearReduction = annualVolume * 0.2; // 20 коп на авт-км
+  const fuelSavings = annualVolume * 0.3;
+  const wearReduction = annualVolume * 0.2;
   return fuelSavings + wearReduction;
 }
 
 function calculateAccidentReduction(_section: RoadSection, annualVolume: number): number {
-  // Зниження аварійності після покращення стану дороги
-  const currentAccidentRate = 0.8; // 0.8 ДТП на млн авт-км (середній показник)
-  const improvedAccidentRate = 0.5; // 0.5 ДТП на млн авт-км після робіт
+  const currentAccidentRate = 0.8;
+  const improvedAccidentRate = 0.5;
   const accidentReduction = (currentAccidentRate - improvedAccidentRate) / 1000000;
-  const averageAccidentCost = 750000; // 750 тис. грн середня вартість ДТП
+  const averageAccidentCost = 750000;
   
   return annualVolume * accidentReduction * averageAccidentCost;
 }
 
 function calculateEnvironmentalBenefits(_section: RoadSection, annualVolume: number): number {
-  // Зменшення викидів через покращення режиму руху
-  const emissionReduction = annualVolume * 0.05; // 5 коп на авт-км
-  return emissionReduction;
+  return annualVolume * 0.05;
 }
 
 function estimateSpeedImprovement(section: RoadSection): number {
-  // Оцінка підвищення швидкості залежно від виду робіт
   const condition = section.detailedCondition;
   
   let improvement = 0;
@@ -628,12 +587,11 @@ function estimateSpeedImprovement(section: RoadSection): number {
     improvement += (1.0 - condition.frictionCoefficient) * 0.08;
   }
   
-  return Math.min(improvement, 0.25); // Максимум 25% покращення
+  return Math.min(improvement, 0.25);
 }
 
 function calculateEIRR(annualBenefits: number, initialCost: number, years: number): number {
-  // Спрощений розрахунок EIRR методом підбору
-  let rate = 0.05; // Початкова ставка 5%
+  let rate = 0.05;
   
   for (let iteration = 0; iteration < 50; iteration++) {
     let npv = -initialCost;
@@ -642,37 +600,35 @@ function calculateEIRR(annualBenefits: number, initialCost: number, years: numbe
       npv += annualBenefits / Math.pow(1 + rate, year);
     }
     
-    if (Math.abs(npv) < 1000) { // Точність 1000 грн
+    if (Math.abs(npv) < 1000) {
       return rate;
     }
     
     if (npv > 0) {
-      rate += 0.001; // Збільшуємо ставку
+      rate += 0.001;
     } else {
-      rate -= 0.001; // Зменшуємо ставку
+      rate -= 0.001;
     }
     
     if (rate < 0) rate = 0.001;
-    if (rate > 1) return 1.0; // Максимум 100%
+    if (rate > 1) return 1.0;
   }
   
   return rate;
 }
 
 function calculatePaybackPeriod(annualBenefits: number, initialCost: number): number {
-  // Розрахунок простого терміну окупності
-  if (annualBenefits <= 0) return 999; // Якщо немає вигод
+  if (annualBenefits <= 0) return 999;
   
-  const annualMaintenanceCost = initialCost * 0.03; // 3% щорічно на утримання
+  const annualMaintenanceCost = initialCost * 0.03;
   const netAnnualBenefits = annualBenefits - annualMaintenanceCost;
   
-  if (netAnnualBenefits <= 0) return 999; // Якщо чисті вигоди негативні
+  if (netAnnualBenefits <= 0) return 999;
   
   return initialCost / netAnnualBenefits;
 }
 
 /**
- * ПОВНА РЕАЛІЗАЦІЯ calculateDetailedPriority
  * Детальне ранжування згідно 4.2.6
  */
 function calculateDetailedPriority(section: RoadSection, assessment: ComprehensiveRoadAssessment): {
@@ -683,16 +639,14 @@ function calculateDetailedPriority(section: RoadSection, assessment: Comprehensi
   let criteria = '';
   
   if (assessment.recommendedWorkType === 'current_repair') {
-    // 4.2.6.1 - Ранжування поточного ремонту
     priority = rankCurrentRepair(section, assessment);
     criteria = 'найменші коефіцієнти рівності, колійності, зчеплення + висока інтенсивність';
     
   } else if (assessment.recommendedWorkType === 'capital_repair' || 
              assessment.recommendedWorkType === 'reconstruction') {
-    // 4.2.6 - Ранжування за ENPV
     if (assessment.costBenefitAnalysis) {
       const enpvPerKm = assessment.costBenefitAnalysis.enpv / section.length;
-      priority = Math.max(1, Math.round(1000000 / (enpvPerKm + 1000))); // Вища ENPV = нижчий номер пріоритету
+      priority = Math.max(1, Math.round(1000000 / (enpvPerKm + 1000)));
       criteria = `ENPV на 1 км: ${enpvPerKm.toFixed(0)} тис. грн`;
     }
   }
@@ -714,24 +668,21 @@ function calculateDetailedPriority(section: RoadSection, assessment: Comprehensi
 function rankCurrentRepair(section: RoadSection, _assessment: ComprehensiveRoadAssessment): number {
   const condition = section.detailedCondition;
   
-  // Розраховуємо дефіцити показників
   const evennessDeficit = Math.max(0, 1.0 - condition.evennessCoefficient);
   const rutDeficit = Math.max(0, 1.0 - condition.rutCoefficient);
   const frictionDeficit = Math.max(0, 1.0 - condition.frictionCoefficient);
   
-  // Нормалізована інтенсивність (вища інтенсивність = вищий пріоритет)
-  const intensityFactor = section.trafficIntensity / 10000; // Нормалізуємо до 10000 авт/добу
+  const intensityFactor = section.trafficIntensity / 10000;
   
-  // Загальний показник пріоритетності (менше = вищий пріоритет)
   const priorityScore = (evennessDeficit * 3 + rutDeficit * 2 + frictionDeficit * 2) - intensityFactor;
   
-  // Переводимо в номер пріоритету (1-100)
   return Math.max(1, Math.min(100, Math.round(priorityScore * 50) + 1));
 }
 
+// ==================== АЛГОРИТМИ ДЛЯ МІСЦЕВИХ ДОРІГ ====================
+
 /**
- * ПОВНА РЕАЛІЗАЦІЯ performLocalRoadRanking
- * Ранжування місцевих доріг згідно 4.4.6
+ * ЕКСПОРТ - ранжування місцевих доріг згідно 4.4.6
  */
 export function performLocalRoadRanking(
   section: RoadSection,
@@ -742,9 +693,8 @@ export function performLocalRoadRanking(
   if (expertAssessment) {
     // 4.4.6.3 - Ранжування за експертною оцінкою
     const jIndex = expertAssessment.operationalStateIndex;
-    const intensityBonus = Math.min(5, section.trafficIntensity / 500); // Бонус за інтенсивність
+    const intensityBonus = Math.min(5, section.trafficIntensity / 500);
     
-    // Менший індекс J + вища інтенсивність = вищий пріоритет
     const priority = Math.max(1, (11 - jIndex) * 10 - intensityBonus);
     
     return {
@@ -776,8 +726,7 @@ export function performLocalRoadRanking(
 }
 
 /**
- * ПОВНА РЕАЛІЗАЦІЯ determineWorkTypeByExpertMethod
- * Експертний метод для місцевих доріг згідно Таблиці 11.2
+ * ЕКСПОРТ - експертний метод для місцевих доріг згідно Таблиці 11.2
  */
 export function determineWorkTypeByExpertMethod(assessment: ExpertAssessment): 'current_repair' | 'capital_repair' | 'no_work_needed' {
   const j = assessment.operationalStateIndex;
@@ -795,8 +744,7 @@ export function determineWorkTypeByExpertMethod(assessment: ExpertAssessment): '
 }
 
 /**
- * ПОВНА РЕАЛІЗАЦІЯ assessLocalRoadSection
- * Алгоритм для місцевих доріг 4.4.1-4.4.7
+ * ЕКСПОРТ - алгоритм для місцевих доріг 4.4.1-4.4.7
  */
 export function assessLocalRoadSection(
   section: RoadSection,
@@ -809,13 +757,17 @@ export function assessLocalRoadSection(
   expertAssessment?: ExpertAssessment
 ): ComprehensiveRoadAssessment {
   
+  console.log(`=== Оцінка місцевої дороги ${section.id} ===`);
+  
   if (hasInstrumentalData) {
     // 4.4.2 - Використання інструментальних даних (як для державних доріг)
+    console.log(`Місцева дорога ${section.id}: використання інструментальних даних`);
     return executeComprehensiveAssessment(section, true);
   }
   
   if (expertAssessment) {
     // 4.4.3.1 - Експертний експрес-метод
+    console.log(`Місцева дорога ${section.id}: експертний метод, J=${expertAssessment.operationalStateIndex}`);
     const workType = determineWorkTypeByExpertMethod(expertAssessment);
     
     const assessment: ComprehensiveRoadAssessment = {
@@ -864,6 +816,7 @@ export function assessLocalRoadSection(
   }
   
   // Якщо немає ні інструментальних даних, ні експертної оцінки
+  console.log(`Місцева дорога ${section.id}: недостатньо даних для оцінки`);
   return {
     sectionId: section.id,
     currentInspections: true,
@@ -892,9 +845,10 @@ export function assessLocalRoadSection(
   };
 }
 
+// ==================== ФУНКЦІЇ ЗВІТНОСТІ ====================
+
 /**
- * ПОВНА РЕАЛІЗАЦІЯ generateSectionReport
- * Детальний звіт по секції
+ * ЕКСПОРТ - детальний звіт по секції
  */
 export function generateSectionReport(assessment: ComprehensiveRoadAssessment, section: RoadSection): string {
   let report = `# ДЕТАЛЬНИЙ ЗВІТ ПО СЕКЦІЇ ${section.id}\n\n`;
@@ -971,13 +925,13 @@ export function generateSectionReport(assessment: ComprehensiveRoadAssessment, s
     report += `- **ENPV**: ${cba.enpv.toLocaleString()} тис. грн\n`;
     report += `- **EIRR**: ${(cba.eirr * 100).toFixed(1)}%\n`;
     report += `- **BCR**: ${cba.bcr.toFixed(2)}\n`;
-    report += `- **Термін окупності**: ${'paybackPeriod' in cba ? ((cba.paybackPeriod as number)).toFixed(1) : '—'} років\n\n`;
+    report += `- **Термін окупності**: ${cba.paybackPeriod.toFixed(1)} років\n\n`;
     
     report += `### Структура вигод (тис. грн/рік):\n`;
-    report += `- Зменшення автопарку: ${'vehicleFleetReduction' in cba ? ((cba.vehicleFleetReduction as number) / 15).toFixed(0) : '—'}\n`;
-    report += `- Економія на перевезеннях: ${'transportCostSavings' in cba ? ((cba.transportCostSavings as number) / 15).toFixed(0) : '—'}\n`;
-    report += `- Зниження аварійності: ${'accidentReduction' in cba ? ((cba.accidentReduction as number) / 15).toFixed(0) : '—'}\n`;
-    report += `- Екологічні вигоди: ${'environmentalBenefits' in cba ? ((cba.environmentalBenefits as number) / 15).toFixed(0) : '—'}\n\n`;
+    report += `- Зменшення автопарку: ${(cba.vehicleFleetReduction / 15).toFixed(0)}\n`;
+    report += `- Економія на перевезеннях: ${(cba.transportCostSavings / 15).toFixed(0)}\n`;
+    report += `- Зниження аварійності: ${(cba.accidentReduction / 15).toFixed(0)}\n`;
+    report += `- Екологічні вигоди: ${(cba.environmentalBenefits / 15).toFixed(0)}\n\n`;
     
     const recommendation = cba.enpv > 0 && cba.bcr > 1.0 ? 
       '**Проект економічно доцільний**' : 
@@ -1014,7 +968,81 @@ export function generateSectionReport(assessment: ComprehensiveRoadAssessment, s
   return report;
 }
 
-// ==================== ЕКСПОРТ ОСНОВНИХ ФУНКЦІЙ ====================
+// ==================== ДОПОМІЖНІ ФУНКЦІЇ СТВОРЕННЯ ТЕСТОВИХ ДАНИХ ====================
+
+/**
+ * Створення тестової секції дороги з детальними параметрами
+ */
+export function createTestRoadSection(
+  id: string,
+  name: string,
+  category: 1 | 2 | 3 | 4 | 5,
+  length: number,
+  trafficIntensity: number,
+  significance: 'state' | 'local' = 'state',
+  region: string = 'Київська'
+): RoadSection {
+  
+  const maxDesignIntensity = MAX_DESIGN_INTENSITY_BY_CATEGORY[category];
+  const intensityCoefficient = maxDesignIntensity / Math.max(trafficIntensity, 1);
+  
+  // Генеруємо реалістичні параметри
+  const detailedCondition: DetailedTechnicalCondition = {
+    intensityCoefficient,
+    maxDesignIntensity,
+    actualIntensity: trafficIntensity,
+    
+    strengthCoefficient: 0.8 + Math.random() * 0.4, // 0.8-1.2
+    isRigidPavement: Math.random() > 0.8, // 20% жорстких покриттів
+    
+    evennessCoefficient: 0.7 + Math.random() * 0.6, // 0.7-1.3
+    iriIndex: 2.5 + Math.random() * 2.0, // 2.5-4.5 м/км
+    maxAllowedEvenness: category <= 2 ? 3.1 : 4.1,
+    
+    rutCoefficient: 0.6 + Math.random() * 0.8, // 0.6-1.4
+    actualRutDepth: 15 + Math.random() * 25, // 15-40 мм
+    maxAllowedRutDepth: category <= 2 ? 20 : 30,
+    
+    frictionCoefficient: 0.8 + Math.random() * 0.4, // 0.8-1.2
+    actualFrictionValue: 0.25 + Math.random() * 0.2, // 0.25-0.45
+    requiredFrictionValue: REQUIRED_FRICTION_COEFFICIENT
+  };
+  
+  return {
+    id,
+    name,
+    category,
+    length,
+    significance,
+    region,
+    detailedCondition,
+    trafficIntensity,
+    isDefenseRoad: Math.random() > 0.9, // 10% оборонних доріг
+    isInternationalRoad: category <= 2 && Math.random() > 0.7, // 30% міжнародних серед 1-2 категорій
+    isEuropeanNetwork: category === 1 && Math.random() > 0.8, // 20% європейських серед 1 категорії
+    isAccessRoad: significance === 'local' && Math.random() > 0.6, // 40% під'їздів серед місцевих
+    hasLighting: trafficIntensity > 5000 && Math.random() > 0.5,
+    nearBorderCrossing: Math.random() > 0.95,
+    criticalInfrastructureCount: Math.floor(Math.random() * 3)
+  };
+}
+
+/**
+ * Створення тестової експертної оцінки
+ */
+export function createTestExpertAssessment(
+  operationalStateIndex: number,
+  trafficIntensity: number,
+  description?: string
+): ExpertAssessment {
+  return {
+    operationalStateIndex,
+    trafficIntensity,
+    detailedDescription: description || `Експертна оцінка: стан дороги оцінено як ${operationalStateIndex} балів з 10`
+  };
+}
+
+// ==================== ЕКСПОРТ ВСІХ ФУНКЦІЙ ====================
 
 export default {
   // Основні алгоритми
@@ -1024,15 +1052,19 @@ export default {
   determineWorkTypeByExpertMethod,
   generateSectionReport,
   
-  // Допоміжні функції
-  calculateAllTechnicalCoefficients,
+  // Допоміжні функції розрахунків
   calculateDetailedWorkCost,
   performDetailedCostBenefitAnalysis,
+  
+  // Тестові функції
+  createTestRoadSection,
+  createTestExpertAssessment,
   
   // Константи
   MAX_DESIGN_INTENSITY_BY_CATEGORY,
   MIN_STRENGTH_COEFFICIENT_BY_CATEGORY,
   BASE_REPAIR_COSTS,
   ROAD_QUALITY_LEVELS,
-  EXPERT_ASSESSMENT_THRESHOLDS
+  EXPERT_ASSESSMENT_THRESHOLDS,
+  REQUIRED_FRICTION_COEFFICIENT
 };

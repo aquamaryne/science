@@ -14,7 +14,6 @@ import { planRepairWorksWithBlockOneData, generateDetailedRepairPlanReport, hasB
 import { determineWorkTypeByTechnicalCondition, checkCategoryComplianceByIntensity, checkFrictionCompliance } from '@/modules/block_three';
 import { type SimpleRoadSection } from '@/modules/block_three';
 import { 
-  performDetailedCostBenefitAnalysis,
   type RoadSection as AlgorithmRoadSection,
 } from '@/modules/block_three_alghoritm';
 // Используємо константи локально, оскільки вони не експортуються
@@ -283,52 +282,6 @@ const convertUIToSimpleRoadSection = (uiSection: RoadSectionUI): SimpleRoadSecti
     estimatedCost: uiSection.estimatedCost
   };
 };
-
-const convertUIToRoadSection = (uiSection: RoadSectionUI): RoadSection => {
-  const detailedCondition: DetailedTechnicalCondition = {
-    intensityCoefficient: MAX_DESIGN_INTENSITY_BY_CATEGORY[uiSection.category] / Math.max(uiSection.trafficIntensity, 1),
-    maxDesignIntensity: MAX_DESIGN_INTENSITY_BY_CATEGORY[uiSection.category],
-    actualIntensity: uiSection.trafficIntensity,
-    
-    strengthCoefficient: uiSection.strengthModulus / (300 + uiSection.category * 50),
-    isRigidPavement: false,
-    actualElasticModulus: uiSection.strengthModulus,
-    requiredElasticModulus: 300 + uiSection.category * 50,
-    
-    evennessCoefficient: (2.7 + uiSection.category * 0.4) / Math.max(uiSection.roughnessProfile, 0.1),
-    iriIndex: uiSection.roughnessProfile,
-    bumpIndex: uiSection.roughnessBump,
-    maxAllowedEvenness: 2.7 + uiSection.category * 0.4,
-    
-    rutCoefficient: (15 + uiSection.category * 5) / Math.max(uiSection.rutDepth, 1),
-    actualRutDepth: uiSection.rutDepth,
-    maxAllowedRutDepth: 15 + uiSection.category * 5,
-    
-    frictionCoefficient: uiSection.frictionCoeff / REQUIRED_FRICTION_COEFFICIENT,
-    actualFrictionValue: uiSection.frictionCoeff,
-    requiredFrictionValue: REQUIRED_FRICTION_COEFFICIENT
-  };
-
-  return {
-    id: uiSection.id,
-    name: uiSection.name,
-    category: uiSection.category,
-    length: uiSection.length,
-    significance: uiSection.significance,
-    region: uiSection.region || 'Київська',
-    detailedCondition,
-    trafficIntensity: uiSection.trafficIntensity,
-    estimatedCost: uiSection.estimatedCost,
-    isDefenseRoad: uiSection.isDefenseRoad,
-    isInternationalRoad: uiSection.isInternationalRoad,
-    isEuropeanNetwork: uiSection.isEuropeanNetwork,
-    hasLighting: uiSection.hasLighting,
-    criticalInfrastructureCount: uiSection.criticalInfrastructureCount,
-    enpv: 0
-  };
-};
-
-
 
 // Простий розрахунок вартості
 const calculateEstimatedCost = (

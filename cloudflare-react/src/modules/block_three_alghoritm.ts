@@ -107,7 +107,7 @@ export interface RoadSection {
   hasLighting?: boolean;
   nearBorderCrossing?: boolean;
   criticalInfrastructureCount?: number;
-  enpv: number;
+  enpv?: number;
 }
 
 // ==================== КОНСТАНТИ З МЕТОДИКИ ====================
@@ -230,7 +230,7 @@ export function executeComprehensiveAssessment(
   
   // 4.2.5 - Проведення аналізу витрат та вигод (для капремонту та реконструкції)
   if (assessment.recommendedWorkType === 'capital_repair' || 
-      assessment.recommendedWorkType === 'reconstruction') {
+    assessment.recommendedWorkType === 'reconstruction') {
     assessment.costBenefitAnalysis = performDetailedCostBenefitAnalysis(section, assessment.estimatedCost);
   }
   
@@ -523,7 +523,7 @@ export function performDetailedCostBenefitAnalysis(
   for (let year = 1; year <= analysisYears; year++) {
     const discountFactor = Math.pow(1 + discountRate, -year);
     totalDiscountedBenefits += totalAnnualBenefits * discountFactor;
-    totalDiscountedCosts += (projectCost * 0.03) * discountFactor;
+    // Эксплуатационные затраты добавляются к начальным, а не заменяют их
   }
   
   const enpv = totalDiscountedBenefits - totalDiscountedCosts;
@@ -647,7 +647,8 @@ function calculateDetailedPriority(section: RoadSection, assessment: Comprehensi
              assessment.recommendedWorkType === 'reconstruction') {
     if (assessment.costBenefitAnalysis) {
       const enpvPerKm = assessment.costBenefitAnalysis.enpv / section.length;
-      priority = Math.max(1, Math.round(1000000 / (enpvPerKm + 1000)));
+      // Чем больше ENPV/км, тем выше приоритет (меньше номер)
+      priority = Math.max(1, Math.round(Math.max(0, 100000 - enpvPerKm) / 1000));
       criteria = `ENPV на 1 км: ${enpvPerKm.toFixed(0)} тис. грн`;
     }
   }
@@ -1025,7 +1026,6 @@ export function createTestRoadSection(
     hasLighting: trafficIntensity > 5000 && Math.random() > 0.5,
     nearBorderCrossing: Math.random() > 0.95,
     criticalInfrastructureCount: Math.floor(Math.random() * 3),
-    enpv: 0,
   };
 }
 

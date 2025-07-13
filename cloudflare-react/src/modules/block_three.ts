@@ -43,8 +43,8 @@ export interface RoadSection {
   lastRepairYear?: number;
   hasLighting?: boolean;
   nearBorderCrossing?: boolean;
-  criticalInfrastructureCount?: number;
-  enpv: number;
+  criticalInfrastructureCount?: number
+  enpv?: number;
 }
 
 // Совместимость со старой версией для простых случаев
@@ -336,9 +336,9 @@ function rankProjectsByType(
       
       // Fallback к экономическим показателям
       if (workType === 'capital_repair' || workType === 'reconstruction') {
-        const enpvA = a.economicNPV || 0;
-        const enpvB = b.economicNPV || 0;
-        return enpvB - enpvA; // Высший ENPV = высший приоритет
+        const enpvPerKmA = (a.economicNPV || 0) / a.section.length;
+        const enpvPerKmB = (b.economicNPV || 0) / b.section.length;
+        return enpvPerKmB - enpvPerKmA; // MAX показник ENPV на 1 км
       }
       
       // Для текущего ремонта - по приоритету или интенсивности
@@ -436,7 +436,6 @@ function convertSimpleToDetailedSection(simpleSection: SimpleRoadSection): RoadS
     detailedCondition,
     trafficIntensity: simpleSection.trafficIntensity,
     estimatedCost: simpleSection.estimatedCost,
-    enpv: 0,
   };
 }
 

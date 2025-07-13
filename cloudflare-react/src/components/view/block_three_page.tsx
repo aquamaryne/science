@@ -573,7 +573,6 @@ function createTestRoadSection(id: string, name: string, category: 1 | 2 | 3 | 4
     hasLighting: trafficIntensity > 5000 && Math.random() > 0.5,
     nearBorderCrossing: Math.random() > 0.95,
     criticalInfrastructureCount: Math.floor(Math.random() * 3),
-    enpv: 0,
   };
 }
 
@@ -615,7 +614,7 @@ export interface RoadSectionData {
   hasLighting?: boolean;
   nearBorderCrossing?: boolean;
   criticalInfrastructureCount?: number;
-  enpv: number;
+  enpv?: number;
 }
 
 interface CostBenefitAnalysis {
@@ -800,7 +799,7 @@ const Page1_Coefficients: React.FC<{
   onBack: () => void;
 }> = ({ sections, onSectionsChange, onNext, onBack }) => {
   const [calculatedSections, setCalculatedSections] = useState<RoadSectionUI[]>([]);
-  const [isCalculating, setIsCalculating] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(true);
   const [calculationSummary, setCalculationSummary] = useState<{
     total: number;
     needsRepair: number;
@@ -2109,48 +2108,146 @@ const Page4_EstimatedCosts: React.FC<Page4EstimatedCostsProps> = ({
 
   // Инициализация - ИЗМЕНИТЬ этот useEffect
   React.useEffect(() => {
-    // Использовать propSections если есть, иначе тестовые данные
-    const testSections: RoadSection[] = propSections && propSections.length > 0 
-      ? propSections as any[] // временно как any чтобы избежать ошибок типов
-      : [
-          createTestRoadSection('M-01', 'М-01 Київ - Чернігів', 1, 125, 18500, 'Київська'),
-          createTestRoadSection('N-02', 'Н-02 Житомир - Львів', 2, 89, 8200, 'Житомирська'),
-          createTestRoadSection('P-03', 'Р-03 Вінниця - Тернопіль', 3, 67, 4100, 'Вінницька'),
-          createTestRoadSection('T-04', 'Т-04 Луцьк - Ковель', 4, 45, 1800, 'Волинська'),
-          createTestRoadSection('O-05', 'О-05 Місцева дорога', 5, 23, 450, 'Львівська'),
-          createTestRoadSection('M-06', 'М-06 Київ - Одеса', 1, 156, 22000, 'Київська'),
-          createTestRoadSection('N-07', 'Н-07 Харків - Полтава', 2, 78, 6500, 'Харківська'),
-          createTestRoadSection('P-08', 'Р-08 Чернівці - Івано-Франківськ', 3, 92, 3200, 'Чернівецька')
-        ];
+    let sectionsToUse: RoadSection[] = [];
     
-    setSections(testSections);
+    if (propSections && propSections.length > 0) {
+      // Конвертируем RoadSectionUI в RoadSection
+      sectionsToUse = propSections.map(uiSection => convertUIToRoadSection(uiSection));
+    } else {
+      // Тестовые данные если propSections пустые
+      sectionsToUse = [
+        createTestRoadSection('M-01', 'М-01 Київ - Чернігів', 1, 125, 18500, 'Київська'),
+        createTestRoadSection('N-02', 'Н-02 Житомир - Львів', 2, 89, 8200, 'Житомирська'),
+        createTestRoadSection('P-03', 'Р-03 Вінниця - Тернопіль', 3, 67, 4100, 'Вінницька'),
+        createTestRoadSection('T-04', 'Т-04 Луцьк - Ковель', 4, 45, 1800, 'Волинська'),
+        createTestRoadSection('O-05', 'О-05 Місцева дорога', 5, 23, 450, 'Львівська'),
+        createTestRoadSection('M-06', 'М-06 Київ - Одеса', 1, 156, 22000, 'Київська'),
+        createTestRoadSection('N-07', 'Н-07 Харків - Полтава', 2, 78, 6500, 'Харківська'),
+        createTestRoadSection('P-08', 'Р-08 Чернівці - Івано-Франківськ', 3, 92, 3200, 'Чернівецька')
+      ];
+    }
+    
+    setSections(sectionsToUse);
   }, [propSections]);
+
+  const convertUIToRoadSection = (uiSection: RoadSectionUI): RoadSection => {
+    const detailedCondition: DetailedTechnicalCondition = {
+      intensityCoefficient: MAX_DESIGN_INTENSITY_BY_CATEGORY[uiSection.category] / Math.max(uiSection.trafficIntensity, 1),
+      maxDesignIntensity: MAX_DESIGN_INTENSITY_BY_CATEGORY[uiSection.category],
+      actualIntensity: uiSection.trafficIntensity,
+      
+      strengthCoefficient: uiSection.strengthModulus / (300 + uiSection.category * 50),
+      isRigidPavement: false,
+      actualElasticModulus: uiSection.strengthModulus,
+      requiredElasticModulus: 300 + uiSection.category * 50,
+      
+      evennessCoefficient: (2.7 + uiSection.category * 0.4) / Math.max(uiSection.roughnessProfile, 0.1),
+      iriIndex: uiSection.roughnessProfile,
+      bumpIndex: uiSection.roughnessBump,
+      maxAllowedEvenness: 2.7 + uiSection.category * 0.4,
+      
+      rutCoefficient: (15 + uiSection.category * 5) / Math.max(uiSection.rutDepth, 1),
+      actualRutDepth: uiSection.rutDepth,
+      maxAllowedRutDepth: 15 + uiSection.category * 5,
+      
+      frictionCoefficient: uiSection.frictionCoeff / REQUIRED_FRICTION_COEFFICIENT,
+      actualFrictionValue: uiSection.frictionCoeff,
+      requiredFrictionValue: REQUIRED_FRICTION_COEFFICIENT
+    };
+
+    return {
+      id: uiSection.id,
+      name: uiSection.name,
+      category: uiSection.category,
+      length: uiSection.length,
+      significance: uiSection.significance,
+      region: uiSection.region || 'Київська',
+      detailedCondition,
+      trafficIntensity: uiSection.trafficIntensity,
+      estimatedCost: uiSection.estimatedCost,
+      isDefenseRoad: uiSection.isDefenseRoad,
+      isInternationalRoad: uiSection.isInternationalRoad,
+      isEuropeanNetwork: uiSection.isEuropeanNetwork,
+      hasLighting: uiSection.hasLighting,
+      criticalInfrastructureCount: uiSection.criticalInfrastructureCount,
+      enpv: 0 // Будет вычислено в assessment
+    };
+  };
+
   // Выполнение расчетов с использованием модулей
   const handleCalculateCosts = async () => {
+    if (sections.length === 0) {
+      console.log('Нет секций для расчета');
+      return;
+    }
+
     setIsCalculating(true);
     
-    // Имитация задержки расчетов
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
     try {
+      console.log('Начинаем расчет для секций:', sections.length);
+      
+      // Имитация задержки
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       // Используем executeComprehensiveAssessment из block_three_algorithm.ts
-      const newAssessments = sections.map(section => {
-        console.log(`Расчет для секции: ${section.id}`);
-        return executeComprehensiveAssessment(section);
+      const newAssessments = sections.map((section, index) => {
+        console.log(`Расчет ${index + 1}/${sections.length} для секции: ${section.id} - ${section.name}`);
+        
+        try {
+          const assessment = executeComprehensiveAssessment(section);
+          console.log(`Результат для ${section.id}:`, {
+            workType: assessment.recommendedWorkType,
+            cost: assessment.estimatedCost,
+            enpv: assessment.costBenefitAnalysis?.enpv
+          });
+          return assessment;
+        } catch (error) {
+          console.error(`Ошибка расчета для секции ${section.id}:`, error);
+          // Возвращаем базовую оценку в случае ошибки
+          return {
+            sectionId: section.id,
+            currentInspections: true,
+            targetedInspections: true,
+            seasonalInspections: true,
+            specialSurveys: false,
+            diagnostics: false,
+            technicalState: {
+              intensityCoefficient: 1.0,
+              strengthCoefficient: 1.0,
+              evennessCoefficient: 1.0,
+              rutCoefficient: 1.0,
+              frictionCoefficient: 1.0
+            },
+            comparisonResults: {
+              intensityCompliant: true,
+              strengthCompliant: true,
+              evennessCompliant: true,
+              rutCompliant: true,
+              frictionCompliant: true
+            },
+            recommendedWorkType: 'no_work_needed' as const,
+            estimatedCost: 0,
+            priority: 999,
+            rankingCriteria: 'ошибка расчета'
+          };
+        }
       });
       
       setAssessments(newAssessments);
-      console.log('Расчеты завершены:', newAssessments);
+      console.log('Все расчеты завершены. Результаты:', newAssessments);
+      
     } catch (error) {
-      console.error('Ошибка при расчете:', error);
+      console.error('Критическая ошибка при расчете:', error);
+      alert('Ошибка при выполнении расчетов: ' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsCalculating(false);
     }
-    
-    setIsCalculating(false);
   };
 
   // Запуск расчетов при загрузке
   React.useEffect(() => {
-    if (sections.length > 0) {
+    if (sections.length > 0 && assessments.length === 0) {
+      console.log('Автоматический запуск расчетов для', sections.length, 'секций');
       handleCalculateCosts();
     }
   }, [sections]);
@@ -2532,6 +2629,46 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
     analysisYears: 20
   });
 
+  const convertUIToRoadSectionFull = (uiSection: RoadSectionUI): RoadSection => {
+    const detailedCondition: DetailedTechnicalCondition = {
+      intensityCoefficient: MAX_DESIGN_INTENSITY_BY_CATEGORY[uiSection.category] / Math.max(uiSection.trafficIntensity, 1),
+      maxDesignIntensity: MAX_DESIGN_INTENSITY_BY_CATEGORY[uiSection.category],
+      actualIntensity: uiSection.trafficIntensity,
+      strengthCoefficient: uiSection.strengthModulus / (300 + uiSection.category * 50),
+      isRigidPavement: false,
+      actualElasticModulus: uiSection.strengthModulus,
+      requiredElasticModulus: 300 + uiSection.category * 50,
+      evennessCoefficient: (2.7 + uiSection.category * 0.4) / Math.max(uiSection.roughnessProfile, 0.1),
+      iriIndex: uiSection.roughnessProfile,
+      bumpIndex: uiSection.roughnessBump,
+      maxAllowedEvenness: 2.7 + uiSection.category * 0.4,
+      rutCoefficient: (15 + uiSection.category * 5) / Math.max(uiSection.rutDepth, 1),
+      actualRutDepth: uiSection.rutDepth,
+      maxAllowedRutDepth: 15 + uiSection.category * 5,
+      frictionCoefficient: uiSection.frictionCoeff / REQUIRED_FRICTION_COEFFICIENT,
+      actualFrictionValue: uiSection.frictionCoeff,
+      requiredFrictionValue: REQUIRED_FRICTION_COEFFICIENT
+    };
+
+    return {
+      id: uiSection.id,
+      name: uiSection.name,
+      category: uiSection.category,
+      length: uiSection.length,
+      significance: uiSection.significance,
+      region: uiSection.region || 'Київська',
+      detailedCondition,
+      trafficIntensity: uiSection.trafficIntensity,
+      estimatedCost: uiSection.estimatedCost,
+      isDefenseRoad: uiSection.isDefenseRoad,
+      isInternationalRoad: uiSection.isInternationalRoad,
+      isEuropeanNetwork: uiSection.isEuropeanNetwork,
+      hasLighting: uiSection.hasLighting,
+      criticalInfrastructureCount: uiSection.criticalInfrastructureCount,
+      enpv: 0
+    };
+  };
+
   // Initialize with prop sections or test data
   React.useEffect(() => {
     // Convert RoadSectionUI[] to RoadSection[] if needed, or use propSections directly
@@ -2562,6 +2699,48 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
     }
   }, [sections, onSectionsChange]);
 
+  React.useEffect(() => {
+    let sectionsToUse: RoadSection[] = [];
+    
+    if (propSections && propSections.length > 0) {
+      // Convert UI sections to full RoadSection objects
+      sectionsToUse = propSections.map(uiSection => convertUIToRoadSectionFull(uiSection));
+    } else {
+      // Create test data if no sections provided
+      sectionsToUse = [
+        createTestRoadSection('M-01', 'М-01 Київ - Чернігів', 1, 125, 18500, 'Київська'),
+        createTestRoadSection('P-03', 'Р-03 Вінниця - Тернопіль', 3, 67, 4100, 'Вінницька'),
+        createTestRoadSection('M-06', 'М-06 Київ - Одеса', 1, 156, 22000, 'Київська'),
+        createTestRoadSection('N-07', 'Н-07 Харків - Полтава', 2, 78, 6500, 'Харківська')
+      ];
+    }
+    
+    console.log('Page5: Инициализируем секции:', sectionsToUse.length);
+    setSections(sectionsToUse);
+    
+    if (sectionsToUse.length > 0) {
+      // Execute comprehensive assessment
+      try {
+        const newAssessments = sectionsToUse.map(section => executeComprehensiveAssessment(section));
+        setAssessments(newAssessments);
+        console.log('Page5: Создали оценки:', newAssessments.length);
+        
+        // Set first eligible section as selected
+        const firstEligible = newAssessments.find(a => 
+          a.recommendedWorkType === 'capital_repair' || 
+          a.recommendedWorkType === 'reconstruction'
+        );
+        
+        if (firstEligible) {
+          setSelectedSectionId(firstEligible.sectionId);
+          console.log('Page5: Выбрали секцию:', firstEligible.sectionId);
+        }
+      } catch (error) {
+        console.error('Page5: Ошибка при создании оценок:', error);
+      }
+    }
+  }, [propSections]);
+
   // Filter sections that require capital repair or reconstruction
   const eligibleSections = sections.filter((_section, index) => {
     const assessment = assessments[index];
@@ -2582,8 +2761,13 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
     const assessment = assessments.find(a => a.sectionId === selectedSectionId);
     
     if (section && assessment) {
+      const sectionWithEnpv: RoadSectionData = {
+        ...section,
+        enpv: section.enpv || 0
+      };
+
       const result = calculateDetailedEconomicAnalysis(
-        section,
+        sectionWithEnpv,
         assessment,
         analysisParams.discountRate,
         analysisParams.analysisYears

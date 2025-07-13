@@ -613,6 +613,7 @@ export interface RoadSectionData {
   hasLighting?: boolean;
   nearBorderCrossing?: boolean;
   criticalInfrastructureCount?: number;
+  enpv: number;
 }
 
 interface CostBenefitAnalysis {

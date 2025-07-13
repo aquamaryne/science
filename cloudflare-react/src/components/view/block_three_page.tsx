@@ -595,7 +595,7 @@ interface DetailedTechnicalCondition {
   requiredFrictionValue: number;
 }
 
-interface RoadSectionData {
+export interface RoadSectionData {
   id: string;
   name: string;
   category: 1 | 2 | 3 | 4 | 5;

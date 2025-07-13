@@ -13,7 +13,10 @@ import { type RoadSection } from '@/modules/block_three_alghoritm';
 import { planRepairWorksWithBlockOneData, generateDetailedRepairPlanReport, hasBlockOneBudgetData, getBlockOneBudgetData, setBlockOneBudgetData, type RepairProject } from '@/modules/block_three';
 import { determineWorkTypeByTechnicalCondition, checkCategoryComplianceByIntensity, checkFrictionCompliance } from '@/modules/block_three';
 import { type SimpleRoadSection } from '@/modules/block_three';
-
+import { 
+  performDetailedCostBenefitAnalysis,
+  type RoadSection as AlgorithmRoadSection,
+} from '@/modules/block_three_alghoritm';
 // Используємо константи локально, оскільки вони не експортуються
 const MAX_DESIGN_INTENSITY_BY_CATEGORY = {
   1: 20000,
@@ -75,6 +78,129 @@ interface BudgetPlanningResult {
   blockOneBudgetInfo: any;
   complianceReport: Array<{sectionId: string, categoryCompliance: boolean, frictionCompliance: boolean}>;
 }
+
+function calculateDetailedEconomicAnalysis(
+  section: AlgorithmRoadSection,
+  assessment: any,
+  discountRate: number = 0.05,
+  analysisYears: number = 20
+): EconomicAnalysisResult {
+  const projectCost = assessment.estimatedCost; // тыс. грн
+  const yearlyData: YearlyData[] = [];
+  
+  // Расчет годовых выгод на основе CBA из модуля
+  const cba = assessment.costBenefitAnalysis;
+  let annualBenefits: number;
+  
+  if (cba && cba.totalBenefits > 0) {
+    annualBenefits = cba.totalBenefits / analysisYears;
+  } else {
+    // Упрощенный расчет выгод если нет CBA
+    const annualTrafficVolume = section.trafficIntensity * 365 * section.length;
+    const benefitRate = assessment.recommendedWorkType === 'reconstruction' ? 0.002 : 0.0015; // 0.2% или 0.15%
+    annualBenefits = annualTrafficVolume * benefitRate * 100; // примерная ставка выгод
+  }
+  
+  let cumulativeENPV = 0;
+  let totalDiscountedBenefits = 0;
+  let totalDiscountedCosts = 0;
+  
+  for (let year = 1; year <= analysisYears; year++) {
+    const actualYear = 2024 + year;
+    const discountFactor = Math.pow(1 + discountRate, -year);
+    
+    // Капитальные затраты только в первый год
+    const capitalCost = year === 1 ? projectCost : 0;
+    
+    // Операционные затраты начиная со второго года
+    const operationalCost = year >= 2 ? (projectCost * 0.03) : 0; // 3% от капитальных затрат
+    
+    const totalCosts = capitalCost + operationalCost;
+    
+    // Экономический эффект начинается со второго года
+    const economicEffect = year >= 2 ? annualBenefits : 0;
+    
+    // Чистый денежный поток
+    const netCashFlow = economicEffect - totalCosts;
+    
+    // Дисконтированные значения
+    const discountedCashFlow = netCashFlow * discountFactor;
+    const discountedBenefits = economicEffect * discountFactor;
+    const discountedCosts = totalCosts * discountFactor;
+    
+    // Накопительный ENPV
+    cumulativeENPV += discountedCashFlow;
+    totalDiscountedBenefits += discountedBenefits;
+    totalDiscountedCosts += discountedCosts;
+    
+    yearlyData.push({
+      year: actualYear,
+      capitalCost,
+      operationalCost,
+      totalCosts,
+      economicEffect,
+      netCashFlow,
+      discountFactor,
+      discountedCashFlow,
+      enpv: cumulativeENPV,
+      discountedBenefits,
+      discountedCosts
+    });
+  }
+  
+  
+  // Расчет итоговых показателей
+  const bcr = totalDiscountedCosts > 0 ? totalDiscountedBenefits / totalDiscountedCosts : 0;
+  
+  // Упрощенный расчет EIRR
+  let eirr = discountRate;
+  for (let rate = 0.01; rate <= 1.0; rate += 0.001) {
+    let npv = 0;
+    for (let year = 1; year <= analysisYears; year++) {
+      const yearData = yearlyData[year - 1];
+      npv += yearData.netCashFlow / Math.pow(1 + rate, year);
+    }
+    if (Math.abs(npv) < 1000) {
+      eirr = rate;
+      break;
+    }
+  }
+  
+  // Дисконтированный период окупности
+  let dpp = analysisYears;
+  let cumulativeDiscountedCashFlow = 0;
+  for (let i = 0; i < yearlyData.length; i++) {
+    cumulativeDiscountedCashFlow += yearlyData[i].discountedCashFlow;
+    if (cumulativeDiscountedCashFlow >= 0) {
+      dpp = i + 1;
+      break;
+    }
+  }
+  
+  // Средняя ставка доходности
+  const arr = totalDiscountedCosts > 0 ? (totalDiscountedBenefits - totalDiscountedCosts) / totalDiscountedCosts : 0;
+  
+  return {
+    sectionId: section.id,
+    sectionName: section.name,
+    totalENPV: cumulativeENPV,
+    bcr,
+    eirr,
+    yearlyData,
+    summary: {
+      totalDiscountedBenefits,
+      totalDiscountedCosts,
+      npv: cumulativeENPV,
+      dpp,
+      arr
+    }
+  };
+}
+
+const safeNumber = (value: any, defaultValue: number = 0): number => {
+  const num = Number(value);
+  return isNaN(num) || !isFinite(num) ? defaultValue : num;
+};
 // ==================== ТИПИ ДЛЯ UI ====================
 interface RoadSectionUI {
   id: string;
@@ -157,6 +283,52 @@ const convertUIToSimpleRoadSection = (uiSection: RoadSectionUI): SimpleRoadSecti
     estimatedCost: uiSection.estimatedCost
   };
 };
+
+const convertUIToRoadSection = (uiSection: RoadSectionUI): RoadSection => {
+  const detailedCondition: DetailedTechnicalCondition = {
+    intensityCoefficient: MAX_DESIGN_INTENSITY_BY_CATEGORY[uiSection.category] / Math.max(uiSection.trafficIntensity, 1),
+    maxDesignIntensity: MAX_DESIGN_INTENSITY_BY_CATEGORY[uiSection.category],
+    actualIntensity: uiSection.trafficIntensity,
+    
+    strengthCoefficient: uiSection.strengthModulus / (300 + uiSection.category * 50),
+    isRigidPavement: false,
+    actualElasticModulus: uiSection.strengthModulus,
+    requiredElasticModulus: 300 + uiSection.category * 50,
+    
+    evennessCoefficient: (2.7 + uiSection.category * 0.4) / Math.max(uiSection.roughnessProfile, 0.1),
+    iriIndex: uiSection.roughnessProfile,
+    bumpIndex: uiSection.roughnessBump,
+    maxAllowedEvenness: 2.7 + uiSection.category * 0.4,
+    
+    rutCoefficient: (15 + uiSection.category * 5) / Math.max(uiSection.rutDepth, 1),
+    actualRutDepth: uiSection.rutDepth,
+    maxAllowedRutDepth: 15 + uiSection.category * 5,
+    
+    frictionCoefficient: uiSection.frictionCoeff / REQUIRED_FRICTION_COEFFICIENT,
+    actualFrictionValue: uiSection.frictionCoeff,
+    requiredFrictionValue: REQUIRED_FRICTION_COEFFICIENT
+  };
+
+  return {
+    id: uiSection.id,
+    name: uiSection.name,
+    category: uiSection.category,
+    length: uiSection.length,
+    significance: uiSection.significance,
+    region: uiSection.region || 'Київська',
+    detailedCondition,
+    trafficIntensity: uiSection.trafficIntensity,
+    estimatedCost: uiSection.estimatedCost,
+    isDefenseRoad: uiSection.isDefenseRoad,
+    isInternationalRoad: uiSection.isInternationalRoad,
+    isEuropeanNetwork: uiSection.isEuropeanNetwork,
+    hasLighting: uiSection.hasLighting,
+    criticalInfrastructureCount: uiSection.criticalInfrastructureCount,
+    enpv: 0
+  };
+};
+
+
 
 // Простий розрахунок вартості
 const calculateEstimatedCost = (
@@ -374,6 +546,50 @@ const BASE_REPAIR_COSTS: Record<'current_repair' | 'capital_repair' | 'reconstru
     4: 28000,
     5: 22000
   }
+};
+
+const convertUIToAlgorithmRoadSection = (uiSection: RoadSectionUI): AlgorithmRoadSection => {
+  const detailedCondition: DetailedTechnicalCondition = {
+    intensityCoefficient: MAX_DESIGN_INTENSITY_BY_CATEGORY[uiSection.category] / Math.max(uiSection.trafficIntensity, 1),
+    maxDesignIntensity: MAX_DESIGN_INTENSITY_BY_CATEGORY[uiSection.category],
+    actualIntensity: uiSection.trafficIntensity,
+    
+    strengthCoefficient: uiSection.strengthModulus / (300 + uiSection.category * 50),
+    isRigidPavement: false,
+    actualElasticModulus: uiSection.strengthModulus,
+    requiredElasticModulus: 300 + uiSection.category * 50,
+    
+    evennessCoefficient: (2.7 + uiSection.category * 0.4) / Math.max(uiSection.roughnessProfile, 0.1),
+    iriIndex: uiSection.roughnessProfile,
+    bumpIndex: uiSection.roughnessBump,
+    maxAllowedEvenness: 2.7 + uiSection.category * 0.4,
+    
+    rutCoefficient: (15 + uiSection.category * 5) / Math.max(uiSection.rutDepth, 1),
+    actualRutDepth: uiSection.rutDepth,
+    maxAllowedRutDepth: 15 + uiSection.category * 5,
+    
+    frictionCoefficient: uiSection.frictionCoeff / REQUIRED_FRICTION_COEFFICIENT,
+    actualFrictionValue: uiSection.frictionCoeff,
+    requiredFrictionValue: REQUIRED_FRICTION_COEFFICIENT
+  };
+
+  return {
+    id: uiSection.id,
+    name: uiSection.name,
+    category: uiSection.category,
+    length: uiSection.length,
+    significance: uiSection.significance,
+    region: uiSection.region || 'Київська',
+    detailedCondition,
+    trafficIntensity: uiSection.trafficIntensity,
+    estimatedCost: uiSection.estimatedCost,
+    isDefenseRoad: uiSection.isDefenseRoad,
+    isInternationalRoad: uiSection.isInternationalRoad,
+    isEuropeanNetwork: uiSection.isEuropeanNetwork,
+    hasLighting: uiSection.hasLighting,
+    criticalInfrastructureCount: uiSection.criticalInfrastructureCount,
+    enpv: 0
+  };
 };
 
 function calculateDetailedWorkCost(section: RoadSectionData, workType: 'current_repair' | 'capital_repair' | 'reconstruction'): number {
@@ -681,114 +897,6 @@ interface EconomicAnalysisResult {
     npv: number;
     dpp: number; // Дисконтований період окупності
     arr: number; // Середня ставка доходу
-  };
-}
-
-function calculateDetailedEconomicAnalysis(
-  section: RoadSection,
-  assessment: ComprehensiveAssessment,
-  discountRate: number = 0.05,
-  analysisYears: number = 20
-): EconomicAnalysisResult {
-  const projectCost = assessment.estimatedCost; // тыс. грн
-  const yearlyData: YearlyData[] = [];
-  
-  // Расчет годовых выгод (упрощенно на основе CBA из модуля)
-  const cba = assessment.costBenefitAnalysis;
-  const annualBenefits = cba ? (cba.totalBenefits / analysisYears) : (projectCost * 0.15); // 15% от стоимости проекта
-  
-  let cumulativeENPV = 0;
-  let totalDiscountedBenefits = 0;
-  let totalDiscountedCosts = 0;
-  
-  for (let year = 1; year <= analysisYears; year++) {
-    const actualYear = 2024 + year;
-    const discountFactor = Math.pow(1 + discountRate, -year);
-    
-    // Капитальные затраты только в первый год
-    const capitalCost = year === 1 ? projectCost : 0;
-    
-    // Операционные затраты начиная со второго года
-    const operationalCost = year >= 2 ? (projectCost * 0.03) : 0; // 3% от капитальных затрат
-    
-    const totalCosts = capitalCost + operationalCost;
-    
-    // Экономический эффект начинается со второго года
-    const economicEffect = year >= 2 ? annualBenefits : 0;
-    
-    // Чистый денежный поток
-    const netCashFlow = economicEffect - totalCosts;
-    
-    // Дисконтированные значения
-    const discountedCashFlow = netCashFlow * discountFactor;
-    const discountedBenefits = economicEffect * discountFactor;
-    const discountedCosts = totalCosts * discountFactor;
-    
-    // Накопительный ENPV
-    cumulativeENPV += discountedCashFlow;
-    totalDiscountedBenefits += discountedBenefits;
-    totalDiscountedCosts += discountedCosts;
-    
-    yearlyData.push({
-      year: actualYear,
-      capitalCost,
-      operationalCost,
-      totalCosts,
-      economicEffect,
-      netCashFlow,
-      discountFactor,
-      discountedCashFlow,
-      enpv: cumulativeENPV,
-      discountedBenefits,
-      discountedCosts
-    });
-  }
-  
-  // Расчет итоговых показателей
-  const bcr = totalDiscountedCosts > 0 ? totalDiscountedBenefits / totalDiscountedCosts : 0;
-  
-  // Упрощенный расчет EIRR
-  let eirr = discountRate;
-  for (let rate = 0.01; rate <= 1.0; rate += 0.001) {
-    let npv = 0;
-    for (let year = 1; year <= analysisYears; year++) {
-      const yearData = yearlyData[year - 1];
-      npv += yearData.netCashFlow / Math.pow(1 + rate, year);
-    }
-    if (Math.abs(npv) < 1000) {
-      eirr = rate;
-      break;
-    }
-  }
-  
-  // Дисконтированный период окупности
-  let dpp = analysisYears;
-  let cumulativeDiscountedCashFlow = 0;
-  for (let i = 0; i < yearlyData.length; i++) {
-    cumulativeDiscountedCashFlow += yearlyData[i].discountedCashFlow;
-    if (cumulativeDiscountedCashFlow >= 0) {
-      dpp = i + 1;
-      break;
-    }
-  }
-  
-  // Средняя ставка доходности
-  const arr = totalDiscountedCosts > 0 ? (totalDiscountedBenefits - totalDiscountedCosts) / totalDiscountedCosts : 0;
-  
-  return {
-    sectionId: section.id,
-    sectionName: section.name,
-    totalENPV: cumulativeENPV,
-    bcr,
-    eirr,
-    yearlyData,
-    summary: {
-      totalDiscountedBenefits,
-      totalDiscountedCosts,
-      npv: cumulativeENPV,
-      dpp,
-      arr
-    }
   };
 }
 
@@ -2605,22 +2713,77 @@ const Page4_EstimatedCosts: React.FC<Page4EstimatedCostsProps> = ({
   );
 };
 
+
+const executeComprehensiveAssessmentFallback = (section: AlgorithmRoadSection) => {
+  // Простая логика определения типа работ
+  let workType: 'current_repair' | 'capital_repair' | 'reconstruction' | 'no_work_needed' = 'no_work_needed';
+  
+  if (section.trafficIntensity > section.detailedCondition.maxDesignIntensity) {
+    workType = 'reconstruction';
+  } else if (section.detailedCondition.strengthCoefficient < 0.9) {
+    workType = 'capital_repair';
+  } else if (section.detailedCondition.evennessCoefficient < 1.0 || 
+             section.detailedCondition.rutCoefficient < 1.0 || 
+             section.detailedCondition.frictionCoefficient < 1.0) {
+    workType = 'current_repair';
+  }
+  
+  return {
+    recommendedWorkType: workType,
+    estimatedCost: 0, // будет рассчитано позже
+    costBenefitAnalysis: null
+  };
+};
+
+const calculateEstimatedCostForSection = (section: RoadSectionUI): number => {
+  // Простой алгоритм определения типа работ
+  let workType: 'current_repair' | 'capital_repair' | 'reconstruction' = 'current_repair';
+  
+  // Проверяем интенсивность для реконструкции
+  const maxIntensity = MAX_DESIGN_INTENSITY_BY_CATEGORY[section.category];
+  if (section.trafficIntensity > maxIntensity) {
+    workType = 'reconstruction';
+  } else {
+    // Проверяем коефіцієнти для определения типа работ
+    const strengthCoeff = section.strengthModulus / (300 + section.category * 50);
+    const minStrengthCoeff = {1: 1.0, 2: 1.0, 3: 0.95, 4: 0.90, 5: 0.85}[section.category] || 0.85;
+    
+    if (strengthCoeff < minStrengthCoeff) {
+      workType = 'capital_repair';
+    }
+  }
+  
+  // Базовые ставки (млн грн/км)
+  const baseCosts = {
+    current_repair: {1: 3.5, 2: 2.5, 3: 1.8, 4: 1.2, 5: 0.9},
+    capital_repair: {1: 18.0, 2: 15.0, 3: 12.0, 4: 9.0, 5: 7.0},
+    reconstruction: {1: 60.0, 2: 50.0, 3: 35.0, 4: 28.0, 5: 22.0}
+  };
+  
+  const baseRate = baseCosts[workType][section.category] || 1.0;
+  let totalCost = baseRate * section.length * 1000; // конвертируем в тыс. грн
+  
+  // Поправочные коэффициенты
+  if (section.isInternationalRoad) totalCost *= 1.15;
+  if (section.isDefenseRoad) totalCost *= 1.10;
+  if (section.hasLighting) totalCost *= 1.05;
+  
+  return Math.round(totalCost);
+};
+
 interface Page5EconomicAnalysisProps {
-  sections: any[]; // Using any[] to avoid type conflicts temporarily
-  onSectionsChange: (sections: any[]) => void;
+  sections: RoadSectionUI[];
+  onSectionsChange: (sections: RoadSectionUI[]) => void;
   onNext: () => void;
   onBack: () => void;
 }
 
-// Update the component to accept props
 const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({ 
-  sections: propSections, 
-  onSectionsChange, 
+  sections, 
+  onSectionsChange,
   onNext, 
   onBack 
 }) => {
-  const [sections, setSections] = useState<RoadSection[]>([]);
-  const [assessments, setAssessments] = useState<ComprehensiveAssessment[]>([]);
   const [selectedSectionId, setSelectedSectionId] = useState<string>('');
   const [analysisResult, setAnalysisResult] = useState<EconomicAnalysisResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -2629,156 +2792,111 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
     analysisYears: 20
   });
 
-  const convertUIToRoadSectionFull = (uiSection: RoadSectionUI): RoadSection => {
-    const detailedCondition: DetailedTechnicalCondition = {
-      intensityCoefficient: MAX_DESIGN_INTENSITY_BY_CATEGORY[uiSection.category] / Math.max(uiSection.trafficIntensity, 1),
-      maxDesignIntensity: MAX_DESIGN_INTENSITY_BY_CATEGORY[uiSection.category],
-      actualIntensity: uiSection.trafficIntensity,
-      strengthCoefficient: uiSection.strengthModulus / (300 + uiSection.category * 50),
-      isRigidPavement: false,
-      actualElasticModulus: uiSection.strengthModulus,
-      requiredElasticModulus: 300 + uiSection.category * 50,
-      evennessCoefficient: (2.7 + uiSection.category * 0.4) / Math.max(uiSection.roughnessProfile, 0.1),
-      iriIndex: uiSection.roughnessProfile,
-      bumpIndex: uiSection.roughnessBump,
-      maxAllowedEvenness: 2.7 + uiSection.category * 0.4,
-      rutCoefficient: (15 + uiSection.category * 5) / Math.max(uiSection.rutDepth, 1),
-      actualRutDepth: uiSection.rutDepth,
-      maxAllowedRutDepth: 15 + uiSection.category * 5,
-      frictionCoefficient: uiSection.frictionCoeff / REQUIRED_FRICTION_COEFFICIENT,
-      actualFrictionValue: uiSection.frictionCoeff,
-      requiredFrictionValue: REQUIRED_FRICTION_COEFFICIENT
-    };
+  // Фільтруємо секції, що потребують капітального ремонту або реконструкції
+  const eligibleSections = sections.filter(section => 
+    section.workTypeRaw === 'capital_repair' || 
+    section.workTypeRaw === 'reconstruction'
+  );
 
-    return {
-      id: uiSection.id,
-      name: uiSection.name,
-      category: uiSection.category,
-      length: uiSection.length,
-      significance: uiSection.significance,
-      region: uiSection.region || 'Київська',
-      detailedCondition,
-      trafficIntensity: uiSection.trafficIntensity,
-      estimatedCost: uiSection.estimatedCost,
-      isDefenseRoad: uiSection.isDefenseRoad,
-      isInternationalRoad: uiSection.isInternationalRoad,
-      isEuropeanNetwork: uiSection.isEuropeanNetwork,
-      hasLighting: uiSection.hasLighting,
-      criticalInfrastructureCount: uiSection.criticalInfrastructureCount,
-      enpv: 0
-    };
-  };
-
-  // Initialize with prop sections or test data
+  // Автоматично вибираємо першу підходящу секцію
   React.useEffect(() => {
-    // Convert RoadSectionUI[] to RoadSection[] if needed, or use propSections directly
-    const sectionsToUse = propSections && propSections.length > 0 ? propSections : [
-      createTestRoadSection('M-01', 'М-01 Київ - Чернігів', 1, 125, 18500, 'Київська'),
-      createTestRoadSection('P-03', 'Р-03 Вінниця - Тернопіль', 3, 67, 4100, 'Вінницька'),
-      createTestRoadSection('M-06', 'М-06 Київ - Одеса', 1, 156, 22000, 'Київська'),
-      createTestRoadSection('N-07', 'Н-07 Харків - Полтава', 2, 78, 6500, 'Харківська')
-    ];
-    
-    setSections(sectionsToUse);
-    
-    // Execute comprehensive assessment
-    const newAssessments = sectionsToUse.map(section => executeComprehensiveAssessment(section));
-    setAssessments(newAssessments);
-    
-    // Set first section as selected
-    if (sectionsToUse.length > 0) {
-      setSelectedSectionId(sectionsToUse[0].id);
+    if (eligibleSections.length > 0 && !selectedSectionId) {
+      setSelectedSectionId(eligibleSections[0].id);
     }
-  }, [propSections]);
+  }, [eligibleSections, selectedSectionId]);
 
-  // Update parent sections when local sections change
-  React.useEffect(() => {
-    if (onSectionsChange && sections.length > 0) {
-      // Convert back to RoadSectionUI[] if needed
-      onSectionsChange(sections as any); // You might need proper type conversion here
-    }
-  }, [sections, onSectionsChange]);
-
-  React.useEffect(() => {
-    let sectionsToUse: RoadSection[] = [];
-    
-    if (propSections && propSections.length > 0) {
-      // Convert UI sections to full RoadSection objects
-      sectionsToUse = propSections.map(uiSection => convertUIToRoadSectionFull(uiSection));
-    } else {
-      // Create test data if no sections provided
-      sectionsToUse = [
-        createTestRoadSection('M-01', 'М-01 Київ - Чернігів', 1, 125, 18500, 'Київська'),
-        createTestRoadSection('P-03', 'Р-03 Вінниця - Тернопіль', 3, 67, 4100, 'Вінницька'),
-        createTestRoadSection('M-06', 'М-06 Київ - Одеса', 1, 156, 22000, 'Київська'),
-        createTestRoadSection('N-07', 'Н-07 Харків - Полтава', 2, 78, 6500, 'Харківська')
-      ];
-    }
-    
-    console.log('Page5: Инициализируем секции:', sectionsToUse.length);
-    setSections(sectionsToUse);
-    
-    if (sectionsToUse.length > 0) {
-      // Execute comprehensive assessment
-      try {
-        const newAssessments = sectionsToUse.map(section => executeComprehensiveAssessment(section));
-        setAssessments(newAssessments);
-        console.log('Page5: Создали оценки:', newAssessments.length);
-        
-        // Set first eligible section as selected
-        const firstEligible = newAssessments.find(a => 
-          a.recommendedWorkType === 'capital_repair' || 
-          a.recommendedWorkType === 'reconstruction'
-        );
-        
-        if (firstEligible) {
-          setSelectedSectionId(firstEligible.sectionId);
-          console.log('Page5: Выбрали секцию:', firstEligible.sectionId);
-        }
-      } catch (error) {
-        console.error('Page5: Ошибка при создании оценок:', error);
-      }
-    }
-  }, [propSections]);
-
-  // Filter sections that require capital repair or reconstruction
-  const eligibleSections = sections.filter((_section, index) => {
-    const assessment = assessments[index];
-    return assessment && (
-      assessment.recommendedWorkType === 'capital_repair' || 
-      assessment.recommendedWorkType === 'reconstruction'
-    );
-  });
-
-  // Execute economic analysis
-  const handleCalculateEconomics = async () => {
+  // ИСПРАВЛЕННАЯ функция handleCalculateEconomics
+  const handleCalculateEconomics = () => {
     if (!selectedSectionId) return;
     
     setIsCalculating(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
     
-    const section = sections.find(s => s.id === selectedSectionId);
-    const assessment = assessments.find(a => a.sectionId === selectedSectionId);
-    
-    if (section && assessment) {
-      const sectionWithEnpv: RoadSectionData = {
-        ...section,
-        enpv: section.enpv || 0
-      };
+    try {
+      const section = sections.find(s => s.id === selectedSectionId);
+      if (!section) {
+        console.error('Секція не знайдена');
+        alert('Помилка: секція не знайдена');
+        setAnalysisResult(null);
+        return;
+      }
 
+      console.log('Начинаем расчет экономического анализа для:', section.name);
+      console.log('Текущая стоимость секции:', section.estimatedCost);
+      
+      // Конвертируем UI секцию в формат алгоритма
+      const convertedSection = convertUIToAlgorithmRoadSection(section);
+      console.log('Секция сконвертирована:', convertedSection);
+      
+      // Получаем комплексную оценку из модуля алгоритмов
+      let assessment;
+      try {
+        assessment = executeComprehensiveAssessment(convertedSection);
+      } catch (error) {
+        console.warn('Используем fallback assessment:', error);
+        assessment = executeComprehensiveAssessmentFallback(convertedSection);
+      }
+      console.log('Получена оценка:', assessment);
+      
+      // Проверяем, есть ли стоимость в оценке или в исходной секции
+      let projectCost = assessment.estimatedCost || safeNumber(section.estimatedCost, 0) * 1000; // конвертируем в тыс грн
+      
+      // Если стоимости нет, рассчитываем её
+      if (projectCost <= 0) {
+        if (assessment.recommendedWorkType !== 'no_work_needed') {
+          console.log('Рассчитываем стоимость через модуль алгоритмов...');
+          try {
+            projectCost = calculateDetailedWorkCost(convertedSection, assessment.recommendedWorkType);
+          } catch (error) {
+            console.warn('Ошибка в calculateDetailedWorkCost, используем простой расчет:', error);
+            projectCost = calculateEstimatedCostForSection(section);
+          }
+        } else {
+          console.log('Рассчитываем стоимость простым методом...');
+          projectCost = calculateEstimatedCostForSection(section);
+        }
+        
+        console.log('Рассчитанная стоимость:', projectCost);
+        
+        // Обновляем assessment с новой стоимостью
+        assessment.estimatedCost = projectCost;
+        
+        // Обновляем секцию со стоимостью для будущих расчетов
+        const updatedSections = sections.map(s => 
+          s.id === selectedSectionId ? {...s, estimatedCost: projectCost / 1000} : s // конвертируем обратно в млн
+        );
+        onSectionsChange(updatedSections);
+      }
+      
+      if (projectCost <= 0) {
+        console.error('Не удается определить стоимость проекта');
+        alert('Помилка: не вдається визначити вартість проекту. Можливо, секція не потребує ремонту.');
+        setAnalysisResult(null);
+        return;
+      }
+      
+      console.log('Финальная стоимость для анализа:', projectCost);
+      
+      // Рассчитываем детальный экономический анализ
       const result = calculateDetailedEconomicAnalysis(
-        sectionWithEnpv,
+        convertedSection,
         assessment,
         analysisParams.discountRate,
         analysisParams.analysisYears
       );
+      console.log('Результат экономического анализа:', result);
+      
       setAnalysisResult(result);
+      
+    } catch (error) {
+      console.error('Помилка розрахунку економічного аналізу:', error);
+      alert('Помилка при розрахунку: ' + (error instanceof Error ? error.message : String(error)));
+      setAnalysisResult(null);
+    } finally {
+      setIsCalculating(false);
     }
-    
-    setIsCalculating(false);
   };
 
-  // Automatic calculation when selecting section
+  // Автоматичний розрахунок при зміні секції або параметрів
   React.useEffect(() => {
     if (selectedSectionId && !isCalculating) {
       handleCalculateEconomics();
@@ -2786,20 +2904,26 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
   }, [selectedSectionId, analysisParams]);
 
   const selectedSection = sections.find(s => s.id === selectedSectionId);
-  const selectedAssessment = assessments.find(a => a.sectionId === selectedSectionId);
 
-  // Handle navigation
-  const handleBackClick = () => {
-    if (onBack) {
-      onBack();
-    }
-  };
-
-  const handleNextClick = () => {
-    if (onNext) {
-      onNext();
-    }
-  };
+  if (sections.length === 0) {
+    return (
+      <div className="space-y-6 p-6">
+        <Card>
+          <CardContent className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Немає даних для аналізу</h3>
+              <p className="text-gray-600 mb-4">Спочатку додайте секції доріг на попередніх сторінках</p>
+              <Button onClick={onBack} variant="outline">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Повернутися назад
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -2819,6 +2943,7 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
                 Немає секцій, що потребують реконструкції або капітального ремонту для економічного аналізу.
+                Спочатку додайте секції та виконайте розрахунки на попередніх сторінках.
               </AlertDescription>
             </Alert>
           ) : (
@@ -2833,9 +2958,8 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
                     className="w-full p-2 border border-gray-300 rounded"
                   >
                     <option value="">Оберіть секцію...</option>
-                    {eligibleSections.map(section => {
-                      const assessment = assessments.find(a => a.sectionId === section.id);
-                      const workType = assessment?.recommendedWorkType === 'capital_repair' ? 'Капітальний ремонт' : 'Реконструкція';
+                    {eligibleSections.map((section: RoadSectionUI) => {
+                      const workType = section.workTypeRaw === 'capital_repair' ? 'Капітальний ремонт' : 'Реконструкція';
                       return (
                         <option key={section.id} value={section.id}>
                           {section.name} ({workType})
@@ -2850,15 +2974,16 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
                   <input
                     type="number"
                     step="0.01"
-                    min="0"
-                    max="1"
+                    min="0.01"
+                    max="0.30"
                     value={analysisParams.discountRate}
                     onChange={(e) => setAnalysisParams({
                       ...analysisParams,
-                      discountRate: parseFloat(e.target.value) || 0.05
+                      discountRate: Math.max(0.01, Math.min(0.30, safeNumber(e.target.value, 0.05)))
                     })}
                     className="w-full p-2 border border-gray-300 rounded"
                   />
+                  <div className="text-xs text-gray-500 mt-1">0.01 - 0.30</div>
                 </div>
                 
                 <div>
@@ -2870,29 +2995,30 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
                     value={analysisParams.analysisYears}
                     onChange={(e) => setAnalysisParams({
                       ...analysisParams,
-                      analysisYears: parseInt(e.target.value) || 20
+                      analysisYears: Math.max(10, Math.min(30, parseInt(e.target.value) || 20))
                     })}
                     className="w-full p-2 border border-gray-300 rounded"
                   />
+                  <div className="text-xs text-gray-500 mt-1">10 - 30 років</div>
                 </div>
               </div>
 
               {/* Selected section information */}
-              {selectedSection && selectedAssessment && (
+              {selectedSection && (
                 <Card className="bg-blue-50">
                   <CardContent className="pt-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
-                        <span className="font-semibold">Протяжність:</span> {selectedSection.length} км
+                        <span className="font-semibold">Протяжність:</span> {safeNumber(selectedSection.length, 0)} км
                       </div>
                       <div>
-                        <span className="font-semibold">Категорія:</span> {CATEGORIES[selectedSection.category]?.name}
+                        <span className="font-semibold">Категорія:</span> {CATEGORIES[selectedSection.category]?.name || 'Невідомо'}
                       </div>
                       <div>
-                        <span className="font-semibold">Інтенсивність:</span> {selectedSection.trafficIntensity} авт/добу
+                        <span className="font-semibold">Інтенсивність:</span> {safeNumber(selectedSection.trafficIntensity, 0).toLocaleString()} авт/добу
                       </div>
                       <div>
-                        <span className="font-semibold">Вартість проекту:</span> {selectedAssessment.estimatedCost.toLocaleString()} тис. грн
+                        <span className="font-semibold">Вартість проекту:</span> {safeNumber(selectedSection.estimatedCost, 0).toFixed(1)} млн грн
                       </div>
                     </div>
                   </CardContent>
@@ -2908,26 +3034,26 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
                 <div className="space-y-6">
                   {/* Key indicators */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card className="bg-green-50">
+                    <Card className={`${analysisResult.totalENPV > 0 ? 'bg-green-50' : 'bg-red-50'}`}>
                       <CardContent className="text-center py-4">
-                        <div className="text-2xl font-bold text-green-700">
-                          {(analysisResult.totalENPV / 1000).toFixed(1)}
+                        <div className={`text-2xl font-bold ${analysisResult.totalENPV > 0 ? 'text-green-700' : 'text-red-700'}`}>
+                          {(safeNumber(analysisResult.totalENPV, 0) / 1000).toFixed(1)}
                         </div>
                         <div className="text-sm text-gray-600">ENPV (млн грн)</div>
                       </CardContent>
                     </Card>
-                    <Card className="bg-blue-50">
+                    <Card className={`${analysisResult.eirr > analysisParams.discountRate ? 'bg-green-50' : 'bg-red-50'}`}>
                       <CardContent className="text-center py-4">
-                        <div className="text-2xl font-bold text-blue-700">
-                          {(analysisResult.eirr * 100).toFixed(1)}%
+                        <div className={`text-2xl font-bold ${analysisResult.eirr > analysisParams.discountRate ? 'text-green-700' : 'text-red-700'}`}>
+                          {(safeNumber(analysisResult.eirr, 0) * 100).toFixed(1)}%
                         </div>
                         <div className="text-sm text-gray-600">EIRR</div>
                       </CardContent>
                     </Card>
-                    <Card className="bg-purple-50">
+                    <Card className={`${analysisResult.bcr > 1 ? 'bg-green-50' : 'bg-red-50'}`}>
                       <CardContent className="text-center py-4">
-                        <div className="text-2xl font-bold text-purple-700">
-                          {analysisResult.bcr.toFixed(2)}
+                        <div className={`text-2xl font-bold ${analysisResult.bcr > 1 ? 'text-green-700' : 'text-red-700'}`}>
+                          {safeNumber(analysisResult.bcr, 0).toFixed(2)}
                         </div>
                         <div className="text-sm text-gray-600">BCR</div>
                       </CardContent>
@@ -2938,7 +3064,7 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-center">
-                        Визначення ефективності реконструкції/капітального ремонту автомобільної дороги
+                        Визначення ефективності {selectedSection?.workTypeRaw === 'capital_repair' ? 'капітального ремонту' : 'реконструкції'} автомобільної дороги
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -2948,40 +3074,39 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
                             <tr className="bg-gray-100">
                               <th className="border border-gray-400 p-2 text-center">Рік</th>
                               <th className="border border-gray-400 p-2 text-center">
-                                Середньорічна дохова інтенсивність руху, авт/добу
+                                Середньорічна інтенсивність руху, авт/добу
                               </th>
-                              <th className="border border-gray-400 p-2 text-center" colSpan={4}>
-                                Витратна капітальний, поточний ремонт і утримання, млн.грн
-                              </th>
-                              <th className="border border-gray-400 p-2 text-center">
-                                Економічний ефект (чистий) операційний грошовий потік (OCF), млн.грн
+                              <th className="border border-gray-400 p-2 text-center" colSpan={3}>
+                                Витрати на капітальний, поточний ремонт і утримання, млн.грн
                               </th>
                               <th className="border border-gray-400 p-2 text-center">
-                                Чистий сальдований дохід (NCF), млн.грн
+                                Економічний ефект (чистий), млн.грн
+                              </th>
+                              <th className="border border-gray-400 p-2 text-center">
+                                Чистий грошовий потік (NCF), млн.грн
                               </th>
                               <th className="border border-gray-400 p-2 text-center">
                                 Коефіцієнт дисконтування
                               </th>
                               <th className="border border-gray-400 p-2 text-center">
-                                Дисконтований сальдований дохід, млн.грн
+                                Дисконтований грошовий потік, млн.грн
                               </th>
                               <th className="border border-gray-400 p-2 text-center">
                                 Економічна чиста приведена вартість ENPV, млн.грн
                               </th>
                               <th className="border border-gray-400 p-2 text-center">
-                                Диск вигоди, млн.грн
+                                Дисконтовані вигоди, млн.грн
                               </th>
                               <th className="border border-gray-400 p-2 text-center">
-                                Диск витрати, млн.грн
+                                Дисконтовані витрати, млн.грн
                               </th>
                             </tr>
                             <tr className="bg-gray-50">
                               <th className="border border-gray-400 p-1"></th>
                               <th className="border border-gray-400 p-1"></th>
-                              <th className="border border-gray-400 p-1 text-center">капітальний, поточний ремонт</th>
+                              <th className="border border-gray-400 p-1 text-center">капітальний ремонт</th>
                               <th className="border border-gray-400 p-1 text-center">експлуатаційне утримання</th>
                               <th className="border border-gray-400 p-1 text-center">Всього</th>
-                              <th className="border border-gray-400 p-1"></th>
                               <th className="border border-gray-400 p-1"></th>
                               <th className="border border-gray-400 p-1"></th>
                               <th className="border border-gray-400 p-1"></th>
@@ -2996,37 +3121,37 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
                               <tr key={year.year} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                 <td className="border border-gray-400 p-2 text-center font-medium">{year.year}</td>
                                 <td className="border border-gray-400 p-2 text-center">
-                                  {selectedSection?.trafficIntensity.toLocaleString()}
+                                  {safeNumber(selectedSection?.trafficIntensity, 0).toLocaleString()}
                                 </td>
                                 <td className="border border-gray-400 p-2 text-center">
-                                  {(year.capitalCost / 1000).toFixed(2)}
+                                  {(safeNumber(year.capitalCost, 0) / 1000).toFixed(2)}
                                 </td>
                                 <td className="border border-gray-400 p-2 text-center">
-                                  {(year.operationalCost / 1000).toFixed(2)}
+                                  {(safeNumber(year.operationalCost, 0) / 1000).toFixed(2)}
                                 </td>
                                 <td className="border border-gray-400 p-2 text-center font-medium">
-                                  {(year.totalCosts / 1000).toFixed(2)}
+                                  {(safeNumber(year.totalCosts, 0) / 1000).toFixed(2)}
                                 </td>
                                 <td className="border border-gray-400 p-2 text-center">
-                                  {(year.economicEffect / 1000).toFixed(2)}
+                                  {(safeNumber(year.economicEffect, 0) / 1000).toFixed(2)}
                                 </td>
                                 <td className="border border-gray-400 p-2 text-center">
-                                  {(year.netCashFlow / 1000).toFixed(2)}
+                                  {(safeNumber(year.netCashFlow, 0) / 1000).toFixed(2)}
                                 </td>
                                 <td className="border border-gray-400 p-2 text-center">
-                                  {year.discountFactor.toFixed(3)}
+                                  {safeNumber(year.discountFactor, 0).toFixed(3)}
                                 </td>
                                 <td className="border border-gray-400 p-2 text-center">
-                                  {(year.discountedCashFlow / 1000).toFixed(2)}
+                                  {(safeNumber(year.discountedCashFlow, 0) / 1000).toFixed(2)}
                                 </td>
                                 <td className="border border-gray-400 p-2 text-center font-medium">
-                                  {(year.enpv / 1000).toFixed(2)}
+                                  {(safeNumber(year.enpv, 0) / 1000).toFixed(2)}
                                 </td>
                                 <td className="border border-gray-400 p-2 text-center">
-                                  {(year.discountedBenefits / 1000).toFixed(2)}
+                                  {(safeNumber(year.discountedBenefits, 0) / 1000).toFixed(2)}
                                 </td>
                                 <td className="border border-gray-400 p-2 text-center">
-                                  {(year.discountedCosts / 1000).toFixed(2)}
+                                  {(safeNumber(year.discountedCosts, 0) / 1000).toFixed(2)}
                                 </td>
                               </tr>
                             ))}
@@ -3035,13 +3160,17 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
                               <td className="border border-gray-400 p-2"></td>
                               <td className="border border-gray-400 p-2"></td>
                               <td className="border border-gray-400 p-2"></td>
-                              <td className="border border-gray-400 p-2"></td>
-                              <td className="border border-gray-400 p-2"></td>
+                              <td className="border border-gray-400 p-2 text-center">
+                                {(safeNumber(analysisResult.summary.totalDiscountedCosts, 0) / 1000).toFixed(2)}
+                              </td>
+                              <td className="border border-gray-400 p-2 text-center">
+                                {(safeNumber(analysisResult.summary.totalDiscountedBenefits, 0) / 1000).toFixed(2)}
+                              </td>
                               <td className="border border-gray-400 p-2"></td>
                               <td className="border border-gray-400 p-2"></td>
                               <td className="border border-gray-400 p-2"></td>
                               <td className="border border-gray-400 p-2 text-center bg-yellow-200">
-                                {(analysisResult.totalENPV / 1000).toFixed(2)}
+                                {(safeNumber(analysisResult.totalENPV, 0) / 1000).toFixed(2)}
                               </td>
                               <td className="border border-gray-400 p-2"></td>
                               <td className="border border-gray-400 p-2"></td>
@@ -3054,27 +3183,82 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
                       <div className="mt-4 space-y-2">
                         <div className="grid grid-cols-2 gap-4 p-4 bg-yellow-100 rounded">
                           <div className="text-center">
-                            <div className="font-bold">Співвідношення вигід і витрат</div>
-                            <div className="text-xl font-bold text-green-700">{analysisResult.bcr.toFixed(2)}</div>
+                            <div className="font-bold">Співвідношення вигід і витрат (BCR)</div>
+                            <div className={`text-xl font-bold ${analysisResult.bcr > 1 ? 'text-green-700' : 'text-red-700'}`}>
+                              {safeNumber(analysisResult.bcr, 0).toFixed(2)}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {analysisResult.bcr > 1 ? 'Проект ефективний' : 'Проект неефективний'}
+                            </div>
                           </div>
                           <div className="text-center">
                             <div className="font-bold">Економічна норма дохідності EIRR</div>
-                            <div className="text-xl font-bold text-blue-700">{(analysisResult.eirr * 100).toFixed(1)}%</div>
+                            <div className={`text-xl font-bold ${analysisResult.eirr > analysisParams.discountRate ? 'text-green-700' : 'text-red-700'}`}>
+                              {(safeNumber(analysisResult.eirr, 0) * 100).toFixed(1)}%
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              Ставка дисконтування: {(analysisParams.discountRate * 100).toFixed(1)}%
+                            </div>
                           </div>
                         </div>
                         
                         <div className="grid grid-cols-3 gap-4 text-sm">
                           <div>
-                            <span className="font-semibold">чистий сальдований дохід:</span>
-                            <div>NPV: {(analysisResult.summary.npv / 1000).toFixed(1)} млн грн</div>
+                            <span className="font-semibold">Чиста приведена вартість:</span>
+                            <div className={`${analysisResult.summary.npv > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              NPV: {(safeNumber(analysisResult.summary.npv, 0) / 1000).toFixed(1)} млн грн
+                            </div>
                           </div>
                           <div>
-                            <span className="font-semibold">чистий дисконтний дохід:</span>
-                            <div>DPP: {analysisResult.summary.dpp} років</div>
+                            <span className="font-semibold">Дисконтований період окупності:</span>
+                            <div className={`${analysisResult.summary.dpp <= analysisParams.analysisYears ? 'text-green-600' : 'text-red-600'}`}>
+                              DPP: {safeNumber(analysisResult.summary.dpp, 0)} років
+                            </div>
                           </div>
                           <div>
-                            <span className="font-semibold">період окупності:</span>
-                            <div>ARR: {(analysisResult.summary.arr * 100).toFixed(1)}%</div>
+                            <span className="font-semibold">Середня ставка доходності:</span>
+                            <div className={`${analysisResult.summary.arr > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              ARR: {(safeNumber(analysisResult.summary.arr, 0) * 100).toFixed(1)}%
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Висновки про ефективність */}
+                        <div className="mt-4 p-4 rounded-lg border">
+                          <h5 className="font-semibold mb-2">Висновки щодо економічної ефективності:</h5>
+                          <div className="space-y-1 text-sm">
+                            {analysisResult.totalENPV > 0 ? (
+                              <div className="text-green-600">✓ Проект має позитивну чисту приведену вартість</div>
+                            ) : (
+                              <div className="text-red-600">✗ Проект має негативну чисту приведену вартість</div>
+                            )}
+                            
+                            {analysisResult.bcr > 1 ? (
+                              <div className="text-green-600">✓ Вигоди перевищують витрати (BCR {'>'} 1)</div>
+                            ) : (
+                              <div className="text-red-600">✗ Витрати перевищують вигоди (BCR ≤ 1)</div>
+                            )}
+                            
+                            {analysisResult.eirr > analysisParams.discountRate ? (
+                              <div className="text-green-600">✓ Внутрішня норма доходності перевищує ставку дисконтування</div>
+                            ) : (
+                              <div className="text-red-600">✗ Внутрішня норма доходності нижче ставки дисконтування</div>
+                            )}
+
+                            {analysisResult.summary.dpp <= analysisParams.analysisYears ? (
+                              <div className="text-green-600">✓ Проект окупається протягом розрахункового періоду</div>
+                            ) : (
+                              <div className="text-red-600">✗ Проект не окупається протягом розрахункового періоду</div>
+                            )}
+                          </div>
+                          
+                          <div className="mt-3 p-3 bg-gray-50 rounded">
+                            <div className="font-medium">Загальна рекомендація:</div>
+                            {(analysisResult.totalENPV > 0 && analysisResult.bcr > 1 && analysisResult.eirr > analysisParams.discountRate) ? (
+                              <div className="text-green-700 font-semibold">Проект економічно ефективний та рекомендується до реалізації</div>
+                            ) : (
+                              <div className="text-red-700 font-semibold">Проект економічно неефективний та потребує додаткового аналізу</div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -3084,15 +3268,29 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
               ) : (
                 <div className="text-center py-8">
                   <p className="text-gray-500">Оберіть секцію для економічного аналізу</p>
+                  {selectedSectionId && !selectedSection?.estimatedCost && (
+                    <p className="text-red-500 mt-2">Секція не має розрахованої вартості проекту</p>
+                  )}
                 </div>
               )}
 
+              {/* Manual calculation button */}
+              <div className="flex justify-center">
+                <Button 
+                  onClick={handleCalculateEconomics}
+                  disabled={!selectedSectionId || isCalculating}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isCalculating ? 'Розрахунок...' : 'Перерахувати економічний аналіз'}
+                </Button>
+              </div>
+
               <div className="mt-6 flex justify-between">
-                <Button variant="outline" className="flex items-center gap-2" onClick={handleBackClick}>
+                <Button variant="outline" className="flex items-center gap-2" onClick={onBack}>
                   <ArrowLeft className="h-4 w-4" />
                   Назад
                 </Button>
-                <Button className="flex items-center gap-2" onClick={handleNextClick}>
+                <Button className="flex items-center gap-2" onClick={onNext}>
                   Далі
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -3101,10 +3299,66 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
           )}
         </CardContent>
       </Card>
+
+      {/* Методологічні пояснення */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Методика економічного аналізу</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-gray-600">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h4 className="font-semibold mb-2">Розрахунок економічних вигід:</h4>
+              <ul className="space-y-1">
+                <li><strong>Реконструкція:</strong> 0.2% від річного обсягу трафіку</li>
+                <li><strong>Капітальний ремонт:</strong> 0.15% від річного обсягу трафіку</li>
+                <li><strong>Поточний ремонт:</strong> 0.1% від річного обсягу трафіку</li>
+                <li><strong>Коефіцієнти:</strong> міжнародні дороги +30%, оборонні +20%, державні +10%</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-2">Критерії ефективності:</h4>
+              <ul className="space-y-1">
+                <li><strong>ENPV {'>'} 0:</strong> Проект створює додаткову вартість</li>
+                <li><strong>BCR {'>'} 1:</strong> Вигоди перевищують витрати</li>
+                <li><strong>EIRR {'>'} ставка дисконтування:</strong> Рентабельність вища за альтернативні інвестиції</li>
+                <li><strong>DPP {'<='} термін проекту:</strong> Проект окупається</li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-gray-500">
+            * Розрахунки виконуються згідно з методикою економічного аналізу інвестиційних проектів у сфері дорожнього господарства
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Debugging информация (можно убрать в продакшене) */}
+      {selectedSection && (
+        <Card className="bg-gray-50">
+          <CardHeader>
+            <CardTitle className="text-sm">Debug інформація</CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div><strong>ID секції:</strong> {selectedSection.id}</div>
+                <div><strong>Назва:</strong> {selectedSection.name}</div>
+                <div><strong>Вид робіт:</strong> {selectedSection.workTypeRaw || 'не визначено'}</div>
+                <div><strong>Поточна вартість:</strong> {selectedSection.estimatedCost || 0} млн грн</div>
+              </div>
+              <div>
+                <div><strong>Протяжність:</strong> {selectedSection.length} км</div>
+                <div><strong>Категорія:</strong> {selectedSection.category}</div>
+                <div><strong>Інтенсивність:</strong> {selectedSection.trafficIntensity} авт/добу</div>
+                <div><strong>Параметри аналізу:</strong> {analysisParams.discountRate * 100}% / {analysisParams.analysisYears} років</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
-
 interface Page6RankingProps {
   sections: RoadSectionUI[];
   onBack: () => void;

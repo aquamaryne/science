@@ -107,6 +107,7 @@ export interface RoadSection {
   hasLighting?: boolean;
   nearBorderCrossing?: boolean;
   criticalInfrastructureCount?: number;
+  enpv: number;
 }
 
 // ==================== КОНСТАНТИ З МЕТОДИКИ ====================
@@ -1023,7 +1024,8 @@ export function createTestRoadSection(
     isAccessRoad: significance === 'local' && Math.random() > 0.6, // 40% під'їздів серед місцевих
     hasLighting: trafficIntensity > 5000 && Math.random() > 0.5,
     nearBorderCrossing: Math.random() > 0.95,
-    criticalInfrastructureCount: Math.floor(Math.random() * 3)
+    criticalInfrastructureCount: Math.floor(Math.random() * 3),
+    enpv: 0,
   };
 }
 

@@ -554,7 +554,8 @@ function createTestRoadSection(id: string, name: string, category: 1 | 2 | 3 | 4
     maxAllowedRutDepth: category <= 2 ? 20 : 30,
     frictionCoefficient: 0.8 + Math.random() * 0.4,
     actualFrictionValue: 0.25 + Math.random() * 0.2,
-    requiredFrictionValue: 0.35
+    requiredFrictionValue: 0.35,
+    
   };
   
   return {
@@ -571,7 +572,8 @@ function createTestRoadSection(id: string, name: string, category: 1 | 2 | 3 | 4
     isEuropeanNetwork: category === 1 && Math.random() > 0.8,
     hasLighting: trafficIntensity > 5000 && Math.random() > 0.5,
     nearBorderCrossing: Math.random() > 0.95,
-    criticalInfrastructureCount: Math.floor(Math.random() * 3)
+    criticalInfrastructureCount: Math.floor(Math.random() * 3),
+    enpv: 0,
   };
 }
 

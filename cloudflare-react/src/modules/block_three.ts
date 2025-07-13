@@ -44,6 +44,7 @@ export interface RoadSection {
   hasLighting?: boolean;
   nearBorderCrossing?: boolean;
   criticalInfrastructureCount?: number;
+  enpv: number;
 }
 
 // Совместимость со старой версией для простых случаев
@@ -434,7 +435,8 @@ function convertSimpleToDetailedSection(simpleSection: SimpleRoadSection): RoadS
     region: 'Невідомо',
     detailedCondition,
     trafficIntensity: simpleSection.trafficIntensity,
-    estimatedCost: simpleSection.estimatedCost
+    estimatedCost: simpleSection.estimatedCost,
+    enpv: 0,
   };
 }
 

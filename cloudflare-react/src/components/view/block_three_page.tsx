@@ -16,6 +16,7 @@ import { type SimpleRoadSection } from '@/modules/block_three';
 import { 
   type RoadSection as AlgorithmRoadSection,
 } from '@/modules/block_three_alghoritm';
+import RoadEfficiencyInterface from './page';
 // Используємо константи локально, оскільки вони не експортуються
 const MAX_DESIGN_INTENSITY_BY_CATEGORY = {
   1: 20000,
@@ -201,7 +202,7 @@ const safeNumber = (value: any, defaultValue: number = 0): number => {
   return isNaN(num) || !isFinite(num) ? defaultValue : num;
 };
 // ==================== ТИПИ ДЛЯ UI ====================
-interface RoadSectionUI {
+export interface RoadSectionUI {
   id: string;
   name: string;
   length: number;
@@ -3766,6 +3767,7 @@ export const Block3MultiPageApp: React.FC = () => {
     'Показники та коефіцієнти',
     'Показники вартості',
     'Орієнтовна вартість',
+    'Вихідні дані ENPV',
     'Економічна ефективність',
     'Ранжування об\'єктів'
   ];
@@ -3880,8 +3882,17 @@ export const Block3MultiPageApp: React.FC = () => {
               onBack={handleBack}
             />
           )}
-          
+
           {currentPage === 5 && (
+            <RoadEfficiencyInterface
+              sections={sections}
+              onSectionsChange={setSections}
+              onNext={handleNext}
+              onBack={handleBack}
+            />
+          )}
+
+          {currentPage === 6 && (
             <Page5_EconomicAnalysis
               sections={sections}
               onSectionsChange={setSections}
@@ -3890,7 +3901,7 @@ export const Block3MultiPageApp: React.FC = () => {
             />
           )}
           
-          {currentPage === 6 && (
+          {currentPage === 7 && (
             <Page6_Ranking
               sections={sections}
               onBack={handleBack}

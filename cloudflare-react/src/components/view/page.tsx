@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,13 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calculator, X, FileText, Download, AlertTriangle, Plus, TrendingUp } from 'lucide-react';
+import { Calculator, X, FileText, Download, AlertTriangle, Plus, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 import {
   getBlockOneBudgetData,
   getBudgetAllocation,
-  generateDetailedSectionReport,
   checkCategoryComplianceByIntensity,
   getBudgetStatistics,
   type RoadSection,
@@ -33,6 +32,15 @@ import {
   MIN_STRENGTH_COEFFICIENT_BY_CATEGORY,
   type ComprehensiveRoadAssessment
 } from '@/modules/block_three_alghoritm';
+
+import { type RoadSectionUI } from './block_three_page';
+interface RoadEfficiencyInterfaceProps {
+  sections: RoadSectionUI[];
+  onSectionsChange: Dispatch<SetStateAction<RoadSectionUI[]>>;
+  onNext: () => void;
+  onBack: () => void;
+}
+
 
 // Типы данных для полной таблицы эффективности
 interface EfficiencyCalculationData {
@@ -91,7 +99,12 @@ interface EfficiencyCalculationData {
   };
 }
 
-const RoadEfficiencyInterface: React.FC = () => {
+const RoadEfficiencyInterface: React.FC<RoadEfficiencyInterfaceProps> = ({
+  sections,
+  onSectionsChange,
+  onNext,
+  onBack
+}) => {
   const [activeTab, setActiveTab] = useState('input');
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,8 +112,7 @@ const RoadEfficiencyInterface: React.FC = () => {
   
   // Интеграция с существующими модулями
   const [budgetData, setBudgetData] = useState<BlockOneBudgetData | null>(null);
-  const [roadSections, setRoadSections] = useState<RoadSection[]>([]);
-  const [budgetAllocation, setBudgetAllocationState] = useState<BudgetAllocation | null>(null);
+  const [_budgetAllocation, setBudgetAllocationState] = useState<BudgetAllocation | null>(null);
 
   // Загрузка данных при монтировании
   useEffect(() => {
@@ -114,6 +126,7 @@ const RoadEfficiencyInterface: React.FC = () => {
       setBudgetAllocationState(existingBudgetAllocation);
     }
   }, []);
+  
   const [efficiencyData, setEfficiencyData] = useState<EfficiencyCalculationData>({
     workType: 'reconstruction',
     roadCategory: 3,
@@ -167,6 +180,24 @@ const RoadEfficiencyInterface: React.FC = () => {
       }
     }));
   }, []);
+
+  // Функция для обработки кнопки "Далее"
+  const handleNext = useCallback(() => {
+    // Сохраняем данные эффективности в sections если необходимо
+    const updatedSections = sections.map(section => ({
+      ...section,
+      efficiencyData: efficiencyData,
+      efficiencyResults: results
+    }));
+    
+    onSectionsChange(updatedSections);
+    onNext();
+  }, [sections, onSectionsChange, onNext, efficiencyData, results]);
+
+  // Функция для обработки кнопки "Назад"
+  const handleBack = useCallback(() => {
+    onBack();
+  }, [onBack]);
 
   // Расчет эффективности с использованием реальных модулей
   const calculateEfficiency = useCallback(async () => {
@@ -316,18 +347,17 @@ const RoadEfficiencyInterface: React.FC = () => {
     if (!results) return;
 
     // Создаем детализированный отчет с использованием реальных модулей
-    const roadSection: RoadSection = createTestRoadSection(
-      'efficiency_calc',
-      `Расчет эффективности - категория ${efficiencyData.roadCategory}`,
-      efficiencyData.roadCategory,
-      efficiencyData.roadLength,
-      efficiencyData.currentTrafficIntensity,
-      'state',
-      'Расчетная'
-    );
+    // const roadSection: RoadSection = createTestRoadSection(
+    //   'efficiency_calc',
+    //   `Расчет эффективности - категория ${efficiencyData.roadCategory}`,
+    //   efficiencyData.roadCategory,
+    //   efficiencyData.roadLength,
+    //   efficiencyData.currentTrafficIntensity,
+    //   'state',
+    //   'Расчетная'
+    // );
 
     // Генерируем детализированный отчет по секции
-    const detailedSectionReport = generateDetailedSectionReport('efficiency_calc', results.assessment, roadSection);
 
     const report = `
 # ОТЧЕТ ОБ ЭФФЕКТИВНОСТИ ${efficiencyData.workType === 'reconstruction' ? 'РЕКОНСТРУКЦИИ' : 'КАПИТАЛЬНОГО РЕМОНТА'}
@@ -1317,6 +1347,43 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
             </>
           )}
         </TabsContent>
+        <TabsContent value="calculation" className="space-y-6">
+          <Card>
+            <CardContent className="p-6 text-center">
+              <Button 
+                onClick={calculateEfficiency} 
+                disabled={isCalculating}
+                size="lg"
+                className="px-8"
+              >
+                <Calculator className="h-5 w-5 mr-2" />
+                {isCalculating ? 'Розрахунок...' : 'Виконати розрахунок ефективності'}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="results" className="space-y-6">
+          {results && (
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center text-gray-500">
+                  Результаты расчета эффективности
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+        <div className="flex justify-between pt-6">
+          <Button onClick={handleBack} variant="outline">
+            <ChevronLeft className="h-4 w-4 mr-2" />
+            Назад
+          </Button>
+          <Button onClick={handleNext} disabled={!results}>
+            Далі
+            <ChevronRight className="h-4 w-4 ml-2" />
+          </Button>
+        </div>
       </Tabs>
     </div>
   );

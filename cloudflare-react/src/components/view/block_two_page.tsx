@@ -637,36 +637,36 @@ const handleExport = () => {
     
     // Лист 4: Сводная таблица нормативов и коэффициентов
     const summaryData = [
-      ['СВОДКА РЕЗУЛЬТАТОВ РАСЧЕТА'],
+      ['ЗВІТ ПРО РЕЗУЛЬТАТИ РОЗРАХУНКУ'],
       [],
-      ['1. БАЗОВЫЕ НОРМАТИВЫ'],
-      ['Базовый норматив (держ., цены 2023):', stateRoadBaseRate + ' тыс. грн/км'],
-      ['Базовый норматив (местн., цены 2023):', localRoadBaseRate + ' тыс. грн/км'],
-      ['Индекс инфляции (держ.):', calculateCumulativeInflationIndex(stateInflationIndexes).toFixed(4)],
-      ['Индекс инфляции (местн.):', calculateCumulativeInflationIndex(localInflationIndexes).toFixed(4)],
+      ['1. БАЗОВІ НОРМАТИВИ'],
+      ['Базовий норматив (держ., ціни 2023):', stateRoadBaseRate + ' тис. грн/км'],
+      ['Базовий норматив (місц., ціни 2023):', localRoadBaseRate + ' тис. грн/км'],
+      ['Індекс інфляції (держ.):', calculateCumulativeInflationIndex(stateInflationIndexes).toFixed(4)],
+      ['Індекс інфляції (місц.):', calculateCumulativeInflationIndex(localInflationIndexes).toFixed(4)],
       [],
-      ['2. НОРМАТИВЫ ДЛЯ ДОРОГ ГОСУДАРСТВЕННОГО ЗНАЧЕНИЯ'],
-      ['Категория', 'Норматив (тыс. грн/км)'],
-      ['I категория', stateRoadRates.category1.toFixed(2)],
-      ['II категория', stateRoadRates.category2.toFixed(2)],
-      ['III категория', stateRoadRates.category3.toFixed(2)],
-      ['IV категория', stateRoadRates.category4.toFixed(2)],
-      ['V категория', stateRoadRates.category5.toFixed(2)],
+      ['2. НОРМАТИВИ ДЛЯ АВТОМОБІЛЬНИХ ДОРІГ ДЕРЖАВНОГО ЗНАЧЕННЯ'],
+      ['Категорія', 'Норматив (тис. грн/км)'],
+      ['I категорія', stateRoadRates.category1.toFixed(2)],
+      ['II категорія', stateRoadRates.category2.toFixed(2)],
+      ['III категорія', stateRoadRates.category3.toFixed(2)],
+      ['IV категорія', stateRoadRates.category4.toFixed(2)],
+      ['V категорія', stateRoadRates.category5.toFixed(2)],
       [],
-      ['3. НОРМАТИВЫ ДЛЯ ДОРОГ МЕСТНОГО ЗНАЧЕНИЯ'],
-      ['Категория', 'Норматив (тыс. грн/км)'],
-      ['I категория', localRoadRates.category1.toFixed(2)],
-      ['II категория', localRoadRates.category2.toFixed(2)],
-      ['III категория', localRoadRates.category3.toFixed(2)],
-      ['IV категория', localRoadRates.category4.toFixed(2)],
-      ['V категория', localRoadRates.category5.toFixed(2)],
+      ['3. НОРМАТИВИ ДЛЯ АВТОМОБІЛЬНИХ ДОРІГ МІСЦЕВОГО ЗНАЧЕННЯ'],
+      ['Категорія', 'Норматив (тис. грн/км)'],
+      ['I категорія', localRoadRates.category1.toFixed(2)],
+      ['II категорія', localRoadRates.category2.toFixed(2)],
+      ['III категорія', localRoadRates.category3.toFixed(2)],
+      ['IV категорія', localRoadRates.category4.toFixed(2)],
+      ['V категорія', localRoadRates.category5.toFixed(2)],
       [],
-      ['4. РЕЗУЛЬТАТЫ ДЛЯ ВЫБРАННОГО РЕГИОНА: ' + selectedRegion],
-      ['Протяженность дорог государственного значения:', fundingResults.details.stateRoadLength.toFixed(2) + ' км'],
-      ['Протяженность дорог местного значения:', fundingResults.details.localRoadLength.toFixed(2) + ' км'],
-      ['Финансирование дорог государственного значения:', fundingResults.stateFunding.toFixed(2) + ' тыс. грн'],
-      ['Финансирование дорог местного значения:', fundingResults.localFunding.toFixed(2) + ' тыс. грн'],
-      ['ОБЩИЙ ОБЪЕМ ФИНАНСИРОВАНИЯ:', fundingResults.totalFunding.toFixed(2) + ' тыс. грн']
+      ['4. РЕЗУЛЬТАТИ ДЛЯ ОБРАНОГО РЕГІОНУ: ' + selectedRegion],
+      ['Протяжність доріг державного значення:', fundingResults.details.stateRoadLength.toFixed(2) + ' км'],
+      ['Протяжність доріг місцевого значення:', fundingResults.details.localRoadLength.toFixed(2) + ' км'],
+      ['Фінансування доріг державного значення:', fundingResults.stateFunding.toFixed(2) + ' тис. грн'],
+      ['Фінансування доріг місцевого значення:', fundingResults.localFunding.toFixed(2) + ' тис. грн'],
+      ['ЗАГАЛЬНИЙ ОБСЯГ ФІНАНСУВАННЯ:', fundingResults.totalFunding.toFixed(2) + ' тис. грн']
     ];
     
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
@@ -740,7 +740,7 @@ const handleExport = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-2">Блок 2: Експлуатаційне утримання доріг</h1>
+      <h1 className="text-2xl font-bold mb-2">Експлуатаційне утримання доріг</h1>
       <p className="text-gray-600 mb-6">Визначення загального обсягу бюджетних коштів на фінансове забезпечення заходів з експлуатаційного утримання</p>
       
       <Tabs defaultValue="step1" className="mb-8">

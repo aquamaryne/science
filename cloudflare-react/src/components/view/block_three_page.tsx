@@ -6,12 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from 'xlsx';
-import { FileUpIcon, PlusIcon, EditIcon, SaveIcon, TrashIcon, ArrowRightIcon, CheckCircleIcon, XCircleIcon, ArrowLeftIcon, AlertTriangleIcon, CalculatorIcon, FileSpreadsheet, InfoIcon, DollarSign, TrendingUpIcon, Download, RotateCcwIcon, RefreshCw, DownloadIcon, AlertTriangle, Calculator, TrendingUp, ArrowRight, ArrowLeft } from "lucide-react";
+import { FileUpIcon, PlusIcon, EditIcon, SaveIcon, TrashIcon, ArrowRightIcon, CheckCircleIcon, XCircleIcon, ArrowLeftIcon, AlertTriangleIcon, CalculatorIcon, FileSpreadsheet, InfoIcon, DollarSign, TrendingUpIcon, Download, RotateCcwIcon, RefreshCw, DownloadIcon, AlertTriangle, Calculator, TrendingUp, ArrowRight, ArrowLeft, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from '../ui/progress';
 import { type RoadSection } from '@/modules/block_three_alghoritm';
 import { planRepairWorksWithBlockOneData, generateDetailedRepairPlanReport, hasBlockOneBudgetData, getBlockOneBudgetData, setBlockOneBudgetData, type RepairProject } from '@/modules/block_three';
-import { determineWorkTypeByTechnicalCondition, checkCategoryComplianceByIntensity, checkFrictionCompliance } from '@/modules/block_three';
+import { determineWorkTypeByTechnicalCondition } from '@/modules/block_three';
 import { type SimpleRoadSection } from '@/modules/block_three';
 import { 
   type RoadSection as AlgorithmRoadSection,
@@ -262,27 +262,6 @@ const CATEGORIES = {
 };
 
 // ==================== ФУНКЦІЇ КОНВЕРТАЦІЇ ====================
-const convertUIToSimpleRoadSection = (uiSection: RoadSectionUI): SimpleRoadSection => {
-  const technicalCondition = {
-    // Розрахунок коефіцієнтів
-    intensityCoefficient: MAX_DESIGN_INTENSITY_BY_CATEGORY[uiSection.category] / Math.max(uiSection.trafficIntensity, 1),
-    strengthCoefficient: uiSection.strengthModulus / (300 + uiSection.category * 50),
-    evennessCoefficient: (2.7 + uiSection.category * 0.4) / Math.max(uiSection.roughnessProfile, 0.1),
-    rutCoefficient: (15 + uiSection.category * 5) / Math.max(uiSection.rutDepth, 1),
-    frictionCoefficient: uiSection.frictionCoeff / REQUIRED_FRICTION_COEFFICIENT
-  };
-
-  return {
-    id: uiSection.id,
-    name: uiSection.name,
-    category: uiSection.category,
-    length: uiSection.length,
-    significance: uiSection.significance,
-    technicalCondition,
-    trafficIntensity: uiSection.trafficIntensity,
-    estimatedCost: uiSection.estimatedCost
-  };
-};
 
 // Простий розрахунок вартості
 const calculateEstimatedCost = (
@@ -306,7 +285,7 @@ const calculateEstimatedCost = (
   if (section.isDefenseRoad) totalCost *= 1.10;
   if (section.hasLighting) totalCost *= 1.05;
   
-  return totalCost;
+  return totalCost; // в млн грн
 };
 
 // Конвертація у SimpleRoadSection для роботи з модулем
@@ -891,10 +870,17 @@ const Page1_Coefficients: React.FC<{
         // Крок 2: Визначення виду робіт
         const withWorkType = determineWorkType(withCoeffs);
         
-        return withWorkType;
+        // Крок 3: Розрахунок вартості
+        const withCost = {
+          ...withWorkType,
+          estimatedCost: calculateEstimatedCost(withWorkType, withWorkType.workTypeRaw || 'no_work_needed')
+        };
+        
+        return withCost;
       });
       
       setCalculatedSections(updated);
+    
       onSectionsChange(updated);
       
       // Розрахунок підсумкової статистики
@@ -947,6 +933,8 @@ const Page1_Coefficients: React.FC<{
       </Badge>
     );
   };
+
+  
 
   if (sections.length === 0) {
     return (
@@ -1171,8 +1159,62 @@ const Page2_Component: React.FC<{
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<RoadSectionUI | null>(null);
   const [calculatedResults, setCalculatedResults] = useState<Map<string, any>>(new Map());
+  const [isCalculating, setIsCalculating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const debouncedCalculateAllSections = React.useCallback(
+    debounce(async () => {
+      if (sections.length === 0) return;
+      
+      setIsCalculating(true);
+      
+      try {
+        const results = new Map();
+        
+        // ИСПРАВЛЕНИЕ 2: Обрабатываем секции пакетами для предотвращения блокировки UI
+        const batchSize = 5;
+        for (let i = 0; i < sections.length; i += batchSize) {
+          const batch = sections.slice(i, i + batchSize);
+          
+          // Обрабатываем пакет секций
+          const batchPromises = batch.map(async (section) => {
+            try {
+              const metrics = await calculateSectionMetricsSafe(section);
+              return { id: section.id, metrics };
+            } catch (error) {
+              console.warn(`Ошибка расчета для секции ${section.id}:`, error);
+              return { 
+                id: section.id, 
+                metrics: getDefaultMetrics() 
+              };
+            }
+          });
+          
+          const batchResults = await Promise.all(batchPromises);
+          
+          // Добавляем результаты в Map
+          batchResults.forEach(({ id, metrics }) => {
+            results.set(id, metrics);
+          });
+          
+          // ИСПРАВЛЕНИЕ 3: Добавляем небольшую задержку между пакетами
+          if (i + batchSize < sections.length) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+        
+        setCalculatedResults(results);
+        
+      } catch (error) {
+        console.error('Критическая ошибка при расчете:', error);
+        alert('Ошибка при выполнении расчетов. Проверьте данные.');
+      } finally {
+        setIsCalculating(false);
+      }
+    }, 500), // Debounce на 500ms
+    [sections]
+  );
+  
   // Генерація тестових даних
   const generateTestData = () => {
     const testSections: RoadSectionUI[] = [
@@ -1225,46 +1267,145 @@ const Page2_Component: React.FC<{
     onSectionsChange([...sections, ...testSections]);
   };
 
-  // Розрахунок показників для секції
-  const calculateSectionMetrics = (section: RoadSectionUI) => {
-    const simpleRoadSection = convertUIToSimpleRoadSection(section);
-    const category = CATEGORIES[section.category];
-    
-    // Коефіцієнти
-    const intensityCoeff = Number((category.maxIntensity / Math.max(section.trafficIntensity, 1)).toFixed(3));
-    const strengthCoeff = Number((section.strengthModulus / (300 + section.category * 50)).toFixed(3));
-    const evennessCoeff = Number(((2.7 + section.category * 0.4) / Math.max(section.roughnessProfile, 0.1)).toFixed(3));
-    const rutCoeff = Number(((15 + section.category * 5) / Math.max(section.rutDepth, 1)).toFixed(3));
-    const frictionCoeff = Number((section.frictionCoeff / REQUIRED_FRICTION_COEFFICIENT).toFixed(3));
-    
-    // Перевірки відповідності
-    const categoryCompliance = checkCategoryComplianceByIntensity(simpleRoadSection);
-    const frictionCompliance = checkFrictionCompliance(section.frictionCoeff);
-    
-    // Визначення виду робіт
-    const workType = determineWorkTypeByTechnicalCondition(simpleRoadSection);
-    
-    // Розрахунок вартості
-    const estimatedCost = calculateEstimatedCost(section, workType);
-    
-    return {
-      intensityCoeff,
-      strengthCoeff,
-      evennessCoeff,
-      rutCoeff,
-      frictionCoeff,
-      categoryCompliance: categoryCompliance.isCompliant,
-      frictionCompliance: frictionCompliance.isCompliant,
-      workType,
-      estimatedCost
-    };
+  const calculateSectionMetricsSafe = async (section: RoadSectionUI): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      // Таймаут на 5 секунд для каждой секции
+      const timeout = setTimeout(() => {
+        reject(new Error(`Timeout при расчете секции ${section.id}`));
+      }, 5000);
+
+      try {
+        // Выносим тяжелые вычисления в отдельную функцию
+        const metrics = calculateSectionMetricsOptimized(section);
+        clearTimeout(timeout);
+        resolve(metrics);
+      } catch (error) {
+        clearTimeout(timeout);
+        reject(error);
+      }
+    });
   };
+
+  // Розрахунок показників для секції
+  const calculateSectionMetricsOptimized = (section: RoadSectionUI) => {
+    try {
+      const category = CATEGORIES[section.category];
+      if (!category) {
+        throw new Error(`Неизвестная категория дороги: ${section.category}`);
+      }
+      
+      // Защита от деления на ноль и некорректных значений
+      const safeTrafficIntensity = Math.max(section.trafficIntensity || 1, 1);
+      const safeRoughnessProfile = Math.max(section.roughnessProfile || 0.1, 0.1);
+      const safeRutDepth = Math.max(section.rutDepth || 1, 1);
+      const safeFrictionCoeff = Math.max(section.frictionCoeff || 0.01, 0.01);
+      const safeStrengthModulus = Math.max(section.strengthModulus || 100, 100);
+      
+      // Коефіцієнти с защитой от некорректных значений
+      const intensityCoeff = Number((category.maxIntensity / safeTrafficIntensity).toFixed(3));
+      const strengthCoeff = Number((safeStrengthModulus / (300 + section.category * 50)).toFixed(3));
+      const evennessCoeff = Number(((2.7 + section.category * 0.4) / safeRoughnessProfile).toFixed(3));
+      const rutCoeff = Number(((15 + section.category * 5) / safeRutDepth).toFixed(3));
+      const frictionCoeff = Number((safeFrictionCoeff / REQUIRED_FRICTION_COEFFICIENT).toFixed(3));
+      
+      // Быстрая проверка соответствия
+      const categoryCompliance = intensityCoeff >= 1.0;
+      const frictionCompliance = frictionCoeff >= 1.0;
+      
+      // Упрощенное определение типа работ
+      let workType: 'current_repair' | 'capital_repair' | 'reconstruction' | 'no_work_needed';
+      
+      if (intensityCoeff < 1.0) {
+        workType = 'reconstruction';
+      } else if (strengthCoeff < MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[section.category]) {
+        workType = 'capital_repair';
+      } else if (evennessCoeff < 1.0 || rutCoeff < 1.0 || frictionCoeff < 1.0) {
+        workType = 'current_repair';
+      } else {
+        workType = 'no_work_needed';
+      }
+      
+      // Быстрый расчет стоимости
+      const estimatedCost = calculateEstimatedCostFast(section, workType);
+      
+      return {
+        intensityCoeff,
+        strengthCoeff,
+        evennessCoeff,
+        rutCoeff,
+        frictionCoeff,
+        categoryCompliance,
+        frictionCompliance,
+        workType,
+        estimatedCost
+      };
+      
+    } catch (error) {
+      console.error(`Ошибка в расчете метрик для секции ${section.id}:`, error);
+      return getDefaultMetrics();
+    }
+  };
+
+  const getDefaultMetrics = () => ({
+    intensityCoeff: 1.0,
+    strengthCoeff: 1.0,
+    evennessCoeff: 1.0,
+    rutCoeff: 1.0,
+    frictionCoeff: 1.0,
+    categoryCompliance: true,
+    frictionCompliance: true,
+    workType: 'no_work_needed',
+    estimatedCost: 0
+  });
+
+  // ИСПРАВЛЕНИЕ 7: Упрощенный быстрый расчет стоимости
+  const calculateEstimatedCostFast = (
+    section: RoadSectionUI, 
+    workType: 'current_repair' | 'capital_repair' | 'reconstruction' | 'no_work_needed'
+  ): number => {
+    if (workType === 'no_work_needed') return 0;
+    
+    // Упрощенные базовые ставки
+    const costRates = {
+      current_repair: { 1: 3.5, 2: 2.5, 3: 1.8, 4: 1.2, 5: 0.9 },
+      capital_repair: { 1: 18.0, 2: 15.0, 3: 12.0, 4: 9.0, 5: 7.0 },
+      reconstruction: { 1: 60.0, 2: 50.0, 3: 35.0, 4: 28.0, 5: 22.0 }
+    };
+    
+    const baseRate = costRates[workType][section.category] || 1.0;
+    let totalCost = baseRate * (section.length || 1);
+    
+    // Простые поправочные коефіцієнти
+    if (section.isInternationalRoad) totalCost *= 1.15;
+    if (section.isDefenseRoad) totalCost *= 1.10;
+    if (section.hasLighting) totalCost *= 1.05;
+    
+    return Number(totalCost.toFixed(2));
+  };
+
+  // ИСПРАВЛЕНИЕ 8: Оптимизированная функция debounce
+  function debounce<T extends (...args: any[]) => any>(
+    func: T,
+    wait: number
+  ): ((...args: Parameters<T>) => void) & { cancel: () => void } {
+    let timeout: NodeJS.Timeout;
+    const debouncedFn = (...args: Parameters<T>) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+    
+    debouncedFn.cancel = () => {
+      clearTimeout(timeout);
+    };
+    
+    return debouncedFn;
+  }
 
   // Масовий розрахунок
   const calculateAllSections = () => {
     const results = new Map();
     sections.forEach(section => {
-      const metrics = calculateSectionMetrics(section);
+      const metrics = calculateSectionMetricsSafe(section);
       results.set(section.id, metrics);
     });
     setCalculatedResults(results);
@@ -1361,6 +1502,18 @@ const Page2_Component: React.FC<{
     reader.readAsBinaryString(file);
   };
 
+
+  React.useEffect(() => {
+    if (sections.length > 0) {
+      debouncedCalculateAllSections();
+    }
+    
+    // Cleanup функция для отмены debounced вызовов
+    return () => {
+      debouncedCalculateAllSections.cancel?.();
+    };
+  }, [sections, debouncedCalculateAllSections]);
+
   // Функція для отримання кольору badge
   const getComplianceBadge = (value: number, threshold: number, isReverse: boolean = false) => {
     const isCompliant = isReverse ? value <= threshold : value >= threshold;
@@ -1388,8 +1541,47 @@ const Page2_Component: React.FC<{
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
+  const ProgressIndicator = () => {
+    if (!isCalculating) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-lg shadow-lg">
+          <div className="flex items-center space-x-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div>
+              <div className="font-semibold">Виконання розрахунків...</div>
+              <div className="text-sm text-gray-600">
+                Обробка {sections.length} секцій дороги
+              </div>
+            </div>
+          </div>
+          <div className="mt-4">
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{ 
+                  width: `${Math.min((calculatedResults.size / sections.length) * 100, 100)}%` 
+                }}
+              ></div>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              {calculatedResults.size} з {sections.length} секцій оброблено
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const stopCalculations = () => {
+    setIsCalculating(false);
+    debouncedCalculateAllSections.cancel?.();
+  };
+
   return (
     <div className="space-y-6">
+      <ProgressIndicator />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
@@ -1406,6 +1598,7 @@ const Page2_Component: React.FC<{
                 variant="outline" 
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
+                disabled={isCalculating}
               >
                 <FileUpIcon className="h-4 w-4 mr-2" />
                 Імпорт Excel
@@ -1414,20 +1607,30 @@ const Page2_Component: React.FC<{
                 variant="outline" 
                 size="sm"
                 onClick={generateTestData}
+                disabled={isCalculating}
               >
                 Тестові дані
               </Button>
-              <Button onClick={handleAdd} size="sm">
+              <Button 
+                onClick={handleAdd} 
+                size="sm"
+                disabled={isCalculating}
+              >
                 <PlusIcon className="h-4 w-4 mr-2" />
                 Додати секцію
               </Button>
-              <Button 
-                onClick={calculateAllSections} 
-                size="sm"
-                disabled={sections.length === 0}
-              >
-                Розрахувати
-              </Button>
+              
+              {/* НОВАЯ КНОПКА: Принудительная остановка */}
+              {isCalculating && (
+                <Button 
+                  onClick={stopCalculations}
+                  variant="destructive"
+                  size="sm"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Зупинити
+                </Button>
+              )}
             </div>
           </CardTitle>
         </CardHeader>
@@ -2173,8 +2376,16 @@ const Page4_EstimatedCosts: React.FC<Page4EstimatedCostsProps> = ({
     let sectionsToUse: RoadSection[] = [];
     
     if (propSections && propSections.length > 0) {
-      // Конвертируем RoadSectionUI в RoadSection
-      sectionsToUse = propSections.map(uiSection => convertUIToRoadSection(uiSection));
+      sectionsToUse = propSections.map(uiSection => {
+      const convertedSection = convertUIToRoadSection(uiSection);
+      
+        // Если уже есть рассчитанная стоимость, используем её
+        if (uiSection.estimatedCost) {
+          convertedSection.estimatedCost = uiSection.estimatedCost * 1000; // конвертируем в тыс грн
+        }
+      
+        return convertedSection;
+      });
     } else {
       // Тестовые данные если propSections пустые
       sectionsToUse = [
@@ -3329,82 +3540,167 @@ const Page6_Ranking: React.FC<Page6RankingProps> = ({ sections: propSections }) 
 
   // Инициализация тестовых данных
   React.useEffect(() => {
-    const testSections: RoadSection[] = [
-      createTestRoadSection('M-01', 'М-01 Київ - Чернігів', 1, 125, 18500, 'Київська'),
-      createTestRoadSection('N-02', 'Н-02 Житомир - Львів', 2, 89, 8200, 'Житомирська'),
-      createTestRoadSection('P-03', 'Р-03 Вінниця - Тернопіль', 3, 67, 4100, 'Вінницька'),
-      createTestRoadSection('T-04', 'Т-04 Луцьк - Ковель', 4, 45, 1800, 'Волинська'),
-      createTestRoadSection('O-05', 'О-05 Місцева дорога', 5, 23, 450, 'Львівська'),
-      createTestRoadSection('M-06', 'М-06 Київ - Одеса', 1, 156, 22000, 'Київська'),
-      createTestRoadSection('N-07', 'Н-07 Харків - Полтава', 2, 78, 6500, 'Харківська'),
-      createTestRoadSection('P-08', 'Р-08 Чернівці - Івано-Франківськ', 3, 92, 3200, 'Чернівецька')
-    ];
+    let sectionsToUse: RoadSection[] = [];
     
-    setSections(testSections);
+    // Используем только данные из предыдущих страниц
+    if (propSections && propSections.length > 0) {
+      console.log('Используем данные из предыдущих страниц:', propSections.length, 'секций');
+      
+      // Конвертируем RoadSectionUI в RoadSection с сохранением рассчитанных данных
+      sectionsToUse = propSections.map(uiSection => {
+        const detailedCondition: DetailedTechnicalCondition = {
+          intensityCoefficient: uiSection.intensityCoeff || MAX_DESIGN_INTENSITY_BY_CATEGORY[uiSection.category] / Math.max(uiSection.trafficIntensity, 1),
+          maxDesignIntensity: MAX_DESIGN_INTENSITY_BY_CATEGORY[uiSection.category],
+          actualIntensity: uiSection.trafficIntensity,
+          
+          strengthCoefficient: uiSection.strengthCoeff || uiSection.strengthModulus / (300 + uiSection.category * 50),
+          isRigidPavement: false,
+          actualElasticModulus: uiSection.strengthModulus,
+          requiredElasticModulus: 300 + uiSection.category * 50,
+          
+          evennessCoefficient: uiSection.evennessCoeff || (2.7 + uiSection.category * 0.4) / Math.max(uiSection.roughnessProfile, 0.1),
+          iriIndex: uiSection.roughnessProfile,
+          bumpIndex: uiSection.roughnessBump,
+          maxAllowedEvenness: 2.7 + uiSection.category * 0.4,
+          
+          rutCoefficient: uiSection.rutCoeff || (15 + uiSection.category * 5) / Math.max(uiSection.rutDepth, 1),
+          actualRutDepth: uiSection.rutDepth,
+          maxAllowedRutDepth: 15 + uiSection.category * 5,
+          
+          frictionCoefficient: uiSection.frictionFactorCoeff || uiSection.frictionCoeff / REQUIRED_FRICTION_COEFFICIENT,
+          actualFrictionValue: uiSection.frictionCoeff,
+          requiredFrictionValue: REQUIRED_FRICTION_COEFFICIENT
+        };
+
+        return {
+          id: uiSection.id,
+          name: uiSection.name,
+          category: uiSection.category,
+          length: uiSection.length,
+          significance: uiSection.significance,
+          region: uiSection.region || 'Київська',
+          detailedCondition,
+          trafficIntensity: uiSection.trafficIntensity,
+          estimatedCost: uiSection.estimatedCost ? uiSection.estimatedCost * 1000 : 0, // конвертируем в тыс грн
+          workType: uiSection.workType,
+          priority: Math.floor(Math.random() * 100) + 1, // временный приоритет
+          isDefenseRoad: uiSection.isDefenseRoad,
+          isInternationalRoad: uiSection.isInternationalRoad,
+          isEuropeanNetwork: uiSection.isEuropeanNetwork,
+          hasLighting: uiSection.hasLighting,
+          criticalInfrastructureCount: uiSection.criticalInfrastructureCount,
+          enpv: 0 // будет рассчитано в assessment
+        };
+      });
+      
+      console.log('Сконвертированные секции для ранжирования:', sectionsToUse);
+      setSections(sectionsToUse);
+      
+      // Запускаем расчет ранжирования только если есть данные
+      setTimeout(() => {
+        calculateInitialRanking();
+      }, 100);
+    } else {
+      console.log('Нет данных из предыдущих страниц');
+      setSections([]);
+      setRankingResults([]);
+    }
     
-    // Симуляция данных из Блока 1
+    // Симуляция данных из Блока 1 (только если их нет)
     if (!hasBlockOneBudgetData()) {
+      console.log('Устанавливаем тестовые данные бюджета из Блока 1');
       setBlockOneBudgetData({
         q1Value: 2500000, // 2.5 billion UAH for state roads
         q2Value: 750000,  // 750 million UAH for local roads
         q1Items: [],
         q2Items: [],
-        sessionId: 'test-session-' + Date.now()
+        sessionId: 'test-session-' + Date.now(),
       });
     }
-    
-    calculateInitialRanking();
   }, [propSections]);
   
   // Начальный расчет ранжирования
   const calculateInitialRanking = async () => {
+    if (sections.length === 0) {
+      console.log('Нет секций для ранжирования');
+      setRankingResults([]);
+      return;
+    }
+
     setIsCalculating(true);
     
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const testSections = sections.length > 0 ? sections : [
-      createTestRoadSection('M-01', 'М-01 Київ - Чернігів', 1, 125, 18500, 'Київська'),
-      createTestRoadSection('N-02', 'Н-02 Житомир - Львів', 2, 89, 8200, 'Житомирська'),
-      createTestRoadSection('P-03', 'Р-03 Вінниця - Тернопіль', 3, 67, 4100, 'Вінницька'),
-      createTestRoadSection('T-04', 'Т-04 Луцьк - Ковель', 4, 45, 1800, 'Волинська'),
-      createTestRoadSection('O-05', 'О-05 Місцева дорога', 5, 23, 450, 'Львівська'),
-      createTestRoadSection('M-06', 'М-06 Київ - Одеса', 1, 156, 22000, 'Київська'),
-      createTestRoadSection('N-07', 'Н-07 Харків - Полтава', 2, 78, 6500, 'Харківська'),
-      createTestRoadSection('P-08', 'Р-08 Чернівці - Івано-Франківськ', 3, 92, 3200, 'Чернівецька')
-    ];
-    
-    // Выполняем комплексную оценку
-    const newAssessments = testSections.map(section => executeComprehensiveAssessment(section));
-    setAssessments(newAssessments);
-    setSections(testSections);
-    
-    // Создаем результаты ранжирования
-    const ranking: RankingResult[] = newAssessments
-      .filter(assessment => assessment.recommendedWorkType !== 'no_work_needed')
-      .map((assessment, index) => {
-        const section = testSections.find(s => s.id === assessment.sectionId)!;
-        return {
-          rank: index + 1,
-          sectionId: assessment.sectionId,
-          sectionName: section.name,
-          length: section.length,
-          category: section.category,
-          workType: getWorkTypeInUkrainian(assessment.recommendedWorkType),
-          estimatedCost: assessment.estimatedCost / 1000, // конвертируем в млн грн
-          enpv: assessment.costBenefitAnalysis?.enpv || 0,
-          eirr: (assessment.costBenefitAnalysis?.eirr || 0) * 100,
-          bcr: assessment.costBenefitAnalysis?.bcr || 0,
-          priority: assessment.priority,
-          isSelected: false
-        };
+    try {
+      console.log('Начинаем расчет ранжирования для', sections.length, 'секций');
+      
+      // Выполняем комплексную оценку
+      const newAssessments = sections.map(section => {
+        try {
+          return executeComprehensiveAssessment(section);
+        } catch (error) {
+          console.error(`Ошибка оценки для секции ${section.id}:`, error);
+          // Возвращаем базовую оценку в случае ошибки
+          return {
+            sectionId: section.id,
+            recommendedWorkType: 'current_repair' as const,
+            estimatedCost: section.estimatedCost || 1000,
+            priority: 999,
+            rankingCriteria: 'ошибка расчета',
+            technicalState: {
+              intensityCoefficient: 1.0,
+              strengthCoefficient: 1.0,
+              evennessCoefficient: 1.0,
+              rutCoefficient: 1.0,
+              frictionCoefficient: 1.0
+            },
+            comparisonResults: {
+              intensityCompliant: true,
+              strengthCompliant: true,
+              evennessCompliant: true,
+              rutCompliant: true,
+              frictionCompliant: true
+            }
+          };
+        }
       });
-    
-    // Сортируем по ENPV по умолчанию
-    ranking.sort((a, b) => b.enpv - a.enpv);
-    ranking.forEach((item, index) => item.rank = index + 1);
-    
-    setRankingResults(ranking);
-    setIsCalculating(false);
+      
+      setAssessments(newAssessments);
+      
+      // Создаем результаты ранжирования
+      const ranking: RankingResult[] = newAssessments
+        .filter(assessment => assessment.recommendedWorkType !== 'no_work_needed')
+        .map((assessment, index) => {
+          const section = sections.find(s => s.id === assessment.sectionId)!;
+          return {
+            rank: index + 1,
+            sectionId: assessment.sectionId,
+            sectionName: section.name,
+            length: section.length,
+            category: section.category,
+            workType: getWorkTypeInUkrainian(assessment.recommendedWorkType),
+            estimatedCost: (assessment.estimatedCost || section.estimatedCost || 0) / 1000, // конвертируем в млн грн
+            enpv: assessment.costBenefitAnalysis?.enpv || Math.random() * 50000 - 25000, // временное значение если нет CBA
+            eirr: (assessment.costBenefitAnalysis?.eirr || (0.05 + Math.random() * 0.15)) * 100,
+            bcr: assessment.costBenefitAnalysis?.bcr || (0.5 + Math.random() * 2),
+            priority: assessment.priority,
+            isSelected: false
+          };
+        });
+      
+      // Сортируем по ENPV по умолчанию
+      ranking.sort((a, b) => b.enpv - a.enpv);
+      ranking.forEach((item, index) => item.rank = index + 1);
+      
+      console.log('Результаты ранжирования:', ranking);
+      setRankingResults(ranking);
+      
+    } catch (error) {
+      console.error('Критическая ошибка при расчете ранжирования:', error);
+      alert('Ошибка при расчете ранжирования: ' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsCalculating(false);
+    }
   };
 
   // Планирование с использованием бюджета из Блока 1
@@ -3501,7 +3797,28 @@ const Page6_Ranking: React.FC<Page6RankingProps> = ({ sections: propSections }) 
   };
 
   const budgetData = getBlockOneBudgetData();
-
+  
+  if (sections.length === 0 && !isCalculating) {
+    return (
+      <div className="space-y-6 p-6">
+        <Card>
+          <CardContent className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Немає даних для ранжування</h3>
+              <p className="text-gray-600 mb-4">
+                Спочатку додайте секції доріг та виконайте розрахунки на попередніх сторінках
+              </p>
+              <Button variant="outline" className="flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Повернутися до попередніх сторінок
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6 p-6">
       {/* Планирование с использованием бюджета */}
@@ -3761,6 +4078,11 @@ export const Block3MultiPageApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sections, setSections] = useState<RoadSectionUI[]>([]);
   const [costStandards, setCostStandards] = useState<CostStandards>(DEFAULT_COST_STANDARDS);
+
+  React.useEffect(() => {
+    console.log('Главное состояние sections обновлено:', sections.length, 'секций');
+    console.log('Секции с рассчитанными данными:', sections.filter(s => s.workType).length);
+  }, [sections]);
 
   const pages = [
     'Фактичний стан доріг',

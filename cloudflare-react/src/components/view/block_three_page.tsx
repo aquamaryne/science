@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from 'xlsx';
-import { FileUpIcon, PlusIcon, EditIcon, SaveIcon, TrashIcon, ArrowRightIcon, CheckCircleIcon, XCircleIcon, ArrowLeftIcon, AlertTriangleIcon, CalculatorIcon, FileSpreadsheet, InfoIcon, DollarSign, TrendingUpIcon, Download, RotateCcwIcon, RefreshCw, DownloadIcon, AlertTriangle, Calculator, TrendingUp, ArrowRight, ArrowLeft, X } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { FileUpIcon, PlusIcon, EditIcon, SaveIcon, TrashIcon, ArrowRightIcon, CheckCircleIcon, XCircleIcon, ArrowLeftIcon, AlertTriangleIcon, CalculatorIcon, FileSpreadsheet, InfoIcon, DollarSign, TrendingUpIcon, Download, RotateCcwIcon, RefreshCw, DownloadIcon, AlertTriangle, Calculator, TrendingUp, ArrowRight, ArrowLeft, X, XIcon } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from '../ui/progress';
 import { type RoadSection } from '@/modules/block_three_alghoritm';
 import { planRepairWorksWithBlockOneData, generateDetailedRepairPlanReport, hasBlockOneBudgetData, getBlockOneBudgetData, setBlockOneBudgetData, type RepairProject } from '@/modules/block_three';
@@ -17,6 +17,7 @@ import {
   type RoadSection as AlgorithmRoadSection,
 } from '@/modules/block_three_alghoritm';
 import RoadEfficiencyInterface from './page';
+import { CheckIcon } from '@radix-ui/react-icons';
 // Используємо константи локально, оскільки вони не експортуються
 const MAX_DESIGN_INTENSITY_BY_CATEGORY = {
   1: 20000,
@@ -262,7 +263,12 @@ const CATEGORIES = {
 };
 
 // ==================== ФУНКЦІЇ КОНВЕРТАЦІЇ ====================
-
+interface Props {
+  sections: RoadSectionUI[];
+  onSectionsChange: (sections: RoadSectionUI[]) => void;
+  onNext: () => void;
+  onBack: () => void;
+}
 // Простий розрахунок вартості
 const calculateEstimatedCost = (
   section: RoadSectionUI, 
@@ -833,14 +839,17 @@ interface EconomicAnalysisResult {
   };
 }
 
-const Page1_Coefficients: React.FC<{
-  sections: RoadSectionUI[];
-  onSectionsChange: (sections: RoadSectionUI[]) => void;
-  onNext: () => void;
-  onBack: () => void;
-}> = ({ sections, onSectionsChange, onNext, onBack }) => {
+const Page1_Coefficients: React.FC<Props> = ({ 
+  sections, 
+  onSectionsChange, 
+  onNext, 
+  onBack 
+}) => {
   const [calculatedSections, setCalculatedSections] = useState<RoadSectionUI[]>([]);
-  const [isCalculating, setIsCalculating] = useState(true);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [tempSections, setTempSections] = useState<RoadSectionUI[]>([]);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [calculationSummary, setCalculationSummary] = useState<{
     total: number;
     needsRepair: number;
@@ -850,65 +859,199 @@ const Page1_Coefficients: React.FC<{
     compliant: number;
   } | null>(null);
 
+  console.log('Page1_Coefficients rendered with sections:', sections.length);
+
+  // Инициализация при получении новых данных
   React.useEffect(() => {
     if (sections.length > 0) {
-      handleCalculate();
+      console.log('Received sections, checking if calculation needed...');
+      
+      const hasCalculatedData = sections.every(section => 
+        section.intensityCoeff !== undefined &&
+        section.strengthCoeff !== undefined &&
+        section.evennessCoeff !== undefined &&
+        section.rutCoeff !== undefined &&
+        section.frictionFactorCoeff !== undefined &&
+        section.workType !== undefined &&
+        section.estimatedCost !== undefined
+      );
+
+      if (hasCalculatedData) {
+        console.log('Data already calculated, using existing');
+        setCalculatedSections(sections);
+        calculateSummary(sections);
+      } else {
+        console.log('Data needs calculation');
+        handleCalculate();
+      }
+    } else {
+      setCalculatedSections([]);
+      setCalculationSummary(null);
     }
   }, [sections]);
 
+  // Расчет сводной статистики
+  const calculateSummary = (sectionsData: RoadSectionUI[]) => {
+    const summary = {
+      total: sectionsData.length,
+      needsRepair: sectionsData.filter(s => s.workTypeRaw !== 'no_work_needed').length,
+      currentRepair: sectionsData.filter(s => s.workTypeRaw === 'current_repair').length,
+      capitalRepair: sectionsData.filter(s => s.workTypeRaw === 'capital_repair').length,
+      reconstruction: sectionsData.filter(s => s.workTypeRaw === 'reconstruction').length,
+      compliant: sectionsData.filter(s => s.workTypeRaw === 'no_work_needed').length
+    };
+    setCalculationSummary(summary);
+  };
+
+  // Валидация данных секций
+  const validateSections = (sectionsToValidate: RoadSectionUI[]): string[] => {
+    const errors: string[] = [];
+    
+    sectionsToValidate.forEach((section, index) => {
+      if (!section.name || section.name.trim() === '') {
+        errors.push(`Секція ${index + 1}: відсутнє найменування`);
+      }
+      
+      if (!section.length || section.length <= 0) {
+        errors.push(`Секція ${index + 1}: некоректна протяжність`);
+      }
+      
+      if (section.intensityCoeff !== undefined && (isNaN(section.intensityCoeff) || section.intensityCoeff < 0)) {
+        errors.push(`Секція ${index + 1}: некоректний коефіцієнт інтенсивності`);
+      }
+      
+      if (section.strengthCoeff !== undefined && (isNaN(section.strengthCoeff) || section.strengthCoeff < 0)) {
+        errors.push(`Секція ${index + 1}: некоректний коефіцієнт міцності`);
+      }
+      
+      if (section.evennessCoeff !== undefined && (isNaN(section.evennessCoeff) || section.evennessCoeff < 0)) {
+        errors.push(`Секція ${index + 1}: некоректний коефіцієнт рівності`);
+      }
+      
+      if (section.rutCoeff !== undefined && (isNaN(section.rutCoeff) || section.rutCoeff < 0)) {
+        errors.push(`Секція ${index + 1}: некоректний коефіцієнт колійності`);
+      }
+      
+      if (section.frictionFactorCoeff !== undefined && (isNaN(section.frictionFactorCoeff) || section.frictionFactorCoeff < 0)) {
+        errors.push(`Секція ${index + 1}: некоректний коефіцієнт зчеплення`);
+      }
+      
+      if (section.estimatedCost !== undefined && (isNaN(section.estimatedCost) || section.estimatedCost < 0)) {
+        errors.push(`Секція ${index + 1}: некоректна розрахункова вартість`);
+      }
+    });
+    
+    return errors;
+  };
+
+  // Основная функция расчета
   const handleCalculate = async () => {
     setIsCalculating(true);
+    setValidationErrors([]);
     
     try {
-      // Симуляція процесу розрахунку для UX
       await new Promise(resolve => setTimeout(resolve, 500));
       
       const updated = sections.map(section => {
-        // Крок 1: Розрахунок коефіцієнтів
-        const withCoeffs = calculateCoefficients(section);
+        console.log('Processing section:', section.name);
         
-        // Крок 2: Визначення виду робіт
-        const withWorkType = determineWorkType(withCoeffs);
-        
-        // Крок 3: Розрахунок вартості
-        const withCost = {
-          ...withWorkType,
-          estimatedCost: calculateEstimatedCost(withWorkType, withWorkType.workTypeRaw || 'no_work_needed')
-        };
-        
-        return withCost;
+        try {
+          // Шаг 1: Расчет коэффициентов
+          const withCoeffs = calculateCoefficients(section);
+          
+          // Шаг 2: Определение типа работ
+          const withWorkType = determineWorkType(withCoeffs);
+          
+          // Шаг 3: Расчет стоимости
+          const estimatedCost = calculateEstimatedCost(withWorkType, withWorkType.workTypeRaw || 'no_work_needed');
+          
+          const result = {
+            ...withWorkType,
+            estimatedCost: estimatedCost
+          };
+          
+          return result;
+        } catch (error) {
+          console.error('Error processing section:', section.name, error);
+          // Возвращаем секцию с базовыми значениями в случае ошибки
+          return {
+            ...section,
+            intensityCoeff: 1.0,
+            strengthCoeff: 1.0,
+            evennessCoeff: 1.0,
+            rutCoeff: 1.0,
+            frictionFactorCoeff: 1.0,
+            workType: 'Не потрібно',
+            workTypeRaw: 'no_work_needed' as const,
+            estimatedCost: 0
+          };
+        }
       });
       
       setCalculatedSections(updated);
-    
-      onSectionsChange(updated);
       
-      // Розрахунок підсумкової статистики
-      const summary = {
-        total: updated.length,
-        needsRepair: updated.filter(s => s.workTypeRaw !== 'no_work_needed').length,
-        currentRepair: updated.filter(s => s.workTypeRaw === 'current_repair').length,
-        capitalRepair: updated.filter(s => s.workTypeRaw === 'capital_repair').length,
-        reconstruction: updated.filter(s => s.workTypeRaw === 'reconstruction').length,
-        compliant: updated.filter(s => s.workTypeRaw === 'no_work_needed').length
-      };
+      // Автоматическое сохранение после расчета
+      const errors = validateSections(updated);
+      if (errors.length === 0) {
+        onSectionsChange(updated);
+        console.log('Sections automatically saved after calculation');
+      } else {
+        console.warn('Validation errors after calculation:', errors);
+        setValidationErrors(errors);
+      }
       
-      setCalculationSummary(summary);
+      calculateSummary(updated);
       
     } catch (error) {
-      console.error('Помилка розрахунку:', error);
-      alert('Помилка при розрахунку коефіцієнтів. Перевірте вхідні дані.');
+      console.error('Calculation error:', error);
+      setValidationErrors(['Помилка при розрахунку коефіцієнтів']);
     } finally {
       setIsCalculating(false);
     }
   };
 
-  // Функція для отримання кольору та іконки badge
+  // Функция сохранения с валидацией
+  const handleSave = () => {
+    const sectionsToSave = tempSections.length > 0 ? tempSections : calculatedSections;
+    const errors = validateSections(sectionsToSave);
+    setValidationErrors(errors);
+    
+    if (errors.length === 0) {
+      console.log('Saving sections:', sectionsToSave.length);
+      onSectionsChange(sectionsToSave);
+      setEditMode(false);
+      setTempSections([]);
+      
+      // Уведомление об успешном сохранении
+      const event = new CustomEvent('showNotification', { 
+        detail: { message: 'Дані успішно збережено!', type: 'success' } 
+      });
+      window.dispatchEvent(event);
+    } else {
+      console.error('Validation errors:', errors);
+    }
+  };
+
+  // Отмена изменений
+  const handleCancel = () => {
+    setTempSections([]);
+    setEditMode(false);
+    setValidationErrors([]);
+  };
+
+  // Вход в режим редактирования
+  const handleEdit = () => {
+    setTempSections([...calculatedSections]);
+    setEditMode(true);
+    setValidationErrors([]);
+  };
+
+  // Функция для badge соответствия нормам
   const getComplianceBadge = (value: number, threshold: number, isInverse: boolean = false) => {
     const isCompliant = isInverse ? value <= threshold : value >= threshold;
     return (
       <Badge variant={isCompliant ? "secondary" : "destructive"} className="gap-1">
-        {value}
+        {value.toFixed(2)}
         {isCompliant ? (
           <CheckCircleIcon className="h-3 w-3" />
         ) : (
@@ -918,6 +1061,7 @@ const Page1_Coefficients: React.FC<{
     );
   };
 
+  // Функция для badge типа работ
   const getWorkTypeBadge = (workType: string) => {
     const variants = {
       'Не потрібно': { variant: 'secondary' as const, color: 'text-green-700' },
@@ -934,8 +1078,7 @@ const Page1_Coefficients: React.FC<{
     );
   };
 
-  
-
+  // Если нет данных для расчета
   if (sections.length === 0) {
     return (
       <div className="space-y-6">
@@ -956,6 +1099,8 @@ const Page1_Coefficients: React.FC<{
     );
   }
 
+  const displaySections = calculatedSections.length > 0 ? calculatedSections : sections;
+
   return (
     <div className="space-y-6">
       <Card>
@@ -966,17 +1111,79 @@ const Page1_Coefficients: React.FC<{
               <Button 
                 onClick={handleCalculate} 
                 variant="outline" 
-                disabled={isCalculating}
+                disabled={isCalculating || editMode}
                 className="gap-2"
               >
                 <CalculatorIcon className={`h-4 w-4 ${isCalculating ? 'animate-spin' : ''}`} />
                 {isCalculating ? 'Розраховуємо...' : 'Перерахувати'}
               </Button>
+              
+              {!editMode ? (
+                <>
+                  <Button 
+                    onClick={handleEdit} 
+                    variant="outline"
+                    disabled={isCalculating || displaySections.length === 0}
+                    className="gap-2"
+                  >
+                    <EditIcon className="h-4 w-4" />
+                    Редагувати
+                  </Button>
+                  
+                  <Button 
+                    onClick={handleSave} 
+                    variant="default"
+                    disabled={isCalculating || displaySections.length === 0}
+                    className="gap-2"
+                  >
+                    <SaveIcon className="h-4 w-4" />
+                    Зберегти
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button 
+                    onClick={handleSave} 
+                    variant="default"
+                    disabled={isCalculating}
+                    className="gap-2"
+                  >
+                    <CheckIcon className="h-4 w-4" />
+                    Зберегти зміни
+                  </Button>
+                  
+                  <Button 
+                    onClick={handleCancel} 
+                    variant="outline"
+                    disabled={isCalculating}
+                    className="gap-2"
+                  >
+                    <XIcon className="h-4 w-4" />
+                    Скасувати
+                  </Button>
+                </>
+              )}
             </div>
           </CardTitle>
         </CardHeader>
+        
         <CardContent>
-          {/* Підсумкова статистика */}
+          {/* Отображение ошибок валидации */}
+          {validationErrors.length > 0 && (
+            <Alert className="mb-6" variant="destructive">
+              <AlertTriangleIcon className="h-4 w-4" />
+              <AlertTitle>Помилки валідації</AlertTitle>
+              <AlertDescription>
+                <ul className="list-disc list-inside space-y-1">
+                  {validationErrors.map((error, index) => (
+                    <li key={index} className="text-sm">{error}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Сводная статистика */}
           {calculationSummary && (
             <div className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="bg-blue-50 p-3 rounded-lg text-center">
@@ -1002,6 +1209,7 @@ const Page1_Coefficients: React.FC<{
             </div>
           )}
 
+          {/* Таблица с результатами */}
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -1020,7 +1228,7 @@ const Page1_Coefficients: React.FC<{
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {calculatedSections.map((section) => (
+                {displaySections.map((section) => (
                   <TableRow key={section.id} className={isCalculating ? 'opacity-50' : ''}>
                     <TableCell className="font-medium">
                       <div>
@@ -1035,9 +1243,7 @@ const Page1_Coefficients: React.FC<{
                       {section.intensityCoeff !== undefined ? (
                         <div className="space-y-1">
                           {getComplianceBadge(section.intensityCoeff, 1.0)}
-                          <div className="text-xs text-gray-500">
-                            Норма: ≥ 1.0
-                          </div>
+                          <div className="text-xs text-gray-500">Норма: ≥ 1.0</div>
                         </div>
                       ) : (
                         <div className="text-gray-400">—</div>
@@ -1046,9 +1252,9 @@ const Page1_Coefficients: React.FC<{
                     <TableCell className="text-center">
                       {section.strengthCoeff !== undefined ? (
                         <div className="space-y-1">
-                          {getComplianceBadge(section.strengthCoeff, MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[section.category])}
+                          {getComplianceBadge(section.strengthCoeff, MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[section.category] || 1.0)}
                           <div className="text-xs text-gray-500">
-                            Норма: ≥ {MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[section.category]}
+                            Норма: ≥ {MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[section.category] || 1.0}
                           </div>
                         </div>
                       ) : (
@@ -1059,9 +1265,7 @@ const Page1_Coefficients: React.FC<{
                       {section.evennessCoeff !== undefined ? (
                         <div className="space-y-1">
                           {getComplianceBadge(section.evennessCoeff, 1.0)}
-                          <div className="text-xs text-gray-500">
-                            Норма: ≥ 1.0
-                          </div>
+                          <div className="text-xs text-gray-500">Норма: ≥ 1.0</div>
                         </div>
                       ) : (
                         <div className="text-gray-400">—</div>
@@ -1071,9 +1275,7 @@ const Page1_Coefficients: React.FC<{
                       {section.rutCoeff !== undefined ? (
                         <div className="space-y-1">
                           {getComplianceBadge(section.rutCoeff, 1.0)}
-                          <div className="text-xs text-gray-500">
-                            Норма: ≥ 1.0
-                          </div>
+                          <div className="text-xs text-gray-500">Норма: ≥ 1.0</div>
                         </div>
                       ) : (
                         <div className="text-gray-400">—</div>
@@ -1083,9 +1285,7 @@ const Page1_Coefficients: React.FC<{
                       {section.frictionFactorCoeff !== undefined ? (
                         <div className="space-y-1">
                           {getComplianceBadge(section.frictionFactorCoeff, 1.0)}
-                          <div className="text-xs text-gray-500">
-                            Норма: ≥ 1.0
-                          </div>
+                          <div className="text-xs text-gray-500">Норма: ≥ 1.0</div>
                         </div>
                       ) : (
                         <div className="text-gray-400">—</div>
@@ -1104,7 +1304,7 @@ const Page1_Coefficients: React.FC<{
             </Table>
           </div>
 
-          {/* Інформаційна панель */}
+          {/* Информационная панель */}
           <Alert className="mt-6">
             <InfoIcon className="h-4 w-4" />
             <AlertDescription>
@@ -1135,12 +1335,13 @@ const Page1_Coefficients: React.FC<{
             </AlertDescription>
           </Alert>
           
+          {/* Навигационные кнопки */}
           <div className="mt-6 flex justify-between">
             <Button onClick={onBack} variant="outline">
               <ArrowLeftIcon className="h-4 w-4 mr-2" />
               Назад
             </Button>
-            <Button onClick={onNext} disabled={calculatedSections.length === 0}>
+            <Button onClick={onNext} disabled={displaySections.length === 0}>
               Далі
               <ArrowRightIcon className="h-4 w-4 ml-2" />
             </Button>

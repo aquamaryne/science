@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { InfoIcon, X, CheckCircle, Plus, Download, Calculator } from "lucide-react";
+import { InfoIcon, X, CheckCircle, Plus, Download, Calculator, AlertTriangle, MapPin, Construction, Upload } from "lucide-react";
 
 // Import types from calculations.ts
 import type { 
@@ -30,10 +28,42 @@ import {
   calculateLightingCoefficient,
   calculateRepairCoefficient,
   calculateCriticalInfrastructureCoefficient,
+  type RoadSection,
+  MAINTENANCE_CONSTANTS,
+
 } from '../../modules/block_two';
 
 // Импортируем SheetJS
 import * as XLSX from 'xlsx';
+
+interface ExcelCell {
+  address: string;
+  value: any;
+  formula?: string;
+  type: 'number' | 'string' | 'formula' | 'empty';
+  editable: boolean;
+}
+
+interface ExcelWorksheet {
+  name: string;
+  cells: ExcelCell[];
+  range: string;
+}
+
+interface RoadCalculationResult {
+  worksheet: string;
+  totalCells: number;
+  editableCells: number;
+  formulaCells: number;
+  calculatedValues: Record<string, any>;
+  roadFinancing: {
+    stateFunding: number;
+    localFunding: number;
+    totalFunding: number;
+    details: any;
+  } | null;
+  regionData: RegionRoads | null;
+}
 
 const Block2MaintenanceCalculator: React.FC = () => {
   // State for state road calculation (Block 2.1)
@@ -71,6 +101,13 @@ const Block2MaintenanceCalculator: React.FC = () => {
   });
 
   // State for funding calculation (Block 2.3-2.8)
+  const [worksheets, setWorksheets] = useState<ExcelWorksheet[]>([]);
+  const [selectedWorksheet, setSelectedWorksheet] = useState<string>('');
+  const [inflationIndex, setInflationIndex] = useState<number>(1.25);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [results, setResults] = useState<RoadCalculationResult | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedRegion, setSelectedRegion] = useState<string>("Винницкая");
   const [regionCoefficients] = useState<RegionCoefficients[]>(getRegionCoefficients());
   const [regionData, setRegionData] = useState<RegionRoads>(generateSampleRegionData("Винницкая"));
@@ -389,304 +426,6 @@ const Block2MaintenanceCalculator: React.FC = () => {
     setSaveStatus("");
   };
   
-  // Handle export to Excel
-  // Handle export to Excel
-const handleExport = () => {
-  try {
-    // Создаем новую рабочую книгу
-    const workbook = XLSX.utils.book_new();
-    
-    // Получаем все регионы для создания полной таблицы
-    const allRegions = regionCoefficients.map(r => r.regionalName);
-    
-    // Лист 1: Протяжність доріг місцевого значення
-    const localRoadsData = [
-      ['', '', '', 'Розподіл витрат на експлуатаційне утримання (ЕУ)', '', '', '', '', 'Протяжність', 'Протяжність', 'Протяжність'],
-      ['', '', '', 'Протяжність доріг місцевого значення (км)', '', '', '', '', 'доріг з', 'доріг з', 'доріг з'],
-      ['Найменування області', '', '', '', '', '', '', '', 'середньодобово', 'середньодобово', 'середньодобово'],
-      ['', 'I', 'II', 'III', 'IV', 'V', 'Разом', '', 'інтенсивністю', 'інтенсивністю', 'інтенсивністю'],
-      ['', '', '', '', '', '', '', '', '15000-20000', '20001-30000', '30001 і більше'],
-    ];
-    
-    // Добавляем данные по регионам для местных дорог
-    allRegions.forEach(region => {
-      const regionData = generateSampleRegionData(region);
-      const localRoadsByCategory = [1, 2, 3, 4, 5].map(category => {
-        return regionData.roadSections
-          .filter(s => !s.stateImportance && s.category === category)
-          .reduce((sum, s) => sum + s.length, 0);
-      });
-      const totalLocal = localRoadsByCategory.reduce((sum, length) => sum + length, 0);
-      
-      // Протяжность дорог с разной интенсивностью
-      const intensity15000_20000 = regionData.roadSections
-        .filter(s => !s.stateImportance && s.trafficIntensity >= 15000 && s.trafficIntensity <= 20000)
-        .reduce((sum, s) => sum + s.length, 0);
-      const intensity20001_30000 = regionData.roadSections
-        .filter(s => !s.stateImportance && s.trafficIntensity >= 20001 && s.trafficIntensity <= 30000)
-        .reduce((sum, s) => sum + s.length, 0);
-      const intensity30001Plus = regionData.roadSections
-        .filter(s => !s.stateImportance && s.trafficIntensity >= 30001)
-        .reduce((sum, s) => sum + s.length, 0);
-      
-      localRoadsData.push([
-        region,
-        (localRoadsByCategory[0] !== undefined && localRoadsByCategory[0] !== null ? localRoadsByCategory[0].toString() : ''),
-        (localRoadsByCategory[1] !== undefined && localRoadsByCategory[1] !== null ? localRoadsByCategory[1].toString() : ''),
-        (localRoadsByCategory[2] !== undefined && localRoadsByCategory[2] !== null ? localRoadsByCategory[2].toString() : ''),
-        (localRoadsByCategory[3] !== undefined && localRoadsByCategory[3] !== null ? localRoadsByCategory[3].toString() : ''),
-        (localRoadsByCategory[4] !== undefined && localRoadsByCategory[4] !== null ? localRoadsByCategory[4].toString() : ''),
-        (totalLocal !== undefined && totalLocal !== null ? totalLocal.toString() : ''),
-        '',
-        (intensity15000_20000 !== undefined && intensity15000_20000 !== null ? intensity15000_20000.toString() : ''),
-        (intensity20001_30000 !== undefined && intensity20001_30000 !== null ? intensity20001_30000.toString() : ''),
-        (intensity30001Plus !== undefined && intensity30001Plus !== null ? intensity30001Plus.toString() : '')
-      ]);
-    });
-    
-    const wsLocal = XLSX.utils.aoa_to_sheet(localRoadsData);
-    wsLocal['!cols'] = Array(11).fill({ width: 12 });
-    wsLocal['!merges'] = [
-      { s: { r: 0, c: 3 }, e: { r: 0, c: 6 } }, // Заголовок ЕУ
-      { s: { r: 1, c: 3 }, e: { r: 1, c: 6 } }, // Протяжність доріг
-      { s: { r: 0, c: 8 }, e: { r: 0, c: 10 } }, // Протяжність
-      { s: { r: 1, c: 8 }, e: { r: 1, c: 10 } }, // доріг з
-      { s: { r: 2, c: 8 }, e: { r: 2, c: 10 } }, // середньодобово
-      { s: { r: 3, c: 8 }, e: { r: 3, c: 10 } }  // інтенсивністю
-    ];
-    XLSX.utils.book_append_sheet(workbook, wsLocal, 'Місцеві дороги');
-    
-    // Лист 2: Протяжність доріг державного значення з коефіцієнтами
-    const stateRoadsData = [
-      ['', '', '', 'Розподіл витрат на експлуатаційне утримання (ЕУ)', '', '', '', '', '', '', '', '', 'Середньозважені коефіцієнти', '', '', '', '', '', '', '', '', 'Мінімальна потреба в фінансових ресурсах на 20XX рік, тис.грн', '', '', '', '', ''],
-      ['', '', 'Протяжність доріг державного значення (км)', '', '', '', '', 'Протяжність', 'Протяжність', 'Протяжність', 'Протяжність', 'Протяжність', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-      ['Найменування', '', '', '', '', '', '', 'доріг з', 'доріг з', 'доріг з', 'доріг з', 'доріг з', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-      ['області', 'I', 'II', 'III', 'IV', 'V', 'Разом', 'середньодобово', 'середньодобово', 'середньодобово', 'середньодобово', 'Європейські', 'Kг', 'Kу', 'Kінт', 'Kу', 'Kінт', 'Кук', 'Ков', 'Кур', 'Кор', 'I', 'II', 'III', 'IV', 'V', 'Разом'],
-      ['', '', '', '', '', '', '', 'інтенсивністю', 'інтенсивністю', 'інтенсивністю', 'інтенсивністю', 'маршрути', '', '', '', '', '', '', '', '', '', 'коефіцієнт', '', '', '', '', '', '%'],
-      ['', '', '', '', '', '', '', '15000-20000', '20001-30000', '30001-50000', '50001 і більше', 'дорожні', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
-    ];
-    
-    // Добавляем данные по регионам для государственных дорог
-    allRegions.forEach(region => {
-      const regionData = generateSampleRegionData(region);
-      const regionCoeff = regionCoefficients.find(r => r.regionalName === region);
-      
-      const stateRoadsByCategory = [1, 2, 3, 4, 5].map(category => {
-        return regionData.roadSections
-          .filter(s => s.stateImportance && s.category === category)
-          .reduce((sum, s) => sum + s.length, 0);
-      });
-      const totalState = stateRoadsByCategory.reduce((sum, length) => sum + length, 0);
-      
-      // Интенсивность движения
-      const intensity15000_20000 = regionData.roadSections
-        .filter(s => s.stateImportance && s.trafficIntensity >= 15000 && s.trafficIntensity <= 20000)
-        .reduce((sum, s) => sum + s.length, 0);
-      const intensity20001_30000 = regionData.roadSections
-        .filter(s => s.stateImportance && s.trafficIntensity >= 20001 && s.trafficIntensity <= 30000)
-        .reduce((sum, s) => sum + s.length, 0);
-      const intensity30001_50000 = regionData.roadSections
-        .filter(s => s.stateImportance && s.trafficIntensity >= 30001 && s.trafficIntensity <= 50000)
-        .reduce((sum, s) => sum + s.length, 0);
-      const intensity50001Plus = regionData.roadSections
-        .filter(s => s.stateImportance && s.trafficIntensity >= 50001)
-        .reduce((sum, s) => sum + s.length, 0);
-      
-      // Европейские маршруты
-      const europeanRoutes = regionData.roadSections
-        .filter(s => s.stateImportance && s.hasEuropeanStatus)
-        .reduce((sum, s) => sum + s.length, 0);
-      
-      // Рассчитываем коефициенты для конкретного региона
-      const stateRoadSections = regionData.roadSections.filter(section => section.stateImportance);
-      const totalStateRoadLength = stateRoadSections.reduce((sum, section) => sum + section.length, 0);
-      
-      const coefficients = {
-        mountainous: regionCoeff?.mountainous || 1,
-        operatingConditions: regionCoeff?.operatingConditions || 1,
-        trafficIntensity: calculateTrafficIntensityCoefficient(stateRoadSections, totalStateRoadLength),
-        europeanRoad: calculateEuropeanRoadCoefficient(stateRoadSections, totalStateRoadLength),
-        borderCrossing: calculateBorderCrossingCoefficient(stateRoadSections, totalStateRoadLength),
-        lighting: calculateLightingCoefficient(stateRoadSections, totalStateRoadLength),
-        repair: calculateRepairCoefficient(stateRoadSections, totalStateRoadLength),
-        criticalInfrastructure: calculateCriticalInfrastructureCoefficient(regionData.criticalInfrastructureCount)
-      };
-      
-      // Рассчитываем потребность в финансировании по категориям
-      const cumInflationIndex = calculateCumulativeInflationIndex(stateInflationIndexes);
-      const funding = [1, 2, 3, 4, 5].map(category => {
-        const length = stateRoadsByCategory[category - 1];
-        const rate = calculateStateRoadMaintenanceRate(category, cumInflationIndex);
-        const totalCoeff = coefficients.mountainous * coefficients.operatingConditions * 
-                          coefficients.trafficIntensity * coefficients.europeanRoad * 
-                          coefficients.borderCrossing * coefficients.lighting * 
-                          coefficients.repair * coefficients.criticalInfrastructure * 1.16;
-        return length * rate * totalCoeff;
-      });
-      const totalFunding = funding.reduce((sum, f) => sum + f, 0);
-      
-      stateRoadsData.push([
-        region,
-        (stateRoadsByCategory[0] !== undefined && stateRoadsByCategory[0] !== null ? stateRoadsByCategory[0].toString() : ''),
-        (stateRoadsByCategory[1] !== undefined && stateRoadsByCategory[1] !== null ? stateRoadsByCategory[1].toString() : ''),
-        (stateRoadsByCategory[2] !== undefined && stateRoadsByCategory[2] !== null ? stateRoadsByCategory[2].toString() : ''),
-        (stateRoadsByCategory[3] !== undefined && stateRoadsByCategory[3] !== null ? stateRoadsByCategory[3].toString() : ''),
-        (stateRoadsByCategory[4] !== undefined && stateRoadsByCategory[4] !== null ? stateRoadsByCategory[4].toString() : ''),
-        (totalState !== undefined && totalState !== null ? totalState.toString() : ''),
-        (intensity15000_20000 !== undefined && intensity15000_20000 !== null ? intensity15000_20000.toString() : ''),
-        (intensity20001_30000 !== undefined && intensity20001_30000 !== null ? intensity20001_30000.toString() : ''),
-        (intensity30001_50000 !== undefined && intensity30001_50000 !== null ? intensity30001_50000.toString() : ''),
-        (intensity50001Plus !== undefined && intensity50001Plus !== null ? intensity50001Plus.toString() : ''),
-        (europeanRoutes !== undefined && europeanRoutes !== null ? europeanRoutes.toString() : ''),
-        coefficients.mountainous.toFixed(3),
-        coefficients.operatingConditions.toFixed(3),
-        coefficients.trafficIntensity.toFixed(3),
-        '', // Kу (пустой столбец)
-        '', // Kінт (пустой столбец)
-        '', // Кук (пустой столбец)
-        coefficients.lighting.toFixed(3),
-        coefficients.repair.toFixed(3),
-        coefficients.criticalInfrastructure.toFixed(3),
-        funding[0].toFixed(2),
-        funding[1].toFixed(2),
-        funding[2].toFixed(2),
-        funding[3].toFixed(2),
-        funding[4].toFixed(2),
-        totalFunding.toFixed(2)
-      ]);
-    });
-    
-    const wsState = XLSX.utils.aoa_to_sheet(stateRoadsData);
-    wsState['!cols'] = Array(27).fill({ width: 10 });
-    wsState['!merges'] = [
-      { s: { r: 0, c: 3 }, e: { r: 0, c: 6 } }, // Розподіл витрат на ЕУ
-      { s: { r: 1, c: 2 }, e: { r: 1, c: 6 } }, // Протяжність доріг державного значення
-      { s: { r: 0, c: 12 }, e: { r: 0, c: 20 } }, // Середньозважені коефіцієнти
-      { s: { r: 0, c: 21 }, e: { r: 0, c: 26 } }, // Мінімальна потреба
-      { s: { r: 1, c: 7 }, e: { r: 1, c: 11 } }, // Протяжність доріг з
-      { s: { r: 2, c: 7 }, e: { r: 2, c: 11 } }, // доріг з
-      { s: { r: 1, c: 21 }, e: { r: 1, c: 26 } }, // фінансових ресурсах
-      { s: { r: 2, c: 21 }, e: { r: 2, c: 26 } }  // тис.грн
-    ];
-    XLSX.utils.book_append_sheet(workbook, wsState, 'Державні дороги');
-    
-    // Лист 3: Потреба в фінансуванні місцевих доріг
-    const localFundingData = [
-      ['', '', 'Розподіл витрат на експлуатаційне утримання (ЕУ) доріг місцевого значення', '', '', '', '', 'Мінімальна потреба в фінансових ресурсах на 20XX рік, тис.грн', '', '', '', '', '', ''],
-      ['', '', 'Протяжність доріг місцевого значення (км)', '', '', '', '', '', '', '', '', '', '', ''],
-      ['Найменування області', '', '', '', '', '', 'Разом', 'I', 'II', 'III', 'IV', 'V', 'Разом', '%']
-    ];
-    
-    // Добавляем данные по регионам для местных дорог с финансированием
-    allRegions.forEach(region => {
-      const regionData = generateSampleRegionData(region);
-      const regionCoeff = regionCoefficients.find(r => r.regionalName === region);
-      
-      const localRoadsByCategory = [1, 2, 3, 4, 5].map(category => {
-        return regionData.roadSections
-          .filter(s => !s.stateImportance && s.category === category)
-          .reduce((sum, s) => sum + s.length, 0);
-      });
-      const totalLocal = localRoadsByCategory.reduce((sum, length) => sum + length, 0);
-      
-      // Рассчитываем финансирование для местных дорог
-      const localRoadSections = regionData.roadSections.filter(section => !section.stateImportance);
-      const totalLocalRoadLength = localRoadSections.reduce((sum, section) => sum + section.length, 0);
-      
-      const localCoefficients = {
-        mountainous: regionCoeff?.mountainous || 1,
-        operatingConditions: regionCoeff?.operatingConditions || 1,
-        trafficIntensity: calculateTrafficIntensityCoefficient(localRoadSections, totalLocalRoadLength)
-      };
-      
-      const cumInflationIndexLocal = calculateCumulativeInflationIndex(localInflationIndexes);
-      const localFunding = [1, 2, 3, 4, 5].map(category => {
-        const length = localRoadsByCategory[category - 1];
-        const rate = calculateLocalRoadMaintenanceRate(category, cumInflationIndexLocal);
-        const totalCoeff = localCoefficients.mountainous * localCoefficients.operatingConditions * localCoefficients.trafficIntensity;
-        return length * rate * totalCoeff;
-      });
-      const totalLocalFunding = localFunding.reduce((sum, f) => sum + f, 0);
-      
-      localFundingData.push([
-        region,
-        (localRoadsByCategory[0] !== undefined && localRoadsByCategory[0] !== null ? localRoadsByCategory[0].toString() : ''),
-        (localRoadsByCategory[1] !== undefined && localRoadsByCategory[1] !== null ? localRoadsByCategory[1].toString() : ''),
-        (localRoadsByCategory[2] !== undefined && localRoadsByCategory[2] !== null ? localRoadsByCategory[2].toString() : ''),
-        (localRoadsByCategory[3] !== undefined && localRoadsByCategory[3] !== null ? localRoadsByCategory[3].toString() : ''),
-        (localRoadsByCategory[4] !== undefined && localRoadsByCategory[4] !== null ? localRoadsByCategory[4].toString() : ''),
-        (totalLocal !== undefined && totalLocal !== null ? totalLocal.toString() : ''),
-        localFunding[0].toFixed(2),
-        localFunding[1].toFixed(2),
-        localFunding[2].toFixed(2),
-        localFunding[3].toFixed(2),
-        localFunding[4].toFixed(2),
-        totalLocalFunding.toFixed(2),
-        '100' // процент
-      ]);
-    });
-    
-    const wsLocalFunding = XLSX.utils.aoa_to_sheet(localFundingData);
-    wsLocalFunding['!cols'] = Array(14).fill({ width: 12 });
-    wsLocalFunding['!merges'] = [
-      { s: { r: 0, c: 2 }, e: { r: 0, c: 6 } }, // Розподіл витрат на ЕУ
-      { s: { r: 1, c: 2 }, e: { r: 1, c: 6 } }, // Протяжність доріг
-      { s: { r: 0, c: 7 }, e: { r: 0, c: 13 } }  // Мінімальна потреба
-    ];
-    XLSX.utils.book_append_sheet(workbook, wsLocalFunding, 'Фінансування місцевих');
-    
-    // Лист 4: Сводная таблица нормативов и коэффициентов
-    const summaryData = [
-      ['ЗВІТ ПРО РЕЗУЛЬТАТИ РОЗРАХУНКУ'],
-      [],
-      ['1. БАЗОВІ НОРМАТИВИ'],
-      ['Базовий норматив (держ., ціни 2023):', stateRoadBaseRate + ' тис. грн/км'],
-      ['Базовий норматив (місц., ціни 2023):', localRoadBaseRate + ' тис. грн/км'],
-      ['Індекс інфляції (держ.):', calculateCumulativeInflationIndex(stateInflationIndexes).toFixed(4)],
-      ['Індекс інфляції (місц.):', calculateCumulativeInflationIndex(localInflationIndexes).toFixed(4)],
-      [],
-      ['2. НОРМАТИВИ ДЛЯ АВТОМОБІЛЬНИХ ДОРІГ ДЕРЖАВНОГО ЗНАЧЕННЯ'],
-      ['Категорія', 'Норматив (тис. грн/км)'],
-      ['I категорія', stateRoadRates.category1.toFixed(2)],
-      ['II категорія', stateRoadRates.category2.toFixed(2)],
-      ['III категорія', stateRoadRates.category3.toFixed(2)],
-      ['IV категорія', stateRoadRates.category4.toFixed(2)],
-      ['V категорія', stateRoadRates.category5.toFixed(2)],
-      [],
-      ['3. НОРМАТИВИ ДЛЯ АВТОМОБІЛЬНИХ ДОРІГ МІСЦЕВОГО ЗНАЧЕННЯ'],
-      ['Категорія', 'Норматив (тис. грн/км)'],
-      ['I категорія', localRoadRates.category1.toFixed(2)],
-      ['II категорія', localRoadRates.category2.toFixed(2)],
-      ['III категорія', localRoadRates.category3.toFixed(2)],
-      ['IV категорія', localRoadRates.category4.toFixed(2)],
-      ['V категорія', localRoadRates.category5.toFixed(2)],
-      [],
-      ['4. РЕЗУЛЬТАТИ ДЛЯ ОБРАНОГО РЕГІОНУ: ' + selectedRegion],
-      ['Протяжність доріг державного значення:', fundingResults.details.stateRoadLength.toFixed(2) + ' км'],
-      ['Протяжність доріг місцевого значення:', fundingResults.details.localRoadLength.toFixed(2) + ' км'],
-      ['Фінансування доріг державного значення:', fundingResults.stateFunding.toFixed(2) + ' тис. грн'],
-      ['Фінансування доріг місцевого значення:', fundingResults.localFunding.toFixed(2) + ' тис. грн'],
-      ['ЗАГАЛЬНИЙ ОБСЯГ ФІНАНСУВАННЯ:', fundingResults.totalFunding.toFixed(2) + ' тис. грн']
-    ];
-    
-    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-    wsSummary['!cols'] = [{ width: 50 }, { width: 25 }];
-    XLSX.utils.book_append_sheet(workbook, wsSummary, 'Сводка');
-    
-    // Генерируем файл и скачиваем
-    const fileName = `Розподіл_витрат_ЕУ_${new Date().toLocaleDateString('uk-UA').replace(/\./g, '_')}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-    
-    setSaveStatus("Excel файл з детальними таблицями успішно згенеровано");
-    setTimeout(() => setSaveStatus(""), 3000);
-    
-  } catch (error) {
-    console.error('Помилка при експорті:', error);
-    setSaveStatus("Помилка при експорті в Excel");
-    setTimeout(() => setSaveStatus(""), 3000);
-  }
-};
-  
   // Handle save results
   const handleSaveResults = () => {
     try {
@@ -738,23 +477,375 @@ const handleExport = () => {
     return { stateFunding, localFunding };
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadStatus('Завантажуємо файл...');
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { 
+          type: 'binary',
+          cellStyles: true,
+          cellFormula: true,
+          cellDates: true,
+          cellNF: true,
+          sheetStubs: true
+        });
+
+        const parsedWorksheets: ExcelWorksheet[] = [];
+
+        // Обрабатываем все листы
+        workbook.SheetNames.forEach(sheetName => {
+          const worksheet = workbook.Sheets[sheetName];
+          const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
+          
+          const cells: ExcelCell[] = [];
+          
+          // Проходим через все ячейки в диапазоне
+          for (let row = range.s.r; row <= range.e.r; row++) {
+            for (let col = range.s.c; col <= range.e.c; col++) {
+              const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+              const cell = worksheet[cellAddress];
+              
+              if (cell || row <= 30) { // Показываем первые 30 строк даже если пустые
+                const cellData: ExcelCell = {
+                  address: cellAddress,
+                  value: cell?.v || '',
+                  formula: cell?.f || undefined,
+                  type: cell?.f ? 'formula' : 
+                        typeof cell?.v === 'number' ? 'number' : 
+                        cell?.v ? 'string' : 'empty',
+                  editable: !cell?.f // Формулы не редактируем
+                };
+                cells.push(cellData);
+              }
+            }
+          }
+
+          parsedWorksheets.push({
+            name: sheetName,
+            cells,
+            range: worksheet['!ref'] || 'A1:A1'
+          });
+        });
+
+        setWorksheets(parsedWorksheets);
+        setSelectedWorksheet(parsedWorksheets[0]?.name || '');
+        setUploadStatus(`Успішно завантажено ${parsedWorksheets.length} аркуш(ів)`);
+        
+        setTimeout(() => setUploadStatus(''), 3000);
+      } catch (error) {
+        setUploadStatus('Помилка при завантаженні файлу');
+        console.error('Помилка парсингу Excel:', error);
+        setTimeout(() => setUploadStatus(''), 3000);
+      }
+    };
+
+    reader.readAsBinaryString(file);
+  };
+
+  // Функция обновления значения ячейки
+  const updateCellValue = (worksheetName: string, cellAddress: string, newValue: any) => {
+    setWorksheets(prev => 
+      prev.map(ws => {
+        if (ws.name === worksheetName) {
+          return {
+            ...ws,
+            cells: ws.cells.map(cell => {
+              if (cell.address === cellAddress && cell.editable) {
+                return {
+                  ...cell,
+                  value: newValue,
+                  type: typeof newValue === 'number' ? 'number' : 
+                        newValue ? 'string' : 'empty'
+                };
+              }
+              return cell;
+            })
+          };
+        }
+        return ws;
+      })
+    );
+  };
+
+  // Функция парсинга данных дорог из Excel
+  const parseRoadDataFromExcel = (worksheet: ExcelWorksheet): RegionRoads | null => {
+    try {
+      // Здесь мы предполагаем определенную структуру Excel файла
+      // В реальном проекте это должно быть настраиваемо
+      const roadSections: RoadSection[] = [];
+      
+      // Пример парсинга: ищем данные начиная со строки 2
+      const dataRows = worksheet.cells.filter(cell => {
+        const decoded = XLSX.utils.decode_cell(cell.address);
+        return decoded.r > 0; // Пропускаем заголовки
+      });
+
+      // Группируем ячейки по строкам
+      const rowGroups: Record<number, ExcelCell[]> = {};
+      dataRows.forEach(cell => {
+        const decoded = XLSX.utils.decode_cell(cell.address);
+        if (!rowGroups[decoded.r]) rowGroups[decoded.r] = [];
+        rowGroups[decoded.r].push(cell);
+      });
+
+      // Парсим каждую строку как данные дороги
+      Object.values(rowGroups).forEach(rowCells => {
+        rowCells.sort((a, b) => {
+          const aCol = XLSX.utils.decode_cell(a.address).c;
+          const bCol = XLSX.utils.decode_cell(b.address).c;
+          return aCol - bCol;
+        });
+
+        if (rowCells.length >= 8) { // Минимум 8 колонок данных
+          const roadSection: RoadSection = {
+            category: Math.min(5, Math.max(1, Number(rowCells[0]?.value) || 3)) as 1 | 2 | 3 | 4 | 5,
+            stateImportance: Boolean(rowCells[1]?.value),
+            length: Number(rowCells[2]?.value) || 0,
+            trafficIntensity: Number(rowCells[3]?.value) || 0,
+            hasEuropeanStatus: Boolean(rowCells[4]?.value),
+            isBorderCrossing: Boolean(rowCells[5]?.value),
+            hasLighting: Boolean(rowCells[6]?.value),
+            recentlyRepaired: Boolean(rowCells[7]?.value)
+          };
+
+          if (roadSection.length > 0) {
+            roadSections.push(roadSection);
+          }
+        }
+      });
+
+      return {
+        regionalName: selectedRegion || 'Невизначена область',
+        roadSections,
+        criticalInfrastructureCount: 5 // По умолчанию
+      };
+
+    } catch (error) {
+      console.error('Ошибка парсинга данных дорог:', error);
+      return null;
+    }
+  };
+
+  // Функция расчета
+  const handleCalculate = () => {
+    if (!selectedWorksheet) {
+      alert('Оберіть аркуш для розрахунку');
+      return;
+    }
+
+    if (!selectedRegion) {
+      alert('Оберіть регіон для розрахунку');
+      return;
+    }
+
+    setIsCalculating(true);
+
+    try {
+      const worksheet = worksheets.find(ws => ws.name === selectedWorksheet);
+      if (!worksheet) {
+        throw new Error('Аркуш не знайдено');
+      }
+
+      setTimeout(() => {
+        const calculatedValues: Record<string, any> = {};
+        let totalSum = 0;
+        let numberCount = 0;
+
+        // Обычные расчеты Excel
+        worksheet.cells.forEach(cell => {
+          if (cell.type === 'number' && typeof cell.value === 'number') {
+            totalSum += cell.value;
+            numberCount++;
+          }
+          calculatedValues[cell.address] = cell.value;
+        });
+
+        calculatedValues['TOTAL_SUM'] = totalSum;
+        calculatedValues['AVERAGE'] = numberCount > 0 ? totalSum / numberCount : 0;
+        calculatedValues['COUNT_NUMBERS'] = numberCount;
+        calculatedValues['COUNT_FILLED'] = worksheet.cells.filter(c => c.value !== '').length;
+
+        // Парсим данные дорог из Excel или используем пример
+        let regionData = parseRoadDataFromExcel(worksheet);
+        if (!regionData || regionData.roadSections.length === 0) {
+          // Если не удалось распарсить, используем пример данных
+          regionData = generateSampleRegionData(selectedRegion);
+        }
+
+        // Получаем коэффициенты региона
+        const regionCoeff = regionCoefficients.find(r => r.regionalName === selectedRegion);
+        if (!regionCoeff) {
+          throw new Error('Коэффіцієнти регіону не знайдено');
+        }
+
+        // Расчет финансирования дорог
+        const priceIndexes: PriceIndexes = { inflationIndex };
+        const roadFinancing = calculateTotalFunding(regionData, regionCoeff, priceIndexes);
+
+        const result: RoadCalculationResult = {
+          worksheet: selectedWorksheet,
+          totalCells: worksheet.cells.length,
+          editableCells: worksheet.cells.filter(c => c.editable).length,
+          formulaCells: worksheet.cells.filter(c => c.type === 'formula').length,
+          calculatedValues,
+          roadFinancing,
+          regionData
+        };
+
+        setResults(result);
+        setIsCalculating(false);
+      }, 2000);
+
+    } catch (error) {
+      console.error('Помилка розрахунку:', error);
+      alert('Помилка при виконанні розрахунків');
+      setIsCalculating(false);
+    }
+  };
+
+  // Функция экспорта результатов
+  const handleExportResults = () => {
+    if (!results || !selectedWorksheet) return;
+
+    try {
+      const worksheet = worksheets.find(ws => ws.name === selectedWorksheet);
+      if (!worksheet) return;
+
+      const exportData: any[][] = [];
+      
+      // Заголовки общих данных
+      exportData.push(['ЗАГАЛЬНІ РЕЗУЛЬТАТИ РОЗРАХУНКІВ']);
+      exportData.push([]);
+      exportData.push(['Адреса клітинки', 'Значення', 'Тип', 'Формула']);
+      
+      // Данные ячеек
+      worksheet.cells.slice(0, 20).forEach(cell => {
+        exportData.push([
+          cell.address,
+          cell.value,
+          cell.type,
+          cell.formula || ''
+        ]);
+      });
+
+      // Общие результаты
+      exportData.push([]);
+      exportData.push(['ПІДСУМКОВІ РЕЗУЛЬТАТИ EXCEL']);
+      exportData.push(['Загальна сума:', results.calculatedValues.TOTAL_SUM]);
+      exportData.push(['Середнє значення:', results.calculatedValues.AVERAGE]);
+      exportData.push(['Кількість чисел:', results.calculatedValues.COUNT_NUMBERS]);
+      exportData.push(['Кількість заповнених клітинок:', results.calculatedValues.COUNT_FILLED]);
+
+      // Результаты финансирования дорог
+      if (results.roadFinancing) {
+        exportData.push([]);
+        exportData.push(['РОЗРАХУНОК ФІНАНСУВАННЯ ДОРІГ']);
+        exportData.push(['Регіон:', selectedRegion]);
+        exportData.push(['Індекс інфляції:', inflationIndex]);
+        exportData.push([]);
+        exportData.push(['Фінансування доріг державного значення (тис. грн):', Math.round(results.roadFinancing.stateFunding)]);
+        exportData.push(['Фінансування доріг місцевого значення (тис. грн):', Math.round(results.roadFinancing.localFunding)]);
+        exportData.push(['ЗАГАЛЬНЕ ФІНАНСУВАННЯ (тис. грн):', Math.round(results.roadFinancing.totalFunding)]);
+        exportData.push([]);
+        exportData.push(['ДЕТАЛІ РОЗРАХУНКУ']);
+        exportData.push(['Довжина доріг державного значення (км):', results.roadFinancing.details.stateRoadLength]);
+        exportData.push(['Довжина доріг місцевого значення (км):', results.roadFinancing.details.localRoadLength]);
+        exportData.push(['Базовий норматив держ. доріг (тис. грн/км):', Math.round(results.roadFinancing.details.stateRoadBaseRate)]);
+        exportData.push(['Базовий норматив місц. доріг (тис. грн/км):', Math.round(results.roadFinancing.details.localRoadBaseRate)]);
+
+        // Коэффициенты
+        exportData.push([]);
+        exportData.push(['ЗАСТОСОВАНІ КОЕФІЦІЄНТИ']);
+        Object.entries(results.roadFinancing.details.appliedCoefficients).forEach(([key, value]) => {
+          exportData.push([key, Number(value).toFixed(3)]);
+        });
+      }
+
+      // Создаем Excel файл
+      const ws = XLSX.utils.aoa_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Результати');
+
+      // Добавляем лист с данными дорог если есть
+      if (results.regionData) {
+        const roadData: any[][] = [];
+        roadData.push(['ДАНІ ПРО ДОРОГИ РЕГІОНУ']);
+        roadData.push([]);
+        roadData.push(['Категорія', 'Держ. значення', 'Довжина (км)', 'Інтенсивність', 'Європейський статус', 'Прикордонний перехід', 'Освітлення', 'Нещодавно відремонтований']);
+        
+        results.regionData.roadSections.forEach(section => {
+          roadData.push([
+            section.category,
+            section.stateImportance ? 'Так' : 'Ні',
+            section.length,
+            section.trafficIntensity,
+            section.hasEuropeanStatus ? 'Так' : 'Ні',
+            section.isBorderCrossing ? 'Так' : 'Ні',
+            section.hasLighting ? 'Так' : 'Ні',
+            section.recentlyRepaired ? 'Так' : 'Ні'
+          ]);
+        });
+
+        const roadWs = XLSX.utils.aoa_to_sheet(roadData);
+        XLSX.utils.book_append_sheet(wb, roadWs, 'Дані доріг');
+      }
+
+      const fileName = `Розрахунок_доріг_${selectedRegion}_${selectedWorksheet}_${new Date().toLocaleDateString('uk-UA').replace(/\./g, '_')}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+
+    } catch (error) {
+      console.error('Помилка експорту:', error);
+      alert('Помилка при експорті результатів');
+    }
+  };
+
+  // Получаем выбранный лист
+  const currentWorksheet = worksheets.find(ws => ws.name === selectedWorksheet);
+
+  // Группируем ячейки по строкам для отображения в таблице
+  const getTableData = (): { rows: Record<number, Record<string, ExcelCell>>; columns: string[]; } => {
+    if (!currentWorksheet) return { rows: {}, columns: [] };
+    
+    const rows: Record<number, Record<string, ExcelCell>> = {};
+    const cols = new Set<string>();
+    
+    currentWorksheet.cells.forEach(cell => {
+      const decoded = XLSX.utils.decode_cell(cell.address);
+      const rowNum = decoded.r;
+      const colLetter = XLSX.utils.encode_col(decoded.c);
+      
+      if (!rows[rowNum]) rows[rowNum] = {};
+      rows[rowNum][colLetter] = cell;
+      cols.add(colLetter);
+    });
+
+    return { rows, columns: Array.from(cols).sort() };
+  };
+
+  const tableData = getTableData();
+  
   return (
-    <div className="container mx-auto p-4">
+    <div className="mx-auto p-10">
       <h1 className="text-2xl font-bold mb-2">Експлуатаційне утримання доріг</h1>
       <p className="text-gray-600 mb-6">Визначення загального обсягу бюджетних коштів на фінансове забезпечення заходів з експлуатаційного утримання</p>
       
-      <Tabs defaultValue="step1" className="mb-8">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="step1">Етап 2.1: Дороги державного значення</TabsTrigger>
-          <TabsTrigger value="step2">Етап 2.2: Дороги місцевого значення</TabsTrigger>
-          <TabsTrigger value="step3">Етап 2.3-2.8: Розрахунок обсягу коштів</TabsTrigger>
+      <Tabs defaultValue="step1" className="mb-8 w-full">
+        <TabsList className="w-full grid-cols-3 ">
+          <TabsTrigger value="step1">Дороги державного значення</TabsTrigger>
+          <TabsTrigger value="step2">Дороги місцевого значення</TabsTrigger>
+          <TabsTrigger value="step3">Розрахунок обсягу коштів</TabsTrigger>
         </TabsList>
         
         {/* Stage 2.1: State Road Norms */}
         <TabsContent value="step1">
-          <Card>
+          <Card className="w-full">
             <CardHeader>
-              <CardTitle className="text-red-500">Етап 2.1 Блоку 2</CardTitle>
               <CardDescription>
                 Приведений норматив річних фінансових витрат на експлуатаційне утримання автомобільних доріг державного значення
               </CardDescription>
@@ -892,19 +983,6 @@ const handleExport = () => {
                     </CardContent>
                   </Card>
                 </div>
-                
-                <Alert className="mt-4 bg-blue-50">
-                  <InfoIcon className="h-4 w-4" />
-                  <AlertTitle>Формула розрахунку</AlertTitle>
-                  <AlertDescription>
-                    <div className="font-mono text-center py-2">
-                      H<sub>j</sub><sup>д</sup> = H<sup>д</sup> × K<sub>j</sub><sup>д</sup> × K<sub>інф</sub>
-                    </div>
-                    <div className="text-sm text-gray-600 mt-2">
-                      де H<sup>д</sup> = {stateRoadBaseRate} тис. грн/км, K<sub>j</sub><sup>д</sup> - коефіцієнт диференціювання за категорією, K<sub>інф</sub> = {calculateCumulativeInflationIndex(stateInflationIndexes).toFixed(4)}
-                    </div>
-                  </AlertDescription>
-                </Alert>
               </div>
             </CardContent>
           </Card>
@@ -914,7 +992,6 @@ const handleExport = () => {
         <TabsContent value="step2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-red-500">Етап 2.2 Блоку 2</CardTitle>
               <CardDescription>
                 Приведений норматив річних фінансових витрат на експлуатаційне утримання автомобільних доріг місцевого значення
               </CardDescription>
@@ -1052,20 +1129,7 @@ const handleExport = () => {
                     </CardContent>
                   </Card>
                 </div>
-                
-                <Alert className="mt-4 bg-blue-50">
-                  <InfoIcon className="h-4 w-4" />
-                  <AlertTitle>Формула розрахунку</AlertTitle>
-                  <AlertDescription>
-                    <div className="font-mono text-center py-2">
-                      H<sub>j</sub><sup>м</sup> = H<sup>м</sup> × K<sub>j</sub><sup>м</sup> × K<sub>інф</sub>
-                    </div>
-                    <div className="text-sm text-gray-600 mt-2">
-                      де H<sup>м</sup> = {localRoadBaseRate} тис. грн/км, K<sub>j</sub><sup>м</sup> - коефіцієнт диференціювання за категорією, K<sub>інф</sub> = {calculateCumulativeInflationIndex(localInflationIndexes).toFixed(4)}
-                    </div>
-                  </AlertDescription>
-                </Alert>
-                
+         
                 <Alert className="mt-4 bg-red-50">
                   <InfoIcon className="h-4 w-4" />
                   <AlertTitle className="text-red-500 font-bold">ВАЖЛИВО!!!</AlertTitle>
@@ -1080,612 +1144,475 @@ const handleExport = () => {
         </TabsContent>
         
         {/* Stage 2.3-2.8: Funding Calculation */}
-        <TabsContent value="step3">
-          <Card>
+        <TabsContent value='step3'>
+          <Card className='w-full'>
             <CardHeader>
-              <CardTitle className="text-red-500">Етап 2.3-2.8 Блоку 2</CardTitle>
-              <CardDescription>
-                Визначення обсягу коштів на експлуатаційне утримання автомобільних доріг державного та місцевого значення
-              </CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <Construction className="h-5 w-5" />
+                Калькулятор фінансування доріг на основі Excel шаблону
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid gap-6">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="region-select">Оберіть область:</Label>
-                    <Select 
-                      value={selectedRegion}
-                      onValueChange={handleRegionChange}
-                    >
-                      <SelectTrigger id="region-select" className="mt-2">
-                        <SelectValue placeholder="Оберіть область" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {regionCoefficients.map((region) => (
-                          <SelectItem key={region.regionalName} value={region.regionalName}>
-                            {region.regionalName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="self-end">
-                    <Button 
-                      onClick={calculateFunding}
-                      className="w-full bg-green-600 hover:bg-green-700"
-                    >
-                      <Calculator className="h-4 w-4 mr-2" />
-                      Розрахувати коефіцієнти та обсяг коштів
-                    </Button>
-                  </div>
-                </div>
-                
-                <Separator className="my-4" />
-                
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div>
-                    <h3 className="text-lg font-bold mb-4">Детальний розрахунок коефіцієнтів</h3>
-                    <div className="mb-6">
-                      <h4 className="font-semibold mb-2">Загальні коефіцієнти:</h4>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Коефіцієнт</TableHead>
-                            <TableHead className="text-right">Значення</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          <TableRow>
-                            <TableCell>K<sub>г</sub> (гірська місцевість)</TableCell>
-                            <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                step="0.0001"
-                                value={inputValues.mountainous}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  // Дозволяємо тільки цифри, крапку та знак мінус
-                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
-                                    setInputValues(prev => ({
-                                      ...prev,
-                                      mountainous: value
-                                    }));
-                                  }
-                                }}
-                                onBlur={(e) => {
-                                  const newValue = parseFloat(e.target.value) || 1;
-                                  setDetailedCoefficients(prev => ({
-                                    ...prev,
-                                    common: { ...prev.common, mountainous: newValue }
-                                  }));
-                                  setTimeout(() => calculateFunding(), 300);
-                                }}
-                                className="w-20 text-right"
-                              />
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell>K<sub>уе</sub> (умови експлуатації)</TableCell>
-                            <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                step="0.0001"
-                                value={inputValues.operatingConditions}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
-                                    setInputValues(prev => ({
-                                      ...prev,
-                                      operatingConditions: value
-                                    }));
-                                  }
-                                }}
-                                onBlur={(e) => {
-                                  const newValue = parseFloat(e.target.value) || 1;
-                                  setDetailedCoefficients(prev => ({
-                                    ...prev,
-                                    common: { ...prev.common, operatingConditions: newValue }
-                                  }));
-                                  setTimeout(() => calculateFunding(), 300);
-                                }}
-                                className="w-20 text-right"
-                              />
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell>K<sub>кр.і</sub> (критич. інфраструктура)</TableCell>
-                            <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                step="0.0001"
-                                value={inputValues.criticalInfrastructure}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
-                                    setInputValues(prev => ({
-                                      ...prev,
-                                      criticalInfrastructure: value
-                                    }));
-                                  }
-                                }}
-                                onBlur={(e) => {
-                                  const newValue = parseFloat(e.target.value) || 1;
-                                  setDetailedCoefficients(prev => ({
-                                    ...prev,
-                                    common: { ...prev.common, criticalInfrastructure: newValue }
-                                  }));
-                                  setTimeout(() => calculateFunding(), 300);
-                                }}
-                                className="w-20 text-right"
-                              />
-                            </TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </div>
-
-                    <div className="mb-6">
-                      <h4 className="font-semibold mb-2">Коефіцієнти для державних доріг:</h4>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Коефіцієнт</TableHead>
-                            <TableHead className="text-right">Значення</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          <TableRow>
-                            <TableCell>K<sub>д</sub> (обслуговування доріг)</TableCell>
-                            <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                step="0.0001"
-                                value={inputValues.stateServiceCoefficient}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  setInputValues(prev => ({
-                                    ...prev,
-                                    stateServiceCoefficient: value
-                                  }));
-                                }}
-                                onBlur={(e) => {
-                                  const newValue = parseFloat(e.target.value) || 1.16;
-                                  setInputValues(prev => ({
-                                    ...prev,
-                                    stateServiceCoefficient: newValue.toFixed(4)
-                                  }));
-                                  setTimeout(() => calculateFunding(), 300);
-                                }}
-                                className="w-20 text-right"
-                              />
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell>K<sub>інт.д</sub> (інтенсивність)</TableCell>
-                            <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                step="0.0001"
-                                value={inputValues.stateTrafficIntensity}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
-                                    setInputValues(prev => ({
-                                      ...prev,
-                                      stateTrafficIntensity: value
-                                    }));
-                                  }
-                                }}
-                                onBlur={(e) => {
-                                  const newValue = parseFloat(e.target.value) || 1;
-                                  setDetailedCoefficients(prev => ({
-                                    ...prev,
-                                    state: { ...prev.state, trafficIntensity: newValue }
-                                  }));
-                                  setTimeout(() => calculateFunding(), 300);
-                                }}
-                                className="w-20 text-right"
-                              />
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell>K<sub>е.д</sub> (дороги з індексом Е)</TableCell>
-                            <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                step="0.0001"
-                                value={inputValues.europeanRoad}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
-                                    setInputValues(prev => ({
-                                      ...prev,
-                                      europeanRoad: value
-                                    }));
-                                  }
-                                }}
-                                onBlur={(e) => {
-                                  const newValue = parseFloat(e.target.value) || 1;
-                                  setDetailedCoefficients(prev => ({
-                                    ...prev,
-                                    state: { ...prev.state, europeanRoad: newValue }
-                                  }));
-                                  setTimeout(() => calculateFunding(), 300);
-                                }}
-                                className="w-20 text-right"
-                              />
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell>K<sub>мпп.д</sub> (пункти пропуску)</TableCell>
-                            <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                step="0.0001"
-                                value={inputValues.borderCrossing}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
-                                    setInputValues(prev => ({
-                                      ...prev,
-                                      borderCrossing: value
-                                    }));
-                                  }
-                                }}
-                                onBlur={(e) => {
-                                  const newValue = parseFloat(e.target.value) || 1;
-                                  setDetailedCoefficients(prev => ({
-                                    ...prev,
-                                    state: { ...prev.state, borderCrossing: newValue }
-                                  }));
-                                  setTimeout(() => calculateFunding(), 300);
-                                }}
-                                className="w-20 text-right"
-                              />
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell>K<sub>осв</sub> (освітлення)</TableCell>
-                            <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                step="0.0001"
-                                value={inputValues.lighting}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
-                                    setInputValues(prev => ({
-                                      ...prev,
-                                      lighting: value
-                                    }));
-                                  }
-                                }}
-                                onBlur={(e) => {
-                                  const newValue = parseFloat(e.target.value) || 1;
-                                  setDetailedCoefficients(prev => ({
-                                    ...prev,
-                                    state: { ...prev.state, lighting: newValue }
-                                  }));
-                                  setTimeout(() => calculateFunding(), 300);
-                                }}
-                                className="w-20 text-right"
-                              />
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell>K<sub>рем</sub> (нещодавній ремонт)</TableCell>
-                            <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                step="0.0001"
-                                value={inputValues.repair}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
-                                    setInputValues(prev => ({
-                                      ...prev,
-                                      repair: value
-                                    }));
-                                  }
-                                }}
-                                onBlur={(e) => {
-                                  const newValue = parseFloat(e.target.value) || 1;
-                                  setDetailedCoefficients(prev => ({
-                                    ...prev,
-                                    state: { ...prev.state, repair: newValue }
-                                  }));
-                                  setTimeout(() => calculateFunding(), 300);
-                                }}
-                                className="w-20 text-right"
-                              />
-                            </TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </div>
-
-                    <div>
-                      <h4 className="font-semibold mb-2">Коефіцієнти для місцевих доріг:</h4>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Коефіцієнт</TableHead>
-                            <TableHead className="text-right">Значення</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          <TableRow>
-                            <TableCell>K<sub>інт.м</sub> (інтенсивність)</TableCell>
-                            <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                step="0.0001"
-                                value={inputValues.localTrafficIntensity}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
-                                    setInputValues(prev => ({
-                                      ...prev,
-                                      localTrafficIntensity: value
-                                    }));
-                                  }
-                                }}
-                                onBlur={(e) => {
-                                  const newValue = parseFloat(e.target.value) || 1;
-                                  setDetailedCoefficients(prev => ({
-                                    ...prev,
-                                    local: { ...prev.local, trafficIntensity: newValue }
-                                  }));
-                                  setTimeout(() => calculateFunding(), 300);
-                                }}
-                                className="w-20 text-right"
-                              />
-                            </TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </div>
-                    
-                    <div className="mt-4">
-                      <Button 
-                        onClick={() => {
-                          calculateFunding();
-                          setSaveStatus("Перерахунок з новими коефіцієнтами виконано!");
-                          setTimeout(() => setSaveStatus(""), 3000);
-                        }}
-                        className="w-full bg-orange-600 hover:bg-orange-700"
-                      >
-                        <Calculator className="h-4 w-4 mr-2" />
-                        Перерахувати з новими коефіцієнтами
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-lg font-bold mb-4">Результати розрахунку</h3>
-                    <Card className="bg-gray-50">
-                      <CardContent className="p-6">
-                        <div className="space-y-4">
-                          <div>
-                            <p className="text-sm text-gray-600">Протяжність доріг державного значення:</p>
-                            <p className="text-lg font-bold">{fundingResults.details.stateRoadLength.toFixed(2)} км</p>
-                          </div>
-                          
-                          <div>
-                            <p className="text-sm text-gray-600">Протяжність доріг місцевого значення:</p>
-                            <p className="text-lg font-bold">{fundingResults.details.localRoadLength.toFixed(2)} км</p>
-                          </div>
-                          
-                          <Separator />
-                          
-                          <div>
-                            <p className="text-sm text-gray-600">Базове фінансування (без коефіцієнтів):</p>
-                            <p className="text-sm text-blue-600">
-                              Держ.: {(fundingResults.stateFunding / (detailedCoefficients.common.mountainous * detailedCoefficients.common.operatingConditions * detailedCoefficients.state.trafficIntensity * detailedCoefficients.state.europeanRoad * detailedCoefficients.state.borderCrossing * detailedCoefficients.state.lighting * detailedCoefficients.state.repair * detailedCoefficients.common.criticalInfrastructure * parseFloat(inputValues.stateServiceCoefficient))).toFixed(2)} тис. грн
-                            </p>
-                            <p className="text-sm text-blue-600">
-                              Місц.: {(fundingResults.localFunding / (detailedCoefficients.common.mountainous * detailedCoefficients.common.operatingConditions * detailedCoefficients.local.trafficIntensity)).toFixed(2)} тис. грн
-                            </p>
-                          </div>
-                          
-                          <div>
-                            <p className="text-sm text-gray-600">Фінансування доріг державного значення:</p>
-                            <p className="text-xl font-bold text-green-700">{fundingResults.stateFunding.toFixed(2)} тис. грн.</p>
-                          </div>
-                          
-                          <div>
-                            <p className="text-sm text-gray-600">Фінансування доріг місцевого значення:</p>
-                            <p className="text-xl font-bold text-green-700">{fundingResults.localFunding.toFixed(2)} тис. грн.</p>
-                          </div>
-                          
-                          <Separator />
-                          
-                          <div>
-                            <p className="text-sm text-gray-600">Загальний обсяг фінансування:</p>
-                            <p className="text-2xl font-bold text-green-700">{fundingResults.totalFunding.toFixed(2)} тис. грн.</p>
-                          </div>
-                          
-                          {saveStatus && (
-                            <div className="p-2 bg-green-100 text-green-800 rounded flex items-center mt-2">
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              {saveStatus}
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <div className="mt-6">
-                      <h3 className="text-lg font-bold mb-2">Потреба у фінансуванні за категоріями</h3>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Категорія</TableHead>
-                            <TableHead className="text-right">Держзначення (тис. грн.)</TableHead>
-                            <TableHead className="text-right">Місцевого значення (тис. грн.)</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {[1, 2, 3, 4, 5].map(category => {
-                            const funding = calculateCategoryFunding(category);
-                            return (
-                              <TableRow key={category}>
-                                <TableCell>Категорія {category}</TableCell>
-                                <TableCell className="text-right">{funding.stateFunding.toFixed(2)}</TableCell>
-                                <TableCell className="text-right">{funding.localFunding.toFixed(2)}</TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mt-8">
-                  <h3 className="text-lg font-bold mb-4">Дані по дорожній мережі регіону</h3>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead rowSpan={2}>Категорія</TableHead>
-                          <TableHead colSpan={3} className="text-center">Протяжність доріг держзначення (км)</TableHead>
-                          <TableHead colSpan={3} className="text-center">Протяжність доріг місцевого значення (км)</TableHead>
-                        </TableRow>
-                        <TableRow>
-                          <TableHead>Усього</TableHead>
-                          <TableHead>з інтенсивністю {'>'} 15000</TableHead>
-                          <TableHead>з індексом Е</TableHead>
-                          <TableHead>Усього</TableHead>
-                          <TableHead>з інтенсивністю {'>'} 15000</TableHead>
-                          <TableHead>з освітленням</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {[1, 2, 3, 4, 5].map(category => (
-                          <TableRow key={category}>
-                            <TableCell>Категорія {category}</TableCell>
-                            <TableCell>
-                              {regionData.roadSections
-                                .filter(s => s.stateImportance && s.category === category)
-                                .reduce((sum, s) => sum + s.length, 0)}
-                            </TableCell>
-                            <TableCell>
-                              {regionData.roadSections
-                                .filter(s => s.stateImportance && s.category === category && s.trafficIntensity > 15000)
-                                .reduce((sum, s) => sum + s.length, 0)}
-                            </TableCell>
-                            <TableCell>
-                              {regionData.roadSections
-                                .filter(s => s.stateImportance && s.category === category && s.hasEuropeanStatus)
-                                .reduce((sum, s) => sum + s.length, 0)}
-                            </TableCell>
-                            <TableCell>
-                              {regionData.roadSections
-                                .filter(s => !s.stateImportance && s.category === category)
-                                .reduce((sum, s) => sum + s.length, 0)}
-                            </TableCell>
-                            <TableCell>
-                              {regionData.roadSections
-                                .filter(s => !s.stateImportance && s.category === category && s.trafficIntensity > 15000)
-                                .reduce((sum, s) => sum + s.length, 0)}
-                            </TableCell>
-                            <TableCell>
-                              {regionData.roadSections
-                                .filter(s => !s.stateImportance && s.category === category && s.hasLighting)
-                                .reduce((sum, s) => sum + s.length, 0)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        <TableRow className="bg-gray-100 font-bold">
-                          <TableCell>Підсумок</TableCell>
-                          <TableCell>
-                            {regionData.roadSections
-                              .filter(s => s.stateImportance)
-                              .reduce((sum, s) => sum + s.length, 0)}
-                          </TableCell>
-                          <TableCell>
-                            {regionData.roadSections
-                              .filter(s => s.stateImportance && s.trafficIntensity > 15000)
-                              .reduce((sum, s) => sum + s.length, 0)}
-                          </TableCell>
-                          <TableCell>
-                            {regionData.roadSections
-                              .filter(s => s.stateImportance && s.hasEuropeanStatus)
-                              .reduce((sum, s) => sum + s.length, 0)}
-                          </TableCell>
-                          <TableCell>
-                            {regionData.roadSections
-                              .filter(s => !s.stateImportance)
-                              .reduce((sum, s) => sum + s.length, 0)}
-                          </TableCell>
-                          <TableCell>
-                            {regionData.roadSections
-                              .filter(s => !s.stateImportance && s.trafficIntensity > 15000)
-                              .reduce((sum, s) => sum + s.length, 0)}
-                          </TableCell>
-                          <TableCell>
-                            {regionData.roadSections
-                              .filter(s => !s.stateImportance && s.hasLighting)
-                              .reduce((sum, s) => sum + s.length, 0)}
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <h3 className="text-lg font-bold mb-4">Формули розрахунку:</h3>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <Alert className="bg-blue-50">
-                      <InfoIcon className="h-4 w-4" />
-                      <AlertTitle>Державні дороги (п. 3.5)</AlertTitle>
-                      <AlertDescription className="text-sm">
-                        <div className="font-mono text-center py-2 bg-white rounded border my-2">
-                          Q<sub>i</sub><sup>д</sup> = Σ(H<sub>j</sub><sup>д</sup> × L<sub>ij</sub><sup>д</sup>) × K<sub>д</sub> × K<sub>г</sub> × K<sub>уе</sub> × K<sub>інт.д</sub> × K<sub>е.д</sub> × K<sub>мпп.д</sub> × K<sub>осв</sub> × K<sub>рем</sub> × K<sub>кр.і</sub>
-                        </div>
-                      </AlertDescription>
-                    </Alert>
-                    
-                    <Alert className="bg-green-50">
-                      <InfoIcon className="h-4 w-4" />
-                      <AlertTitle>Місцеві дороги (п. 3.6)</AlertTitle>
-                      <AlertDescription className="text-sm">
-                        <div className="font-mono text-center py-2 bg-white rounded border my-2">
-                          Q<sub>i</sub><sup>м</sup> = Σ(H<sub>j</sub><sup>м</sup> × L<sub>ij</sub><sup>м</sup>) × K<sub>г</sub> × K<sub>уе</sub> × K<sub>інт.м</sub>
-                        </div>
-                      </AlertDescription>
-                    </Alert>
-                  </div>
-                </div>
-                
-                <Alert className="mt-4 bg-red-50">
-                  <InfoIcon className="h-4 w-4" />
-                  <AlertTitle className="text-red-500 font-bold">ВАЖЛИВО!!!</AlertTitle>
-                  <AlertDescription>
-                    Після завершення розрахунків програма запам'ятовує загальний результат фінансування для подальших розрахунків у Блоці 3.
-                    Критична інфраструктура: {regionData.criticalInfrastructureCount} об'єктів у регіоні.
-                  </AlertDescription>
-                </Alert>
-                
-                <div className="flex justify-end mt-4 space-x-4">
-                  <Button 
+            <CardContent className="space-y-6">
+              {/* Загрузка файла */}
+              <div className="space-y-4">
+                <Label htmlFor="excel-upload">Завантажити Excel шаблон:</Label>
+                <div className="flex items-center gap-4">
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
                     variant="outline"
-                    onClick={handleExport}
+                    className="flex items-center gap-2"
                   >
-                    <Download className="h-4 w-4 mr-2" />
-                    Експорт результатів в Excel
+                    <Upload className="h-4 w-4" />
+                    Обрати файл
                   </Button>
-                  <Button 
-                    className="bg-blue-600 hover:bg-blue-700"
-                    onClick={handleSaveResults}
-                  >
-                    Зберегти результати
-                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="excel-upload"
+                  />
+                  {uploadStatus && (
+                    <div className="flex items-center gap-2 text-sm">
+                      {uploadStatus.includes('Успішно') ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : uploadStatus.includes('Помилка') ? (
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                      ) : null}
+                      <span className={
+                        uploadStatus.includes('Успішно') ? 'text-green-600' :
+                        uploadStatus.includes('Помилка') ? 'text-red-600' : 'text-blue-600'
+                      }>
+                        {uploadStatus}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* Настройки расчета */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Выбор листа */}
+                {worksheets.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Оберіть аркуш:</Label>
+                    <select
+                      value={selectedWorksheet}
+                      onChange={(e) => setSelectedWorksheet(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                    >
+                      {worksheets.map(ws => (
+                        <option key={ws.name} value={ws.name}>
+                          {ws.name} ({ws.cells.length} клітинок)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Выбор региона */}
+                <div className="space-y-2">
+                  <Label>Оберіть регіон:</Label>
+                  <select
+                    value={selectedRegion}
+                    onChange={(e) => setSelectedRegion(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">Оберіть регіон</option>
+                    {regionCoefficients.map(region => (
+                      <option key={region.regionalName} value={region.regionalName}>
+                        {region.regionalName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Индекс инфляции */}
+                <div className="space-y-2">
+                  <Label>Індекс інфляції:</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={inflationIndex}
+                    onChange={(e) => setInflationIndex(Number(e.target.value))}
+                    placeholder="1.25"
+                  />
+                </div>
+              </div>
+
+              {/* Информация о константах */}
+              <Card className="bg-blue-50">
+                <CardHeader>
+                  <CardTitle className="text-blue-800 text-sm">Базові нормативи (ціни 2023 року)</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <strong>Дороги державного значення:</strong><br />
+                      {MAINTENANCE_CONSTANTS.STATE_ROAD_BASE_COST.toFixed(3)} тис. грн/км
+                    </div>
+                    <div>
+                      <strong>Дороги місцевого значення:</strong><br />
+                      {MAINTENANCE_CONSTANTS.LOCAL_ROAD_BASE_COST.toFixed(3)} тис. грн/км
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Таблица с данными */}
+              {currentWorksheet && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold">
+                      Дані аркушу: {selectedWorksheet}
+                    </h3>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleCalculate}
+                        disabled={isCalculating || !selectedRegion}
+                        className="flex items-center gap-2"
+                      >
+                        <Calculator className="h-4 w-4" />
+                        {isCalculating ? 'Розраховуємо...' : 'Розрахувати'}
+                      </Button>
+                      {results && (
+                        <Button
+                          onClick={handleExportResults}
+                          variant="outline"
+                          className="flex items-center gap-2"
+                        >
+                          <Download className="h-4 w-4" />
+                          Експорт результатів
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="max-h-96 overflow-auto">
+                      <table className="w-full table-fixed">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="w-20 sticky left-0 bg-gray-50 p-3 text-left font-semibold">Рядок</th>
+                            {tableData.columns.map((col, index) => {
+                              // Определяем названия колонок для структуры дорог
+                              const columnNames = [
+                                'Категорія дороги (1-5)',
+                                'Державне значення (1=так, 0=ні)',
+                                'Довжина ділянки (км)',
+                                'Інтенсивність руху (авт./добу)',
+                                'Європейський статус (1=так, 0=ні)',
+                                'Прикордонний перехід (1=так, 0=ні)',
+                                'Освітлення (1=так, 0=ні)',
+                                'Нещодавно відремонтований (1=так, 0=ні)'
+                              ];
+                              
+                              const columnName = columnNames[index] || col;
+                              
+                              return (
+                                <th key={col} className="min-w-48 p-3 text-center font-semibold border-l">
+                                  <div className="flex flex-col items-center gap-1">
+                                    <span className="text-xs text-gray-500 font-normal">{col}</span>
+                                    <span className="text-sm leading-tight">{columnName}</span>
+                                  </div>
+                                </th>
+                              );
+                            })}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(tableData.rows)
+                            .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                            .slice(0, 25)
+                            .map(([rowNum, rowCells]: [string, Record<string, ExcelCell>]) => {
+                              const isHeaderRow = parseInt(rowNum) === 0;
+                              
+                              return (
+                                <tr key={rowNum} className={`border-b hover:bg-gray-50 ${isHeaderRow ? 'bg-blue-50' : ''}`}>
+                                  <td className="sticky left-0 bg-gray-50 p-3 font-medium border-r">
+                                    {parseInt(rowNum) + 1}
+                                  </td>
+                                  {tableData.columns.map((col: string) => {
+                                    const cell: ExcelCell | undefined = rowCells[col];
+                                    return (
+                                      <td key={col} className="p-2 border-l">
+                                        {cell ? (
+                                          // Первая строка (заголовки) всегда нередактируемая
+                                          isHeaderRow || !cell.editable ? (
+                                            <div className={`text-sm p-2 rounded min-h-10 flex items-center justify-center text-center ${
+                                              isHeaderRow ? 'bg-blue-100 text-blue-800 font-semibold' :
+                                              cell.type === 'formula' ? 'bg-blue-50 text-blue-700' :
+                                              cell.type === 'number' ? 'bg-green-50 text-green-700' :
+                                              'bg-gray-50'
+                                            }`}>
+                                              <span className="break-words">
+                                                {cell.formula ? `=${cell.formula}` : cell.value}
+                                              </span>
+                                            </div>
+                                          ) : (
+                                            <Input
+                                              value={cell.value}
+                                              onChange={(e) => updateCellValue(
+                                                selectedWorksheet,
+                                                cell.address,
+                                                e.target.value
+                                              )}
+                                              className="w-full text-sm text-center"
+                                              placeholder="Введіть значення"
+                                            />
+                                          )
+                                        ) : (
+                                          <div className="text-gray-300 text-sm p-2 text-center min-h-10 flex items-center justify-center">—</div>
+                                        )}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="text-sm text-gray-600 flex justify-between">
+                    <span>
+                      Загалом клітинок: {currentWorksheet.cells.length} | 
+                      Редагованих: {currentWorksheet.cells.filter(c => c.editable).length} | 
+                      Формул: {currentWorksheet.cells.filter(c => c.type === 'formula').length}
+                    </span>
+                    <span>Показано перші 25 рядків</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Результаты расчетов */}
+              {results && (
+                <>
+                  <Separator />
+                  
+                  {/* Результаты Excel */}
+                  <Card className="bg-green-50">
+                    <CardHeader>
+                      <CardTitle className="text-green-800">Результати обробки Excel</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-green-700">
+                            {results.calculatedValues.TOTAL_SUM?.toFixed(2) || '0'}
+                          </div>
+                          <div className="text-sm text-green-600">Загальна сума</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-blue-700">
+                            {results.calculatedValues.AVERAGE?.toFixed(2) || '0'}
+                          </div>
+                          <div className="text-sm text-blue-600">Середнє значення</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-purple-700">
+                            {results.calculatedValues.COUNT_NUMBERS || '0'}
+                          </div>
+                          <div className="text-sm text-purple-600">Кількість чисел</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-orange-700">
+                            {results.calculatedValues.COUNT_FILLED || '0'}
+                          </div>
+                          <div className="text-sm text-orange-600">Заповнених клітинок</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Результаты финансирования дорог */}
+                  {results.roadFinancing && (
+                    <Card className="bg-blue-50">
+                      <CardHeader>
+                        <CardTitle className="text-blue-800 flex items-center gap-2">
+                          <MapPin className="h-5 w-5" />
+                          Розрахунок фінансування доріг для регіону: {selectedRegion}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {/* Основные результаты */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="text-center p-4 bg-white rounded-lg">
+                            <div className="text-3xl font-bold text-blue-700">
+                              {(results.roadFinancing.stateFunding / 1000).toFixed(1)}
+                            </div>
+                            <div className="text-sm text-blue-600">Державні дороги (млн. грн)</div>
+                          </div>
+                          <div className="text-center p-4 bg-white rounded-lg">
+                            <div className="text-3xl font-bold text-green-700">
+                              {(results.roadFinancing.localFunding / 1000).toFixed(1)}
+                            </div>
+                            <div className="text-sm text-green-600">Місцеві дороги (млн. грн)</div>
+                          </div>
+                          <div className="text-center p-4 bg-white rounded-lg">
+                            <div className="text-3xl font-bold text-purple-700">
+                              {(results.roadFinancing.totalFunding / 1000).toFixed(1)}
+                            </div>
+                            <div className="text-sm text-purple-600">ЗАГАЛЬНЕ ФІНАНСУВАННЯ (млн. грн)</div>
+                          </div>
+                        </div>
+
+                        {/* Детали расчета */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-gray-800">Характеристики мережі доріг</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span>Довжина доріг державного значення:</span>
+                                <span className="font-medium">{results.roadFinancing.details.stateRoadLength.toFixed(1)} км</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Довжина доріг місцевого значення:</span>
+                                <span className="font-medium">{results.roadFinancing.details.localRoadLength.toFixed(1)} км</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Базовий норматив держ. доріг:</span>
+                                <span className="font-medium">{results.roadFinancing.details.stateRoadBaseRate.toFixed(0)} тис. грн/км</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Базовий норматив місц. доріг:</span>
+                                <span className="font-medium">{results.roadFinancing.details.localRoadBaseRate.toFixed(0)} тис. грн/км</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-gray-800">Застосовані коефіцієнти</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span>Гірська місцевість (Кг):</span>
+                                <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.mountainous.toFixed(3)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Умови експлуатації (Куе):</span>
+                                <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.operatingConditions.toFixed(3)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Обслуговування держ. доріг (Кд):</span>
+                                <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.stateServiceCoefficient.toFixed(3)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Інтенсивність руху (держ.):</span>
+                                <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.trafficIntensityState.toFixed(3)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Інтенсивність руху (місц.):</span>
+                                <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.trafficIntensityLocal.toFixed(3)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Європейська мережа (Ке.д):</span>
+                                <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.europeanRoad.toFixed(3)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Прикордонні переходи (Кмпп.д):</span>
+                                <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.borderCrossing.toFixed(3)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Освітлення (Косв):</span>
+                                <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.lighting.toFixed(3)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Після ремонту (Крем):</span>
+                                <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.repair.toFixed(3)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Критична інфраструктура (Ккр.і):</span>
+                                <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.criticalInfrastructure.toFixed(3)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Информация о данных */}
+                        {results.regionData && (
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-gray-800">Дані про дороги в розрахунку</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                              {[1, 2, 3, 4, 5].map(category => {
+                                const categoryRoads = results.regionData!.roadSections.filter(r => r.category === category);
+                                const stateRoads = categoryRoads.filter(r => r.stateImportance);
+                                const localRoads = categoryRoads.filter(r => !r.stateImportance);
+                                const totalLength = categoryRoads.reduce((sum, r) => sum + r.length, 0);
+                                
+                                return (
+                                  <div key={category} className="p-3 bg-white rounded border">
+                                    <div className="font-medium text-center mb-2">{category} категорія</div>
+                                    <div className="space-y-1 text-xs">
+                                      <div>Держ.: {stateRoads.length} ділянок</div>
+                                      <div>Місц.: {localRoads.length} ділянок</div>
+                                      <div>Всього: {totalLength.toFixed(1)} км</div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        <Alert>
+                          <CheckCircle className="h-4 w-4" />
+                          <AlertTitle>Розрахунок фінансування завершено успішно!</AlertTitle>
+                          <AlertDescription>
+                            Розрахунок виконано для регіону "{selectedRegion}" з урахуванням індексу інфляції {inflationIndex}.
+                            {results.regionData && ` Проаналізовано ${results.regionData.roadSections.length} ділянок доріг.`}
+                          </AlertDescription>
+                        </Alert>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
+              )}
+
+              {/* Инструкция по использованию */}
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Інструкція по використанню:</AlertTitle>
+                <AlertDescription className="space-y-3">
+                  <div><strong>1. Підготовка Excel файлу:</strong></div>
+                  <div className="ml-4 space-y-1 text-sm">
+                    <div>• Перший рядок - заголовки колонок (не редагуються автоматично)</div>
+                    <div>• Наступні рядки - дані про ділянки доріг</div>
+                  </div>
+                  
+                  <div><strong>2. Структура колонок Excel файлу:</strong></div>
+                  <div className="ml-4 space-y-1 text-sm">
+                    <div><strong>Колонка A:</strong> Категорія дороги (1, 2, 3, 4 або 5)</div>
+                    <div><strong>Колонка B:</strong> Державне значення (1=так, 0=ні)</div>
+                    <div><strong>Колонка C:</strong> Довжина ділянки у кілометрах</div>
+                    <div><strong>Колонка D:</strong> Інтенсивність руху (авт./добу)</div>
+                    <div><strong>Колонка E:</strong> Європейський статус - дороги з індексом Е (1=так, 0=ні)</div>
+                    <div><strong>Колонка F:</strong> Прикордонний перехід - біля міжнародних пунктів пропуску (1=так, 0=ні)</div>
+                    <div><strong>Колонка G:</strong> Наявність освітлення (1=так, 0=ні)</div>
+                    <div><strong>Колонка H:</strong> Проведений ремонт за останні 5 років (1=так, 0=ні)</div>
+                  </div>
+                  
+                  <div><strong>3. Порядок роботи:</strong></div>
+                  <div className="ml-4 space-y-1 text-sm">
+                    <div>• Завантажте Excel файл з даними про дороги</div>
+                    <div>• Оберіть потрібний аркуш для роботи</div>
+                    <div>• Оберіть регіон України</div>
+                    <div>• Встановіть індекс інфляції (за замовчуванням 1.25)</div>
+                    <div>• Відредагуйте дані безпосередньо у таблиці (крім заголовків та формул)</div>
+                    <div>• Натисніть "Розрахувати" для виконання обчислень</div>
+                    <div>• Експортуйте результати у новий Excel файл</div>
+                  </div>
+                  
+                  <div className="text-xs text-gray-600 mt-3 p-2 bg-gray-50 rounded">
+                    <div><strong>Примітки:</strong></div>
+                    <div>• Заголовки колонок (перший рядок) не редагуються для забезпечення структури</div>
+                    <div>• Клітинки з формулами показуються синім кольором і не редагуються</div>
+                    <div>• Якщо структура файлу не відповідає очікуваній, будуть використані приклади даних</div>
+                    <div>• Розрахунки виконуються згідно з діючою методикою фінансування експлуатаційного утримання</div>
+                  </div>
+                </AlertDescription>
+              </Alert>
             </CardContent>
           </Card>
         </TabsContent>

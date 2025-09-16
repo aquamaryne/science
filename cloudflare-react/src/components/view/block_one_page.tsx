@@ -361,7 +361,7 @@ const StateRoadFundingBlock = ({
   };
 
   return (
-    <Card className="mb-8 w-full border-black shadow-sm rounded-none">
+    <Card className="mb-6 w-full border-black shadow-sm rounded-none">
       <CardHeader className="bg-white border-b border-black">
         <CardTitle className="text-xl font-bold text-gray-800">
           Визначення обсягу бюджетного фінансування розвитку та утримання автомобільних доріг державного значення        

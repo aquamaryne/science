@@ -839,6 +839,7 @@ interface EconomicAnalysisResult {
   };
 }
 
+//Page2
 const Page1_Coefficients: React.FC<Props> = ({ 
   sections, 
   onSectionsChange, 
@@ -1102,8 +1103,8 @@ const Page1_Coefficients: React.FC<Props> = ({
   const displaySections = calculatedSections.length > 0 ? calculatedSections : sections;
 
   return (
-    <div className="space-y-6">
-      <Card>
+    <div>
+      <Card className="border-black">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Визначення показників фактичного транспортно-експлуатаційного стану доріг</span>
@@ -1309,7 +1310,6 @@ const Page1_Coefficients: React.FC<Props> = ({
             <InfoIcon className="h-4 w-4" />
             <AlertDescription>
               <div className="space-y-2">
-                <div className="font-semibold">Алгоритм визначення виду робіт згідно ДБН В.2.3-4:2015:</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
                     <div className="font-medium mb-1">Коефіцієнти розраховуються за формулами:</div>
@@ -1352,6 +1352,8 @@ const Page1_Coefficients: React.FC<Props> = ({
   );
 };
 
+
+//Page1 
 const Page2_Component: React.FC<{
   sections: RoadSectionUI[];
   onSectionsChange: (sections: RoadSectionUI[]) => void;
@@ -1781,9 +1783,9 @@ const Page2_Component: React.FC<{
   };
 
   return (
-    <div className="space-y-6">
+    <div className='grid grid-cols-1 w-full px-6'>
       <ProgressIndicator />
-      <Card>
+      <Card className="w-full">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Визначення показників фактичного транспортно-експлуатаційного стану доріг державного та місцевого значення</span>
@@ -2126,7 +2128,6 @@ const Page2_Component: React.FC<{
                 <ul className="space-y-1 text-xs">
                   <li>• <span className="text-green-600">✓</span> - коефіцієнт ≥ 1.0 (відповідає нормі)</li>
                   <li>• <span className="text-red-600">✗</span> - коефіцієнт &lt; 1.0 (не відповідає нормі)</li>
-                  <li>• Розрахунок згідно ДБН В.2.3-4:2015, п. 4.2.2.1-4.2.2.5</li>
                 </ul>
               </div>
               <div>
@@ -2509,7 +2510,6 @@ const Page3_CostIndicators: React.FC<{
                   <div>
                     <div className="font-medium mb-1">Джерела даних:</div>
                     <ul className="space-y-1">
-                      <li>• Державні будівельні норми ДБН В.2.3-4:2015</li>
                       <li>• Аналогічні проекти останніх 2-3 років</li>
                       <li>• Ринкові ціни будівельних матеріалів</li>
                       <li>• Регіональні коефіцієнти вартості</li>
@@ -4312,170 +4312,169 @@ export const Block3MultiPageApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Відображення бюджету з Блоку 1 */}
-        {/* Заголовок */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Планування ремонтів автомобільних доріг
-          </h1>
-          <p className="text-gray-600">
-            Визначення обсягу та механізм розподілу бюджетних коштів на ремонти згідно з ДБН В.2.3-4:2015
-          </p>
-        </div>
+    <div>
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className='mx-auto'>
+          {/* Відображення бюджету з Блоку 1 */}
+          {/* Заголовок */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Планування ремонтів автомобільних доріг
+            </h1>
+          </div>
 
-        {/* Навігація по сторінках */}
-        <div className="mb-6">
-          <nav className="flex justify-center">
-            <ol className="flex items-center space-x-2">
-              {pages.map((page, index) => {
-                const pageNum = index + 1;
-                const isActive = currentPage === pageNum;
-                const isCompleted = currentPage > pageNum;
-                
-                return (
-                  <li key={pageNum} className="flex items-center">
-                    <button
-                      onClick={() => handlePageSelect(pageNum)}
-                      className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                        isActive 
-                          ? 'bg-blue-600 text-white' 
-                          : isCompleted 
-                          ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                    >
-                      <span className={`mr-2 w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                        isActive ? 'bg-white text-blue-600' : isCompleted ? 'bg-green-600 text-white' : 'bg-gray-300'
-                      }`}>
-                        {isCompleted ? '✓' : pageNum}
-                      </span>
-                      <span className="hidden md:inline">{page}</span>
-                    </button>
-                    {index < pages.length - 1 && (
-                      <ArrowRight className="h-4 w-4 mx-2 text-gray-400" />
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          </nav>
-        </div>
+          {/* Навігація по сторінках */}
+          <div className="mb-6">
+            <nav className="flex justify-center">
+              <ol className="flex items-center space-x-2">
+                {pages.map((page, index) => {
+                  const pageNum = index + 1;
+                  const isActive = currentPage === pageNum;
+                  const isCompleted = currentPage > pageNum;
+                  
+                  return (
+                    <li key={pageNum} className="flex items-center">
+                      <button
+                        onClick={() => handlePageSelect(pageNum)}
+                        className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                          isActive 
+                            ? 'bg-blue-600 text-white' 
+                            : isCompleted 
+                            ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        <span className={`mr-2 w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                          isActive ? 'bg-white text-blue-600' : isCompleted ? 'bg-green-600 text-white' : 'bg-gray-300'
+                        }`}>
+                          {isCompleted ? '✓' : pageNum}
+                        </span>
+                        <span className="hidden md:inline">{page}</span>
+                      </button>
+                      {index < pages.length - 1 && (
+                        <ArrowRight className="h-4 w-4 mx-2 text-gray-400" />
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            </nav>
+          </div>
 
-        {/* Прогрес */}
-        <div className="mb-6">
-          <Progress value={(currentPage / pages.length) * 100} className="h-2" />
-        </div>
+          {/* Прогрес */}
+          <div className="mb-6">
+            <Progress value={(currentPage / pages.length) * 100} className="h-2" />
+          </div>
 
-        {/* Контент сторінок */}
-        <div className="bg-white rounded-lg shadow-sm">
-          {currentPage === 1 && ( // Фактичний стан доріг
-            <Page2_Component  
-              sections={sections}
-              onSectionsChange={setSections}
-              onNext={handleNext}
-            />
-          )}
-          
-          {currentPage === 2 && ( // Коефіцієнти та показники
-            <Page1_Coefficients 
-              sections={sections}
-              onSectionsChange={setSections}
-              onNext={handleNext}
-              onBack={handleBack}
-            />
-          )}
-          
-          {currentPage === 3 && (
-            <Page3_CostIndicators
-              costStandards={costStandards}
-              onCostStandardsChange={setCostStandards}
-              onNext={handleNext}
-              onBack={handleBack}
-            />
-          )}
-          
-          {currentPage === 4 && (
-            <Page4_EstimatedCosts
-              sections={sections}
-              costStandards={costStandards}
-              onSectionsChange={setSections}
-              onNext={handleNext}
-              onBack={handleBack}
-            />
-          )}
+          {/* Контент сторінок */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            {currentPage === 1 && ( // Фактичний стан доріг
+              <Page2_Component  
+                sections={sections}
+                onSectionsChange={setSections}
+                onNext={handleNext}
+              />
+            )}
+            
+            {currentPage === 2 && ( // Коефіцієнти та показники
+              <Page1_Coefficients 
+                sections={sections}
+                onSectionsChange={setSections}
+                onNext={handleNext}
+                onBack={handleBack}
+              />
+            )}
+            
+            {currentPage === 3 && (
+              <Page3_CostIndicators
+                costStandards={costStandards}
+                onCostStandardsChange={setCostStandards}
+                onNext={handleNext}
+                onBack={handleBack}
+              />
+            )}
+            
+            {currentPage === 4 && (
+              <Page4_EstimatedCosts
+                sections={sections}
+                costStandards={costStandards}
+                onSectionsChange={setSections}
+                onNext={handleNext}
+                onBack={handleBack}
+              />
+            )}
 
-          {currentPage === 5 && (
-            <RoadEfficiencyInterface
-              sections={sections}
-              onSectionsChange={setSections}
-              onNext={handleNext}
-              onBack={handleBack}
-            />
-          )}
+            {currentPage === 5 && (
+              <RoadEfficiencyInterface
+                sections={sections}
+                onSectionsChange={setSections}
+                onNext={handleNext}
+                onBack={handleBack}
+              />
+            )}
 
-          {currentPage === 6 && (
-            <Page5_EconomicAnalysis
-              sections={sections}
-              onSectionsChange={setSections}
-              onNext={handleNext}
-              onBack={handleBack}
-            />
-          )}
-          
-          {currentPage === 7 && (
-            <Page6_Ranking
-              sections={sections}
-              onBack={handleBack}
-            />
-          )}
-        </div>
+            {currentPage === 6 && (
+              <Page5_EconomicAnalysis
+                sections={sections}
+                onSectionsChange={setSections}
+                onNext={handleNext}
+                onBack={handleBack}
+              />
+            )}
+            
+            {currentPage === 7 && (
+              <Page6_Ranking
+                sections={sections}
+                onBack={handleBack}
+              />
+            )}
+          </div>
 
-        {/* Інформаційна панель */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <FileSpreadsheet className="h-8 w-8 text-blue-600" />
-                <div>
-                  <div className="font-semibold">Дорожніх секцій</div>
-                  <div className="text-2xl font-bold">{sections.length}</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <Calculator className="h-8 w-8 text-green-600" />
-                <div>
-                  <div className="font-semibold">Потребують ремонту</div>
-                  <div className="text-2xl font-bold">
-                    {sections.filter(s => s.workType && s.workType !== 'Не потрібно' && s.workType !== 'Не визначено').length}
+          {/* Інформаційна панель */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <FileSpreadsheet className="h-8 w-8 text-blue-600" />
+                  <div>
+                    <div className="font-semibold">Дорожніх секцій</div>
+                    <div className="text-2xl font-bold">{sections.length}</div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <DollarSign className="h-8 w-8 text-orange-600" />
-                <div>
-                  <div className="font-semibold">Загальна вартість</div>
-                  <div className="text-2xl font-bold">
-                    {sections
-                      .filter(s => s.workType && s.workType !== 'Не потрібно' && s.workType !== 'Не визначено')
-                      .reduce((sum, s) => sum + (s.estimatedCost || 0), 0)
-                      .toFixed(1)} млн
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <Calculator className="h-8 w-8 text-green-600" />
+                  <div>
+                    <div className="font-semibold">Потребують ремонту</div>
+                    <div className="text-2xl font-bold">
+                      {sections.filter(s => s.workType && s.workType !== 'Не потрібно' && s.workType !== 'Не визначено').length}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <DollarSign className="h-8 w-8 text-orange-600" />
+                  <div>
+                    <div className="font-semibold">Загальна вартість</div>
+                    <div className="text-2xl font-bold">
+                      {sections
+                        .filter(s => s.workType && s.workType !== 'Не потрібно' && s.workType !== 'Не визначено')
+                        .reduce((sum, s) => sum + (s.estimatedCost || 0), 0)
+                        .toFixed(1)} млн
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

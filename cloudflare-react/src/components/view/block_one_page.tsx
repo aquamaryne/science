@@ -425,12 +425,6 @@ const StateRoadFundingBlock = ({
           </Table>
         </div>
 
-        <div className="mt-2 w-full">
-          <div className="text-lg font-semibold text-gray-700">
-            Розрахунок Q<sub>1</sub> = Q<sub>дз</sub> - Q<sub>пп</sub> - Q<sub>міжн</sub> - Q<sub>ІАС</sub> - Q<sub>н</sub> - Q<sub>лік</sub> - Q<sub>вп</sub> - Q<sub>упр</sub> - Q<sub>ДПП</sub>
-          </div>
-        </div>
-
         <Button 
           onClick={handleCalculate} 
           className="mt-2 w-36 bg-black text-white py-3 text-xl h-auto rounded-none"
@@ -574,12 +568,6 @@ const LocalRoadFundingBlock = ({
               ))}
             </TableBody>
           </Table>
-        </div>
-
-        <div className="mt-6 w-full">
-          <div className="text-lg font-semibold text-gray-700">
-            Розрахунок Q<sub>2</sub> = Q<sub>мз</sub> - Q<sub>кред</sub> - Q<sub>н2</sub> - Q<sub>ДПП2</sub> - Q<sub>ком</sub>
-          </div>
         </div>
 
         <Button 

@@ -67,9 +67,9 @@ const BlockThreeIntegration: React.FC<{
   const budgetStats = getBudgetStatistics();
 
   return (
-    <Card className="mt-8 w-full border-blue-500 shadow-sm rounded-none">
-      <CardHeader className="bg-blue-50 border-b border-blue-500">
-        <CardTitle className="text-xl font-bold text-blue-800 flex items-center justify-between">
+    <Card className="glass-card mt-8 w-full">
+      <CardHeader className="glass-card-header">
+        <CardTitle className="text-xl font-bold">
           <div>Інтеграція з Блоком 3: Планування ремонтів</div>
           <div className="text-sm font-normal">
             {budgetStats.hasData ? (
@@ -82,8 +82,8 @@ const BlockThreeIntegration: React.FC<{
       </CardHeader>
       <CardContent className="p-6">
         {showSuccess && (
-          <Alert className="mb-4 border-green-500 bg-green-50">
-            <AlertDescription className="text-green-700">
+          <Alert className="glass-card mb-4">
+            <AlertDescription className="text-green-600 font-medium">
               ✅ Дані успішно передані в Блок 3 для планування ремонтів!
             </AlertDescription>
           </Alert>
@@ -93,30 +93,30 @@ const BlockThreeIntegration: React.FC<{
           <div className="text-sm text-gray-600">
             <strong>Дані для передачі в Блок 3:</strong>
           </div>
-          
+
           <div className="grid grid-cols-3 gap-4 text-center">
-            <div className="p-3 bg-gray-50 rounded">
-              <div className="text-lg font-bold text-gray-800">
+            <div className="glass-card p-3">
+              <div className="text-lg font-bold">
                 {q1Results?.value.toLocaleString() || '—'} тис. грн
               </div>
-              <div className="text-xs text-gray-600">Q₁ (Державні дороги)</div>
+              <div className="text-xs opacity-70">Q₁ (Державні дороги)</div>
             </div>
             
-            <div className="p-3 bg-gray-50 rounded">
-              <div className="text-lg font-bold text-gray-800">
+            <div className="glass-card p-3">
+              <div className="text-lg font-bold">
                 {q2Results?.value.toLocaleString() || '—'} тис. грн
               </div>
-              <div className="text-xs text-gray-600">Q₂ (Місцеві дороги)</div>
+              <div className="text-xs opacity-70">Q₂ (Місцеві дороги)</div>
             </div>
             
-            <div className="p-3 bg-blue-50 rounded border border-blue-200">
-              <div className="text-lg font-bold text-blue-800">
+            <div className="glass-card p-3" style={{ background: 'rgba(var(--c-action), 0.08)' }}>
+              <div className="text-lg font-bold" style={{ color: 'rgb(var(--c-action))' }}>
                 {(q1Results && q2Results) ? 
                   (q1Results.value + q2Results.value).toLocaleString() : '—'} тис. грн
               </div>
-              <div className="text-xs text-blue-600">Загальний бюджет</div>
-            </div>
+            <div className="text-xs opacity-70">Загальний бюджет</div>
           </div>
+        </div>
 
           {budgetStats.hasData && (
             <div className="mt-4 p-3 bg-green-50 rounded border border-green-200">
@@ -126,8 +126,8 @@ const BlockThreeIntegration: React.FC<{
               <div className="grid grid-cols-2 gap-4 mt-2 text-xs">
                 <div>
                   <div>Загальний бюджет: <strong>{budgetStats.totalBudget.toLocaleString()}</strong> тис. грн</div>
-                  <div>Q₁: <strong>{budgetStats.q1Budget.toLocaleString()}</strong> тис. грн</div>
-                  <div>Q₂: <strong>{budgetStats.q2Budget.toLocaleString()}</strong> тис. грн</div>
+                  <div>Державні дороги: <strong>{budgetStats.q1Budget.toLocaleString()}</strong> тис. грн</div>
+                  <div>Місцеві дороги: <strong>{budgetStats.q2Budget.toLocaleString()}</strong> тис. грн</div>
                 </div>
                 {budgetStats.allocation && (
                   <div>
@@ -148,11 +148,11 @@ const BlockThreeIntegration: React.FC<{
           <Button 
             onClick={sendDataToBlockThree}
             disabled={!q1Results || !q2Results || !sessionId}
-            className={`w-full py-3 text-lg h-auto ${
+            className={`glass-button glass-button--xl w-full ${
               isDataSent 
-                ? 'bg-green-600 hover:bg-green-700' 
-                : 'bg-blue-600 hover:bg-blue-700'
-            } text-white`}
+                ? 'glass-button--success' 
+                : 'glass-button--primary'
+            }`}
           >
             {isDataSent ? (
               <>✅ Дані передані - Перерахувати і передати знову</>
@@ -213,11 +213,21 @@ const FileUploadComponent = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+
     const selectedFiles = Array.from(e.target.files || []);
-    const updatedFiles = [...files, ...selectedFiles];
+
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const validFiles = selectedFiles.filter(file => {
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`Файл ${file.name} перевищує максимальний розмір 10MB`);
+        return false;
+      }
+      return true;
+    });
+    
+    const updatedFiles = [...files, ...validFiles];
     onFilesChange(itemId, updatedFiles);
     
-    // Очищаем input для возможности повторной загрузки того же файла
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -335,7 +345,6 @@ const StateRoadFundingBlock = ({
 
   // Функция расчета
   const handleCalculate = () => {
-    // Передаем исходные данные без переноса строк для расчета
     const originalStateRoadItems = initialStateRoadItems.map((original, index) => {
       return {
         ...original,
@@ -344,25 +353,27 @@ const StateRoadFundingBlock = ({
       };
     });
 
-    const qdzValue = originalStateRoadItems.find(item => item.id === "Qдз")?.value;
+    // Проверка всех обязательных полей
+    const missingFields = originalStateRoadItems
+      .filter(item => item.value === null || item.value === undefined)
+      .map(item => item.id);
     
-    if (qdzValue === null || qdzValue === undefined) {
-      alert("Необхідно заповнити значення Qдз!");
+    if (missingFields.length > 0) {
+      alert(`Необхідно заповнити наступні поля: ${missingFields.join(', ')}`);
       return;
     }
 
     const result = calculateQ1(originalStateRoadItems);
     setQ1Result(result);
     
-    // Уведомляем родительский компонент о результатах
     if (onResultsChange) {
       onResultsChange(result as number, stateRoadBudget);
     }
   };
 
   return (
-    <Card className="mb-6 w-full border-black shadow-sm rounded-none">
-      <CardHeader className="bg-white border-b border-black">
+    <Card className="glass-card mb-6 w-full">
+      <CardHeader className="glass-card-header p-6">
         <CardTitle className="text-xl font-bold text-gray-800">
           Визначення обсягу бюджетного фінансування розвитку та утримання автомобільних доріг державного значення        
         </CardTitle>
@@ -371,11 +382,11 @@ const StateRoadFundingBlock = ({
         <div className="w-full overflow-x-auto">
           <Table className="w-full">
             <TableHeader>
-              <TableRow>
-                <TableHead className="w-2/5 bg-white"></TableHead>
-                <TableHead className="w-16 text-center bg-white">Показник</TableHead>
-                <TableHead className="w-32 bg-white">Обсяг, тис.грн.</TableHead>
-                <TableHead className="w-1/4 bg-white">Нормативний документ / Файли</TableHead>
+              <TableRow className="glass-base" style={{ background: 'rgba(var(--c-glass), 0.03)' }}>
+                <TableHead className="font-semibold"></TableHead>
+                <TableHead className="font-semibold">Показник</TableHead>
+                <TableHead className="font-semibold">Обсяг, тис.грн.</TableHead>
+                <TableHead className="font-semibold">Нормативний документ / Файли</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -403,7 +414,7 @@ const StateRoadFundingBlock = ({
                       value={item.value === null ? "" : item.value.toString()}
                       onChange={(e) => handleInputChange(item.id, e.target.value)}
                       placeholder="0"
-                      className="w-full border-black rounded-none"
+                      className="glass-input"
                     />
                   </TableCell>
                   <TableCell className="space-y-2">
@@ -411,7 +422,7 @@ const StateRoadFundingBlock = ({
                       value={item.normativeDocument || ""}
                       onChange={(e) => handleDocumentChange(item.id, e.target.value)}
                       placeholder="Назва документа"
-                      className="w-full border-black rounded-none"
+                      className="glass-input"
                     />
                     <FileUploadComponent
                       itemId={item.id}
@@ -427,15 +438,17 @@ const StateRoadFundingBlock = ({
 
         <Button 
           onClick={handleCalculate} 
-          className="mt-2 w-36 bg-black text-white py-3 text-xl h-auto rounded-none"
+          className="glass-button glass-button--primary glass-button--large mt-2 w-36 text-black"
         >
           Розрахувати
         </Button>
 
         {q1Result !== null && (
-          <div className="mt-4 p-4 bg-white rounded-none w-full border border-green-700">
-            <div className="font-bold text-xl text-center text-gray-800">РЕЗУЛЬТАТ!</div>
-            <div className="text-lg mt-2 text-center text-gray-800">Q<sub>1</sub> = {q1Result.toLocaleString()} тис. грн</div>
+          <div className="glass-card mt-4 p-6 w-full" style={{ background: 'rgba(var(--c-success), 0.08)' }}>
+            <div className="font-bold text-xl text-center">РЕЗУЛЬТАТ!</div>
+            <div className="text-lg mt-2 text-center">
+              Результат для державних доріг: {q1Result.toLocaleString()} тис. грн
+            </div>
           </div>
         )}
       </CardContent>
@@ -506,10 +519,10 @@ const LocalRoadFundingBlock = ({
   };
 
   return (
-    <Card className="w-full border-black shadow-sm rounded-none">
-      <CardHeader className="bg-white border-b border-black">
+    <Card className="glass-card mb-6 w-full">
+      <CardHeader className="glass-card-header p-6">
         <CardTitle className="text-xl font-bold text-gray-900">
-          Визначення обсягу бюджетного фінансування розвитку та утримання автомобільних доріг місцевого значенняRetryM        
+          Визначення обсягу бюджетного фінансування розвитку та утримання автомобільних доріг місцевого значення       
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
@@ -548,7 +561,7 @@ const LocalRoadFundingBlock = ({
                       value={item.value === null ? "" : item.value.toString()}
                       onChange={(e) => handleInputChange(item.id, e.target.value)}
                       placeholder="0"
-                      className="w-full border-black rounded-none"
+                      className="glass-input"
                     />
                   </TableCell>
                   <TableCell className="space-y-2">
@@ -556,7 +569,7 @@ const LocalRoadFundingBlock = ({
                       value={item.normativeDocument || ""}
                       onChange={(e) => handleDocumentChange(item.id, e.target.value)}
                       placeholder="Назва документа"
-                      className="w-full border-black rounded-none"
+                      className="glass-input"
                     />
                     <FileUploadComponent
                       itemId={item.id}
@@ -572,15 +585,17 @@ const LocalRoadFundingBlock = ({
 
         <Button 
           onClick={handleCalculate} 
-          className="mt-4 w-36 bg-black text-white py-3 text-xl h-auto rounded-none"
+          className="glass-button glass-button--primary glass-button--large mt-2 w-36 text-black"
         >
           Розрахувати
         </Button>
 
         {q2Result !== null && (
-          <div className="mt-4 p-4 bg-white rounded-none w-full border border-green-700">
-            <div className="font-bold text-xl text-center text-gray-800">РЕЗУЛЬТАТ!</div>
-            <div className="text-lg mt-2 text-center text-gray-800">Q<sub>2</sub> = {q2Result.toLocaleString()} тис. грн</div>
+          <div className="glass-card mt-4 p-6 w-full" style={{ background: 'rgba(var(--c-success), 0.08)' }}>
+            <div className="font-bold text-xl text-center">РЕЗУЛЬТАТ!</div>
+            <div className="text-lg mt-2 text-center">
+              Результат для місцевих доріг: {q2Result.toLocaleString()} тис. грн
+              </div>
           </div>
         )}
       </CardContent>
@@ -635,15 +650,15 @@ const RoadFundingApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen p-6 w-full">
+    <div className="min-h-screen p-6 w-full" style={{ background: 'rgb(var(--c-bg))' }}>
       <div className="w-full mx-auto">
-        <Card className="mb-8 w-full border-black shadow-sm rounded-none">
-          <CardHeader>
+        <Card className="glass-card mb-8 w-full">
+          <CardHeader className="glass-card-header">
             <CardTitle className="text-3xl font-bold text-gray-800">
               Визначення загального обсягу бюджетного фінансування розвитку та утримання автомобільних доріг державного та місцевого значення            
             </CardTitle>
             {sessionId && (
-              <div className="text-sm text-gray-500 mt-2">
+              <div className="text-sm opacity-60 mt-2">
                 Сесія розрахунків: {sessionId}
               </div>
             )}
@@ -668,13 +683,8 @@ const RoadFundingApp: React.FC = () => {
         {q1Results && q2Results && (
           <Card className="mt-8 w-full border-green-500 shadow-sm rounded-none">
             <CardHeader className="bg-green-50 border-b border-green-500">
-              <BlockThreeIntegration 
-                q1Results={q1Results}
-                q2Results={q2Results}
-                sessionId={sessionId}
-              />
               <CardTitle className="text-xl font-bold text-green-800">
-                Сводка результатів Блоку 1
+                Сводка результатів
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -683,14 +693,14 @@ const RoadFundingApp: React.FC = () => {
                   <div className="text-3xl font-bold text-gray-800">
                     {q1Results.value.toLocaleString()}
                   </div>
-                  <div className="text-sm text-gray-600">Q₁ (тис. грн)</div>
+                  <div className="text-sm text-gray-600">(тис. грн)</div>
                   <div className="text-xs text-gray-500">Державні дороги</div>
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-bold text-gray-800">
                     {q2Results.value.toLocaleString()}
                   </div>
-                  <div className="text-sm text-gray-600">Q₂ (тис. грн)</div>
+                  <div className="text-sm text-gray-600">(тис. грн)</div>
                   <div className="text-xs text-gray-500">Місцеві дороги</div>
                 </div>
                 <div className="text-center">
@@ -698,13 +708,18 @@ const RoadFundingApp: React.FC = () => {
                     {(q1Results.value + q2Results.value).toLocaleString()}
                   </div>
                   <div className="text-sm text-gray-600">Загальний бюджет (тис. грн)</div>
-                  <div className="text-xs text-gray-500">Q₁ + Q₂</div>
                 </div>
               </div>
               
+              <BlockThreeIntegration 
+                q1Results={q1Results}
+                q2Results={q2Results}
+                sessionId={sessionId}
+              />
+
               <Button 
                 onClick={saveResults}
-                className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white py-3 text-lg h-auto"
+                className="glass-button glass-button--success glass-button--xl w-full mt-6 text-blue-600"
               >
                 💾 Зберегти результати в сесію розрахунків
               </Button>

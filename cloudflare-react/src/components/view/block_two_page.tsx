@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { InfoIcon, X, CheckCircle, Plus, Download, Calculator, AlertTriangle, MapPin, Construction, Upload } from "lucide-react";
+import { X, CheckCircle, Plus, Download, Calculator, AlertTriangle, MapPin, Construction, Upload } from "lucide-react";
 
 // Import types from calculations.ts
 import type { 
@@ -110,8 +110,8 @@ const Block2MaintenanceCalculator: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedRegion, setSelectedRegion] = useState<string>("Винницкая");
   const [regionCoefficients] = useState<RegionCoefficients[]>(getRegionCoefficients());
-  const [regionData, setRegionData] = useState<RegionRoads>(generateSampleRegionData("Винницкая"));
-  const [fundingResults, setFundingResults] = useState<{
+  const [regionData, _setRegionData] = useState<RegionRoads>(generateSampleRegionData("Винницкая"));
+  const [_fundingResults, setFundingResults] = useState<{
     stateFunding: number;
     localFunding: number;
     totalFunding: number;
@@ -195,7 +195,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
     localTrafficIntensity: '1.0000'
   });
 
-  const [saveStatus, setSaveStatus] = useState<string>("");
+  const [_saveStatus, setSaveStatus] = useState<string>("");
 
   // ДОДАНО: Функція синхронізації полів вводу з коефіцієнтами (тільки при зміні регіону)
   const syncInputValues = (forceUpdate = false) => {
@@ -323,18 +323,6 @@ const Block2MaintenanceCalculator: React.FC = () => {
     });
   };
 
-  // Handle region selection change
-  const handleRegionChange = (value: string) => {
-    setSelectedRegion(value);
-    const newRegionData = generateSampleRegionData(value);
-    setRegionData(newRegionData);
-    
-    // Примусово оновлюємо поля при зміні регіону
-    setTimeout(() => {
-      calculateDetailedCoefficients();
-      syncInputValues(true);
-    }, 100);
-  };
 
   // Calculate detailed coefficients
   const calculateDetailedCoefficients = () => {
@@ -427,42 +415,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
   };
   
   // Handle save results
-  const handleSaveResults = () => {
-    try {
-      const dataToSave = {
-        region: selectedRegion,
-        date: new Date().toISOString(),
-        stateRoadBaseRate,
-        localRoadBaseRate,
-        stateInflationIndexes,
-        localInflationIndexes,
-        stateRoadRates,
-        localRoadRates,
-        fundingResults,
-        detailedCoefficients,
-        regionData
-      };
-      
-      const dataStr = JSON.stringify(dataToSave, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Дані_розрахунку_${selectedRegion}_${new Date().toLocaleDateString('uk-UA').replace(/\./g, '_')}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      setSaveStatus("Дані успішно збережено у JSON файл");
-      setTimeout(() => setSaveStatus(""), 3000);
-    } catch (error) {
-      setSaveStatus("Помилка при збереженні даних");
-      setTimeout(() => setSaveStatus(""), 3000);
-    }
-  };
-
+  
   // Calculate category-specific funding
   const calculateCategoryFunding = (category: number) => {
     const stateRoadSections = regionData.roadSections.filter(s => s.stateImportance && s.category === category);
@@ -1129,15 +1082,6 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     </CardContent>
                   </Card>
                 </div>
-         
-                <Alert className="mt-4 bg-red-50">
-                  <InfoIcon className="h-4 w-4" />
-                  <AlertTitle className="text-red-500 font-bold">ВАЖЛИВО!!!</AlertTitle>
-                  <AlertDescription>
-                    Приведені нормативи необхідні для подальших розрахунків обсягу коштів на експлуатаційне утримання.
-                    Коефіцієнти диференціювання для місцевих доріг відрізняються від державних.
-                  </AlertDescription>
-                </Alert>
               </div>
             </CardContent>
           </Card>
@@ -1241,29 +1185,10 @@ const Block2MaintenanceCalculator: React.FC = () => {
                 </div>
               </div>
 
-              {/* Информация о константах */}
-              <Card className="bg-blue-50">
-                <CardHeader>
-                  <CardTitle className="text-blue-800 text-sm">Базові нормативи (ціни 2023 року)</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <strong>Дороги державного значення:</strong><br />
-                      {MAINTENANCE_CONSTANTS.STATE_ROAD_BASE_COST.toFixed(3)} тис. грн/км
-                    </div>
-                    <div>
-                      <strong>Дороги місцевого значення:</strong><br />
-                      {MAINTENANCE_CONSTANTS.LOCAL_ROAD_BASE_COST.toFixed(3)} тис. грн/км
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Таблица с данными */}
-              {currentWorksheet && (
+              {/* Таблица с данными - ПОЛНОСТЬЮ ОБНОВЛЕННАЯ ВЕРСИЯ */}
+              {currentWorksheet && tableData.columns.length > 0 && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h3 className="text-lg font-semibold">
                       Дані аркушу: {selectedWorksheet}
                     </h3>
@@ -1283,87 +1208,98 @@ const Block2MaintenanceCalculator: React.FC = () => {
                           className="flex items-center gap-2"
                         >
                           <Download className="h-4 w-4" />
-                          Експорт результатів
+                          Експорт
                         </Button>
                       )}
                     </div>
                   </div>
 
-                  <div className="border rounded-lg overflow-hidden">
-                    <div className="max-h-96 overflow-auto">
-                      <table className="w-full table-fixed">
-                        <thead>
-                          <tr className="border-b bg-gray-50">
-                            <th className="w-20 sticky left-0 bg-gray-50 p-3 text-left font-semibold">Рядок</th>
-                            {tableData.columns.map((col, index) => {
-                              // Определяем названия колонок для структуры дорог
-                              const columnNames = [
-                                'Категорія дороги (1-5)',
-                                'Державне значення (1=так, 0=ні)',
-                                'Довжина ділянки (км)',
-                                'Інтенсивність руху (авт./добу)',
-                                'Європейський статус (1=так, 0=ні)',
-                                'Прикордонний перехід (1=так, 0=ні)',
-                                'Освітлення (1=так, 0=ні)',
-                                'Нещодавно відремонтований (1=так, 0=ні)'
-                              ];
-                              
-                              const columnName = columnNames[index] || col;
-                              
-                              return (
-                                <th key={col} className="min-w-48 p-3 text-center font-semibold border-l">
-                                  <div className="flex flex-col items-center gap-1">
-                                    <span className="text-xs text-gray-500 font-normal">{col}</span>
-                                    <span className="text-sm leading-tight">{columnName}</span>
-                                  </div>
-                                </th>
-                              );
-                            })}
+                  {/* Excel-подобная таблица */}
+                  <div className="border-2 border-gray-400 rounded-lg overflow-hidden shadow-sm">
+                    <div className="overflow-auto max-h-[500px]">
+                      <table className="border-collapse w-full min-w-full">
+                        {/* Заголовок таблицы */}
+                        <thead className="sticky top-0 z-20">
+                          <tr>
+                            {/* Угловая ячейка */}
+                            <th className="w-12 h-8 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold sticky left-0 z-30"></th>
+                            {/* Заголовки колонок */}
+                            {tableData.columns.map((col, _index) => (
+                              <th 
+                                key={col} 
+                                className="w-32 h-8 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold px-1"
+                              >
+                                {col}
+                              </th>
+                            ))}
                           </tr>
                         </thead>
+                        
                         <tbody>
                           {Object.entries(tableData.rows)
                             .sort(([a], [b]) => parseInt(a) - parseInt(b))
-                            .slice(0, 25)
-                            .map(([rowNum, rowCells]: [string, Record<string, ExcelCell>]) => {
-                              const isHeaderRow = parseInt(rowNum) === 0;
+                            .slice(0, 50) // Показываем больше строк
+                            .map(([rowNum, rowCells]) => {
+                              const rowIndex = parseInt(rowNum);
+                              const isHeaderRow = rowIndex === 0;
                               
                               return (
-                                <tr key={rowNum} className={`border-b hover:bg-gray-50 ${isHeaderRow ? 'bg-blue-50' : ''}`}>
-                                  <td className="sticky left-0 bg-gray-50 p-3 font-medium border-r">
-                                    {parseInt(rowNum) + 1}
+                                <tr key={rowNum}>
+                                  {/* Заголовок строки */}
+                                  <td className="w-12 h-8 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold sticky left-0 z-10">
+                                    {rowIndex + 1}
                                   </td>
-                                  {tableData.columns.map((col: string) => {
-                                    const cell: ExcelCell | undefined = rowCells[col];
+                                  
+                                  {/* Ячейки данных */}
+                                  {tableData.columns.map(col => {
+                                    const cell = rowCells[col];
+                                    
                                     return (
-                                      <td key={col} className="p-2 border-l">
+                                      <td 
+                                        key={`${rowNum}-${col}`} 
+                                        className="w-32 h-8 border border-gray-300 p-0 relative"
+                                      >
                                         {cell ? (
-                                          // Первая строка (заголовки) всегда нередактируемая
-                                          isHeaderRow || !cell.editable ? (
-                                            <div className={`text-sm p-2 rounded min-h-10 flex items-center justify-center text-center ${
-                                              isHeaderRow ? 'bg-blue-100 text-blue-800 font-semibold' :
-                                              cell.type === 'formula' ? 'bg-blue-50 text-blue-700' :
-                                              cell.type === 'number' ? 'bg-green-50 text-green-700' :
-                                              'bg-gray-50'
-                                            }`}>
-                                              <span className="break-words">
-                                                {cell.formula ? `=${cell.formula}` : cell.value}
-                                              </span>
-                                            </div>
-                                          ) : (
-                                            <Input
-                                              value={cell.value}
+                                          // Ячейка с данными
+                                          cell.editable && !isHeaderRow ? (
+                                            <input
+                                              type="text"
+                                              value={cell.value || ''}
                                               onChange={(e) => updateCellValue(
                                                 selectedWorksheet,
                                                 cell.address,
                                                 e.target.value
                                               )}
-                                              className="w-full text-sm text-center"
-                                              placeholder="Введіть значення"
+                                              className="w-full h-full px-1 text-xs text-center border-0 outline-0 focus:bg-blue-50 focus:ring-2 focus:ring-blue-400"
+                                              style={{ 
+                                                fontSize: '11px',
+                                                lineHeight: '1.2'
+                                              }}
                                             />
+                                          ) : (
+                                            // Нередактируемая ячейка
+                                            <div 
+                                              className={`w-full h-full px-1 text-xs flex items-center justify-center text-center ${
+                                                isHeaderRow ? 'bg-blue-100 text-blue-800 font-semibold' :
+                                                cell.type === 'formula' ? 'bg-yellow-50 text-yellow-800' :
+                                                cell.type === 'number' ? 'bg-green-50 text-green-800' :
+                                                'bg-white text-gray-800'
+                                              }`}
+                                              style={{ 
+                                                fontSize: '11px',
+                                                lineHeight: '1.2',
+                                                wordBreak: 'break-word'
+                                              }}
+                                              title={cell.formula ? `=${cell.formula}` : String(cell.value)}
+                                            >
+                                              <span className="break-all">
+                                                {cell.formula ? `=${cell.formula}` : String(cell.value || '')}
+                                              </span>
+                                            </div>
                                           )
                                         ) : (
-                                          <div className="text-gray-300 text-sm p-2 text-center min-h-10 flex items-center justify-center">—</div>
+                                          // Пустая ячейка
+                                          <div className="w-full h-full bg-white"></div>
                                         )}
                                       </td>
                                     );
@@ -1376,14 +1312,34 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="text-sm text-gray-600 flex justify-between">
-                    <span>
-                      Загалом клітинок: {currentWorksheet.cells.length} | 
-                      Редагованих: {currentWorksheet.cells.filter(c => c.editable).length} | 
-                      Формул: {currentWorksheet.cells.filter(c => c.type === 'formula').length}
-                    </span>
-                    <span>Показано перші 25 рядків</span>
+                  {/* Информация о таблице */}
+                  <div className="flex flex-col sm:flex-row justify-between text-xs text-gray-600 gap-2">
+                    <div className="flex flex-wrap gap-4">
+                      <span>Загалом клітинок: <strong>{currentWorksheet.cells.length}</strong></span>
+                      <span>Редагованих: <strong>{currentWorksheet.cells.filter(c => c.editable).length}</strong></span>
+                      <span>Формул: <strong>{currentWorksheet.cells.filter(c => c.type === 'formula').length}</strong></span>
+                    </div>
+                    <span>Показано перші 50 рядків</span>
                   </div>
+
+                  {/* Подсказка по структуре */}
+                  <Card className="bg-yellow-50 border-yellow-200">
+                    <CardContent className="p-4">
+                      <div className="text-sm">
+                        <div className="font-semibold text-yellow-800 mb-2">Очікувана структура колонок:</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                          <div><strong>A:</strong> Категорія дороги (1-5)</div>
+                          <div><strong>B:</strong> Державне значення (1=так, 0=ні)</div>
+                          <div><strong>C:</strong> Довжина ділянки (км)</div>
+                          <div><strong>D:</strong> Інтенсивність руху (авт./добу)</div>
+                          <div><strong>E:</strong> Європейський статус (1=так, 0=ні)</div>
+                          <div><strong>F:</strong> Прикордонний перехід (1=так, 0=ні)</div>
+                          <div><strong>G:</strong> Освітлення (1=так, 0=ні)</div>
+                          <div><strong>H:</strong> Нещодавно відремонтований (1=так, 0=ні)</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               )}
 
@@ -1399,25 +1355,25 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center">
+                        <div className="text-center p-3 bg-white rounded-lg">
                           <div className="text-2xl font-bold text-green-700">
                             {results.calculatedValues.TOTAL_SUM?.toFixed(2) || '0'}
                           </div>
                           <div className="text-sm text-green-600">Загальна сума</div>
                         </div>
-                        <div className="text-center">
+                        <div className="text-center p-3 bg-white rounded-lg">
                           <div className="text-2xl font-bold text-blue-700">
                             {results.calculatedValues.AVERAGE?.toFixed(2) || '0'}
                           </div>
                           <div className="text-sm text-blue-600">Середнє значення</div>
                         </div>
-                        <div className="text-center">
+                        <div className="text-center p-3 bg-white rounded-lg">
                           <div className="text-2xl font-bold text-purple-700">
                             {results.calculatedValues.COUNT_NUMBERS || '0'}
                           </div>
                           <div className="text-sm text-purple-600">Кількість чисел</div>
                         </div>
-                        <div className="text-center">
+                        <div className="text-center p-3 bg-white rounded-lg">
                           <div className="text-2xl font-bold text-orange-700">
                             {results.calculatedValues.COUNT_FILLED || '0'}
                           </div>
@@ -1439,19 +1395,19 @@ const Block2MaintenanceCalculator: React.FC = () => {
                       <CardContent className="space-y-6">
                         {/* Основные результаты */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="text-center p-4 bg-white rounded-lg">
+                          <div className="text-center p-4 bg-white rounded-lg shadow-sm">
                             <div className="text-3xl font-bold text-blue-700">
                               {(results.roadFinancing.stateFunding / 1000).toFixed(1)}
                             </div>
                             <div className="text-sm text-blue-600">Державні дороги (млн. грн)</div>
                           </div>
-                          <div className="text-center p-4 bg-white rounded-lg">
+                          <div className="text-center p-4 bg-white rounded-lg shadow-sm">
                             <div className="text-3xl font-bold text-green-700">
                               {(results.roadFinancing.localFunding / 1000).toFixed(1)}
                             </div>
                             <div className="text-sm text-green-600">Місцеві дороги (млн. грн)</div>
                           </div>
-                          <div className="text-center p-4 bg-white rounded-lg">
+                          <div className="text-center p-4 bg-white rounded-lg shadow-sm">
                             <div className="text-3xl font-bold text-purple-700">
                               {(results.roadFinancing.totalFunding / 1000).toFixed(1)}
                             </div>
@@ -1461,9 +1417,11 @@ const Block2MaintenanceCalculator: React.FC = () => {
 
                         {/* Детали расчета */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-3">
-                            <h4 className="font-semibold text-gray-800">Характеристики мережі доріг</h4>
-                            <div className="space-y-2 text-sm">
+                          <Card className="bg-white">
+                            <CardHeader>
+                              <CardTitle className="text-sm text-gray-800">Характеристики мережі доріг</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span>Довжина доріг державного значення:</span>
                                 <span className="font-medium">{results.roadFinancing.details.stateRoadLength.toFixed(1)} км</span>
@@ -1480,12 +1438,14 @@ const Block2MaintenanceCalculator: React.FC = () => {
                                 <span>Базовий норматив місц. доріг:</span>
                                 <span className="font-medium">{results.roadFinancing.details.localRoadBaseRate.toFixed(0)} тис. грн/км</span>
                               </div>
-                            </div>
-                          </div>
+                            </CardContent>
+                          </Card>
 
-                          <div className="space-y-3">
-                            <h4 className="font-semibold text-gray-800">Застосовані коефіцієнти</h4>
-                            <div className="space-y-2 text-sm">
+                          <Card className="bg-white">
+                            <CardHeader>
+                              <CardTitle className="text-sm text-gray-800">Застосовані коефіцієнти</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span>Гірська місцевість (Кг):</span>
                                 <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.mountainous.toFixed(3)}</span>
@@ -1526,34 +1486,38 @@ const Block2MaintenanceCalculator: React.FC = () => {
                                 <span>Критична інфраструктура (Ккр.і):</span>
                                 <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.criticalInfrastructure.toFixed(3)}</span>
                               </div>
-                            </div>
-                          </div>
+                            </CardContent>
+                          </Card>
                         </div>
 
                         {/* Информация о данных */}
                         {results.regionData && (
-                          <div className="space-y-3">
-                            <h4 className="font-semibold text-gray-800">Дані про дороги в розрахунку</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                              {[1, 2, 3, 4, 5].map(category => {
-                                const categoryRoads = results.regionData!.roadSections.filter(r => r.category === category);
-                                const stateRoads = categoryRoads.filter(r => r.stateImportance);
-                                const localRoads = categoryRoads.filter(r => !r.stateImportance);
-                                const totalLength = categoryRoads.reduce((sum, r) => sum + r.length, 0);
-                                
-                                return (
-                                  <div key={category} className="p-3 bg-white rounded border">
-                                    <div className="font-medium text-center mb-2">{category} категорія</div>
-                                    <div className="space-y-1 text-xs">
-                                      <div>Держ.: {stateRoads.length} ділянок</div>
-                                      <div>Місц.: {localRoads.length} ділянок</div>
-                                      <div>Всього: {totalLength.toFixed(1)} км</div>
+                          <Card className="bg-white">
+                            <CardHeader>
+                              <CardTitle className="text-sm text-gray-800">Дані про дороги в розрахунку</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                                {[1, 2, 3, 4, 5].map(category => {
+                                  const categoryRoads = results.regionData!.roadSections.filter(r => r.category === category);
+                                  const stateRoads = categoryRoads.filter(r => r.stateImportance);
+                                  const localRoads = categoryRoads.filter(r => !r.stateImportance);
+                                  const totalLength = categoryRoads.reduce((sum, r) => sum + r.length, 0);
+                                  
+                                  return (
+                                    <div key={category} className="p-3 bg-gray-50 rounded border text-center">
+                                      <div className="font-medium mb-2">{category} категорія</div>
+                                      <div className="space-y-1 text-xs">
+                                        <div>Держ.: {stateRoads.length} ділянок</div>
+                                        <div>Місц.: {localRoads.length} ділянок</div>
+                                        <div>Всього: {totalLength.toFixed(1)} км</div>
+                                      </div>
                                     </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
+                                  );
+                                })}
+                              </div>
+                            </CardContent>
+                          </Card>
                         )}
 
                         <Alert>
@@ -1607,7 +1571,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                   <div className="text-xs text-gray-600 mt-3 p-2 bg-gray-50 rounded">
                     <div><strong>Примітки:</strong></div>
                     <div>• Заголовки колонок (перший рядок) не редагуються для забезпечення структури</div>
-                    <div>• Клітинки з формулами показуються синім кольором і не редагуються</div>
+                    <div>• Клітинки з формулами показуються жовтим кольором і не редагуються</div>
                     <div>• Якщо структура файлу не відповідає очікуваній, будуть використані приклади даних</div>
                     <div>• Розрахунки виконуються згідно з діючою методикою фінансування експлуатаційного утримання</div>
                   </div>

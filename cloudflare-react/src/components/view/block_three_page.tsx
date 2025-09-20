@@ -2757,9 +2757,6 @@ const Page4_EstimatedCosts: React.FC<Page4EstimatedCostsProps> = ({
             <Calculator className="h-5 w-5" />
             Орієнтовна вартість робіт
           </CardTitle>
-          <p className="text-sm text-gray-600">
-            Розрахунок згідно з алгоритмами block_three_algorithm.ts та block_three.ts
-          </p>
         </CardHeader>
         <CardContent>
           <div className="flex justify-between items-center mb-6">
@@ -3048,28 +3045,23 @@ const Page4_EstimatedCosts: React.FC<Page4EstimatedCostsProps> = ({
 
       {/* Пояснения по методике */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Методика расчета (block_three_algorithm.ts)</CardTitle>
-        </CardHeader>
         <CardContent className="text-sm text-gray-600">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <h4 className="font-semibold mb-2">Определение типа работ (п. 4.2.3):</h4>
               <ul className="space-y-1">
-                <li><strong>Реконструкция:</strong> при коэффициенте интенсивности &lt; 1.0</li>
-                <li><strong>Капремонт:</strong> при коэффициенте прочности ниже норматива</li>
-                <li><strong>Текущий ремонт:</strong> при нарушении ровности, колейности или сцепления</li>
-                <li><strong>Не требуется:</strong> при соответствии всем нормативам</li>
+                <li><strong>Реконструкція:</strong> при коефіцієнті інтенсивності &lt; 1.0</li>
+                <li><strong>Капремонт:</strong> при коефіцієнті міцності нижче нормативу</li>
+                <li><strong>Поточний ремонт:</strong> при порушенні рівності, колійності або зчеплення</li>
+                <li><strong>Не потрібно:</strong> при відповідності всім нормативам</li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-2">Корректировочные коэффициенты (п. 4.2.4):</h4>
               <ul className="space-y-1">
-                <li><strong>Международные дороги:</strong> +15%</li>
-                <li><strong>Оборонные дороги:</strong> +10%</li>
-                <li><strong>Освещение:</strong> +5%</li>
-                <li><strong>Пограничные переходы:</strong> +8%</li>
-                <li><strong>Региональные:</strong> от 5% до +20%</li>
+                <li><strong>Міжнародні дороги:</strong> +15%</li>
+                <li><strong>Оборонні дороги:</strong> +10%</li>
+                <li><strong>Освітлення:</strong> +5%</li>
+                <li><strong>Прикордонні переходи:</strong> +8%</li>
+                <li><strong>Регіональні:</strong> від 5% до +20%</li>
               </ul>
             </div>
           </div>
@@ -3147,13 +3139,12 @@ interface Page5EconomicAnalysisProps {
 const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({ 
   sections, 
   onSectionsChange,
-  onNext, 
   onBack 
 }) => {
   const [selectedSectionId, setSelectedSectionId] = useState<string>('');
   const [analysisResult, setAnalysisResult] = useState<EconomicAnalysisResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
-  const [analysisParams, setAnalysisParams] = useState({
+  const [analysisParams, _setAnalysisParams] = useState({
     discountRate: 0.05,
     analysisYears: 20
   });
@@ -3292,436 +3283,242 @@ const Page5_EconomicAnalysis: React.FC<Page5EconomicAnalysisProps> = ({
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Визначення ефективності реконструкції/капітального ремонту автомобільної дороги
-          </CardTitle>
-          <p className="text-sm text-gray-600">
-            Економічний аналіз вигід та витрат (ENPV, EIRR, BCR) згідно з Методикою
+    <div className="space-y-6 p-6" style={{ background: 'rgb(var(--c-bg))' }}>
+      <Card className="glass-card overflow-hidden">
+        <CardHeader className="glass-card-header p-4">
+          <h3 className="text-center font-bold text-lg">
+            Визначення ефективності {selectedSection?.workTypeRaw === 'capital_repair' ? 'капітального ремонту' : 'реконструкції'} автомобільної дороги
+          </h3>
+          <p className="text-center text-sm text-gray-600 mt-1">
+            Вихідні дані
           </p>
         </CardHeader>
-        <CardContent>
-          {eligibleSections.length === 0 ? (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                Немає секцій, що потребують реконструкції або капітального ремонту для економічного аналізу.
-                Спочатку додайте секції та виконайте розрахунки на попередніх сторінках.
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <div className="space-y-6">
-              {/* Section selection and parameters */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Виберіть об'єкт для аналізу:</label>
-                  <select 
-                    value={selectedSectionId} 
-                    onChange={(e) => setSelectedSectionId(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded"
-                  >
-                    <option value="">Оберіть секцію...</option>
-                    {eligibleSections.map((section: RoadSectionUI) => {
-                      const workType = section.workTypeRaw === 'capital_repair' ? 'Капітальний ремонт' : 'Реконструкція';
-                      return (
-                        <option key={section.id} value={section.id}>
-                          {section.name} ({workType})
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
+        
+        <CardContent className="p-0">
+          <div className="border-2 border-gray-400 rounded-lg overflow-hidden shadow-sm m-4">
+            <div className="overflow-auto max-h-[600px]">
+              <table className="border-collapse w-full min-w-[1400px]">
+                {/* Заголовок таблицы */}
+                <thead className="sticky top-0 z-20">
+                  <tr>
+                    {/* Угловая ячейка */}
+                    <th className="w-16 h-10 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold sticky left-0 z-30">
+                      №
+                    </th>
+                    {/* Заголовки колонок */}
+                    <th className="w-20 h-10 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold px-1">A</th>
+                    <th className="w-32 h-10 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold px-1">B</th>
+                    <th className="w-28 h-10 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold px-1">C</th>
+                    <th className="w-28 h-10 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold px-1">D</th>
+                    <th className="w-28 h-10 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold px-1">E</th>
+                    <th className="w-32 h-10 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold px-1">F</th>
+                    <th className="w-32 h-10 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold px-1">G</th>
+                    <th className="w-28 h-10 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold px-1">H</th>
+                    <th className="w-32 h-10 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold px-1">I</th>
+                    <th className="w-36 h-10 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold px-1">J</th>
+                    <th className="w-32 h-10 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold px-1">K</th>
+                    <th className="w-32 h-10 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold px-1">L</th>
+                  </tr>
+                  <tr>
+                    {/* Пустая угловая ячейка */}
+                    <th className="h-auto bg-blue-100 border-2 border-gray-400 sticky left-0 z-30"></th>
+                    {/* Заголовки колонок - описание */}
+                    <th className="h-auto p-2 bg-blue-100 border-2 border-gray-400 text-xs font-semibold text-center align-middle">
+                      Рік
+                    </th>
+                    <th className="h-auto p-2 bg-blue-100 border-2 border-gray-400 text-xs font-semibold text-center align-middle">
+                      Середньорічна інтенсивність руху, авт/добу
+                    </th>
+                    <th className="h-auto p-2 bg-blue-100 border-2 border-gray-400 text-xs font-semibold text-center align-middle">
+                      капітальний ремонт
+                    </th>
+                    <th className="h-auto p-2 bg-blue-100 border-2 border-gray-400 text-xs font-semibold text-center align-middle">
+                      експлуатаційне утримання
+                    </th>
+                    <th className="h-auto p-2 bg-blue-100 border-2 border-gray-400 text-xs font-semibold text-center align-middle">
+                      Всього
+                    </th>
+                    <th className="h-auto p-2 bg-blue-100 border-2 border-gray-400 text-xs font-semibold text-center align-middle">
+                      Економічний ефект (чистий), млн.грн
+                    </th>
+                    <th className="h-auto p-2 bg-blue-100 border-2 border-gray-400 text-xs font-semibold text-center align-middle">
+                      Чистий грошовий потік (NCF), млн.грн
+                    </th>
+                    <th className="h-auto p-2 bg-blue-100 border-2 border-gray-400 text-xs font-semibold text-center align-middle">
+                      Коефіцієнт дисконтування
+                    </th>
+                    <th className="h-auto p-2 bg-blue-100 border-2 border-gray-400 text-xs font-semibold text-center align-middle">
+                      Дисконтований грошовий потік, млн.грн
+                    </th>
+                    <th className="h-auto p-2 bg-blue-100 border-2 border-gray-400 text-xs font-semibold text-center align-middle">
+                      Економічна чиста приведена вартість ENPV, млн.грн
+                    </th>
+                    <th className="h-auto p-2 bg-blue-100 border-2 border-gray-400 text-xs font-semibold text-center align-middle">
+                      Дисконтовані вигоди, млн.грн
+                    </th>
+                    <th className="h-auto p-2 bg-blue-100 border-2 border-gray-400 text-xs font-semibold text-center align-middle">
+                      Дисконтовані витрати, млн.грн
+                    </th>
+                  </tr>
+                  <tr>
+                    <th className="h-8 bg-gray-100 border-2 border-gray-400 text-xs text-gray-600 sticky left-0 z-30"></th>
+                    <th className="h-8 bg-gray-100 border-2 border-gray-400 text-xs text-gray-600">1</th>
+                    <th className="h-8 bg-gray-100 border-2 border-gray-400 text-xs text-gray-600">2</th>
+                    <th className="h-8 bg-gray-100 border-2 border-gray-400 text-xs text-gray-600">3</th>
+                    <th className="h-8 bg-gray-100 border-2 border-gray-400 text-xs text-gray-600">4</th>
+                    <th className="h-8 bg-gray-100 border-2 border-gray-400 text-xs text-gray-600">5</th>
+                    <th className="h-8 bg-gray-100 border-2 border-gray-400 text-xs text-gray-600">6</th>
+                    <th className="h-8 bg-gray-100 border-2 border-gray-400 text-xs text-gray-600">7</th>
+                    <th className="h-8 bg-gray-100 border-2 border-gray-400 text-xs text-gray-600">8</th>
+                    <th className="h-8 bg-gray-100 border-2 border-gray-400 text-xs text-gray-600">9</th>
+                    <th className="h-8 bg-gray-100 border-2 border-gray-400 text-xs text-gray-600">10</th>
+                    <th className="h-8 bg-gray-100 border-2 border-gray-400 text-xs text-gray-600">11</th>
+                    <th className="h-8 bg-gray-100 border-2 border-gray-400 text-xs text-gray-600">12</th>
+                  </tr>
+                </thead>
                 
-                <div>
-                  <label className="block text-sm font-medium mb-2">Ставка дисконтування:</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    max="0.30"
-                    value={analysisParams.discountRate}
-                    onChange={(e) => setAnalysisParams({
-                      ...analysisParams,
-                      discountRate: Math.max(0.01, Math.min(0.30, safeNumber(e.target.value, 0.05)))
-                    })}
-                    className="w-full p-2 border border-gray-300 rounded"
-                  />
-                  <div className="text-xs text-gray-500 mt-1">0.01 - 0.30</div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2">Період аналізу (років):</label>
-                  <input
-                    type="number"
-                    min="10"
-                    max="30"
-                    value={analysisParams.analysisYears}
-                    onChange={(e) => setAnalysisParams({
-                      ...analysisParams,
-                      analysisYears: Math.max(10, Math.min(30, parseInt(e.target.value) || 20))
-                    })}
-                    className="w-full p-2 border border-gray-300 rounded"
-                  />
-                  <div className="text-xs text-gray-500 mt-1">10 - 30 років</div>
-                </div>
-              </div>
-
-              {/* Selected section information */}
-              {selectedSection && (
-                <Card className="bg-blue-50">
-                  <CardContent className="pt-4">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="font-semibold">Протяжність:</span> {safeNumber(selectedSection.length, 0)} км
-                      </div>
-                      <div>
-                        <span className="font-semibold">Категорія:</span> {CATEGORIES[selectedSection.category]?.name || 'Невідомо'}
-                      </div>
-                      <div>
-                        <span className="font-semibold">Інтенсивність:</span> {safeNumber(selectedSection.trafficIntensity, 0).toLocaleString()} авт/добу
-                      </div>
-                      <div>
-                        <span className="font-semibold">Вартість проекту:</span> {safeNumber(selectedSection.estimatedCost, 0).toFixed(1)} млн грн
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {isCalculating ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p>Виконання економічного аналізу вигід та витрат...</p>
-                </div>
-              ) : analysisResult ? (
-                <div className="space-y-6">
-                  {/* Key indicators */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card className={`${analysisResult.totalENPV > 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-                      <CardContent className="text-center py-4">
-                        <div className={`text-2xl font-bold ${analysisResult.totalENPV > 0 ? 'text-green-700' : 'text-red-700'}`}>
-                          {(safeNumber(analysisResult.totalENPV, 0) / 1000).toFixed(1)}
+                <tbody>
+                  {analysisResult?.yearlyData.map((year, index) => (
+                    <tr key={year.year}>
+                      {/* Номер строки */}
+                      <td className="w-16 h-8 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold sticky left-0 z-10">
+                        {index + 1}
+                      </td>
+                      
+                      {/* Ячейки данных */}
+                      <td className="h-8 border border-gray-300 p-0">
+                        <div className="w-full h-full px-1 text-xs flex items-center justify-center bg-white hover:bg-blue-50 transition-colors">
+                          {year.year}
                         </div>
-                        <div className="text-sm text-gray-600">ENPV (млн грн)</div>
-                      </CardContent>
-                    </Card>
-                    <Card className={`${analysisResult.eirr > analysisParams.discountRate ? 'bg-green-50' : 'bg-red-50'}`}>
-                      <CardContent className="text-center py-4">
-                        <div className={`text-2xl font-bold ${analysisResult.eirr > analysisParams.discountRate ? 'text-green-700' : 'text-red-700'}`}>
-                          {(safeNumber(analysisResult.eirr, 0) * 100).toFixed(1)}%
+                      </td>
+                      <td className="h-8 border border-gray-300 p-0">
+                        <div className="w-full h-full px-1 text-xs flex items-center justify-center bg-white hover:bg-blue-50 transition-colors">
+                          {safeNumber(selectedSection?.trafficIntensity, 0).toLocaleString()}
                         </div>
-                        <div className="text-sm text-gray-600">EIRR</div>
-                      </CardContent>
-                    </Card>
-                    <Card className={`${analysisResult.bcr > 1 ? 'bg-green-50' : 'bg-red-50'}`}>
-                      <CardContent className="text-center py-4">
-                        <div className={`text-2xl font-bold ${analysisResult.bcr > 1 ? 'text-green-700' : 'text-red-700'}`}>
-                          {safeNumber(analysisResult.bcr, 0).toFixed(2)}
+                      </td>
+                      <td className="h-8 border border-gray-300 p-0">
+                        <div className="w-full h-full px-1 text-xs flex items-center justify-center bg-yellow-50 text-yellow-800 hover:bg-yellow-100 transition-colors">
+                          {(safeNumber(year.capitalCost, 0) / 1000).toFixed(2)}
                         </div>
-                        <div className="text-sm text-gray-600">BCR</div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Analysis table */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-center">
-                        Визначення ефективності {selectedSection?.workTypeRaw === 'capital_repair' ? 'капітального ремонту' : 'реконструкції'} автомобільної дороги
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="overflow-x-auto">
-                        <table className="w-full border-collapse border border-gray-400 text-xs">
-                          <thead>
-                            <tr className="bg-gray-100">
-                              <th className="border border-gray-400 p-2 text-center">Рік</th>
-                              <th className="border border-gray-400 p-2 text-center">
-                                Середньорічна інтенсивність руху, авт/добу
-                              </th>
-                              <th className="border border-gray-400 p-2 text-center" colSpan={3}>
-                                Витрати на капітальний, поточний ремонт і утримання, млн.грн
-                              </th>
-                              <th className="border border-gray-400 p-2 text-center">
-                                Економічний ефект (чистий), млн.грн
-                              </th>
-                              <th className="border border-gray-400 p-2 text-center">
-                                Чистий грошовий потік (NCF), млн.грн
-                              </th>
-                              <th className="border border-gray-400 p-2 text-center">
-                                Коефіцієнт дисконтування
-                              </th>
-                              <th className="border border-gray-400 p-2 text-center">
-                                Дисконтований грошовий потік, млн.грн
-                              </th>
-                              <th className="border border-gray-400 p-2 text-center">
-                                Економічна чиста приведена вартість ENPV, млн.грн
-                              </th>
-                              <th className="border border-gray-400 p-2 text-center">
-                                Дисконтовані вигоди, млн.грн
-                              </th>
-                              <th className="border border-gray-400 p-2 text-center">
-                                Дисконтовані витрати, млн.грн
-                              </th>
-                            </tr>
-                            <tr className="bg-gray-50">
-                              <th className="border border-gray-400 p-1"></th>
-                              <th className="border border-gray-400 p-1"></th>
-                              <th className="border border-gray-400 p-1 text-center">капітальний ремонт</th>
-                              <th className="border border-gray-400 p-1 text-center">експлуатаційне утримання</th>
-                              <th className="border border-gray-400 p-1 text-center">Всього</th>
-                              <th className="border border-gray-400 p-1"></th>
-                              <th className="border border-gray-400 p-1"></th>
-                              <th className="border border-gray-400 p-1"></th>
-                              <th className="border border-gray-400 p-1"></th>
-                              <th className="border border-gray-400 p-1"></th>
-                              <th className="border border-gray-400 p-1"></th>
-                              <th className="border border-gray-400 p-1"></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {analysisResult.yearlyData.map((year, index) => (
-                              <tr key={year.year} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                <td className="border border-gray-400 p-2 text-center font-medium">{year.year}</td>
-                                <td className="border border-gray-400 p-2 text-center">
-                                  {safeNumber(selectedSection?.trafficIntensity, 0).toLocaleString()}
-                                </td>
-                                <td className="border border-gray-400 p-2 text-center">
-                                  {(safeNumber(year.capitalCost, 0) / 1000).toFixed(2)}
-                                </td>
-                                <td className="border border-gray-400 p-2 text-center">
-                                  {(safeNumber(year.operationalCost, 0) / 1000).toFixed(2)}
-                                </td>
-                                <td className="border border-gray-400 p-2 text-center font-medium">
-                                  {(safeNumber(year.totalCosts, 0) / 1000).toFixed(2)}
-                                </td>
-                                <td className="border border-gray-400 p-2 text-center">
-                                  {(safeNumber(year.economicEffect, 0) / 1000).toFixed(2)}
-                                </td>
-                                <td className="border border-gray-400 p-2 text-center">
-                                  {(safeNumber(year.netCashFlow, 0) / 1000).toFixed(2)}
-                                </td>
-                                <td className="border border-gray-400 p-2 text-center">
-                                  {safeNumber(year.discountFactor, 0).toFixed(3)}
-                                </td>
-                                <td className="border border-gray-400 p-2 text-center">
-                                  {(safeNumber(year.discountedCashFlow, 0) / 1000).toFixed(2)}
-                                </td>
-                                <td className="border border-gray-400 p-2 text-center font-medium">
-                                  {(safeNumber(year.enpv, 0) / 1000).toFixed(2)}
-                                </td>
-                                <td className="border border-gray-400 p-2 text-center">
-                                  {(safeNumber(year.discountedBenefits, 0) / 1000).toFixed(2)}
-                                </td>
-                                <td className="border border-gray-400 p-2 text-center">
-                                  {(safeNumber(year.discountedCosts, 0) / 1000).toFixed(2)}
-                                </td>
-                              </tr>
-                            ))}
-                            <tr className="bg-yellow-100 font-bold">
-                              <td className="border border-gray-400 p-2 text-center">Разом</td>
-                              <td className="border border-gray-400 p-2"></td>
-                              <td className="border border-gray-400 p-2"></td>
-                              <td className="border border-gray-400 p-2"></td>
-                              <td className="border border-gray-400 p-2 text-center">
-                                {(safeNumber(analysisResult.summary.totalDiscountedCosts, 0) / 1000).toFixed(2)}
-                              </td>
-                              <td className="border border-gray-400 p-2 text-center">
-                                {(safeNumber(analysisResult.summary.totalDiscountedBenefits, 0) / 1000).toFixed(2)}
-                              </td>
-                              <td className="border border-gray-400 p-2"></td>
-                              <td className="border border-gray-400 p-2"></td>
-                              <td className="border border-gray-400 p-2"></td>
-                              <td className="border border-gray-400 p-2 text-center bg-yellow-200">
-                                {(safeNumber(analysisResult.totalENPV, 0) / 1000).toFixed(2)}
-                              </td>
-                              <td className="border border-gray-400 p-2"></td>
-                              <td className="border border-gray-400 p-2"></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Summary indicators */}
-                      <div className="mt-4 space-y-2">
-                        <div className="grid grid-cols-2 gap-4 p-4 bg-yellow-100 rounded">
-                          <div className="text-center">
-                            <div className="font-bold">Співвідношення вигід і витрат (BCR)</div>
-                            <div className={`text-xl font-bold ${analysisResult.bcr > 1 ? 'text-green-700' : 'text-red-700'}`}>
-                              {safeNumber(analysisResult.bcr, 0).toFixed(2)}
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              {analysisResult.bcr > 1 ? 'Проект ефективний' : 'Проект неефективний'}
-                            </div>
-                          </div>
-                          <div className="text-center">
-                            <div className="font-bold">Економічна норма дохідності EIRR</div>
-                            <div className={`text-xl font-bold ${analysisResult.eirr > analysisParams.discountRate ? 'text-green-700' : 'text-red-700'}`}>
-                              {(safeNumber(analysisResult.eirr, 0) * 100).toFixed(1)}%
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              Ставка дисконтування: {(analysisParams.discountRate * 100).toFixed(1)}%
-                            </div>
-                          </div>
+                      </td>
+                      <td className="h-8 border border-gray-300 p-0">
+                        <div className="w-full h-full px-1 text-xs flex items-center justify-center bg-yellow-50 text-yellow-800 hover:bg-yellow-100 transition-colors">
+                          {(safeNumber(year.operationalCost, 0) / 1000).toFixed(2)}
                         </div>
-                        
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                          <div>
-                            <span className="font-semibold">Чиста приведена вартість:</span>
-                            <div className={`${analysisResult.summary.npv > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              NPV: {(safeNumber(analysisResult.summary.npv, 0) / 1000).toFixed(1)} млн грн
-                            </div>
-                          </div>
-                          <div>
-                            <span className="font-semibold">Дисконтований період окупності:</span>
-                            <div className={`${analysisResult.summary.dpp <= analysisParams.analysisYears ? 'text-green-600' : 'text-red-600'}`}>
-                              DPP: {safeNumber(analysisResult.summary.dpp, 0)} років
-                            </div>
-                          </div>
-                          <div>
-                            <span className="font-semibold">Середня ставка доходності:</span>
-                            <div className={`${analysisResult.summary.arr > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              ARR: {(safeNumber(analysisResult.summary.arr, 0) * 100).toFixed(1)}%
-                            </div>
-                          </div>
+                      </td>
+                      <td className="h-8 border border-gray-300 p-0">
+                        <div className="w-full h-full px-1 text-xs flex items-center justify-center bg-blue-50 text-blue-800 font-semibold hover:bg-blue-100 transition-colors">
+                          {(safeNumber(year.totalCosts, 0) / 1000).toFixed(2)}
                         </div>
-
-                        {/* Висновки про ефективність */}
-                        <div className="mt-4 p-4 rounded-lg border">
-                          <h5 className="font-semibold mb-2">Висновки щодо економічної ефективності:</h5>
-                          <div className="space-y-1 text-sm">
-                            {analysisResult.totalENPV > 0 ? (
-                              <div className="text-green-600">✓ Проект має позитивну чисту приведену вартість</div>
-                            ) : (
-                              <div className="text-red-600">✗ Проект має негативну чисту приведену вартість</div>
-                            )}
-                            
-                            {analysisResult.bcr > 1 ? (
-                              <div className="text-green-600">✓ Вигоди перевищують витрати (BCR {'>'} 1)</div>
-                            ) : (
-                              <div className="text-red-600">✗ Витрати перевищують вигоди (BCR ≤ 1)</div>
-                            )}
-                            
-                            {analysisResult.eirr > analysisParams.discountRate ? (
-                              <div className="text-green-600">✓ Внутрішня норма доходності перевищує ставку дисконтування</div>
-                            ) : (
-                              <div className="text-red-600">✗ Внутрішня норма доходності нижче ставки дисконтування</div>
-                            )}
-
-                            {analysisResult.summary.dpp <= analysisParams.analysisYears ? (
-                              <div className="text-green-600">✓ Проект окупається протягом розрахункового періоду</div>
-                            ) : (
-                              <div className="text-red-600">✗ Проект не окупається протягом розрахункового періоду</div>
-                            )}
-                          </div>
-                          
-                          <div className="mt-3 p-3 bg-gray-50 rounded">
-                            <div className="font-medium">Загальна рекомендація:</div>
-                            {(analysisResult.totalENPV > 0 && analysisResult.bcr > 1 && analysisResult.eirr > analysisParams.discountRate) ? (
-                              <div className="text-green-700 font-semibold">Проект економічно ефективний та рекомендується до реалізації</div>
-                            ) : (
-                              <div className="text-red-700 font-semibold">Проект економічно неефективний та потребує додаткового аналізу</div>
-                            )}
-                          </div>
+                      </td>
+                      <td className="h-8 border border-gray-300 p-0">
+                        <div className="w-full h-full px-1 text-xs flex items-center justify-center bg-green-50 text-green-800 hover:bg-green-100 transition-colors">
+                          {(safeNumber(year.economicEffect, 0) / 1000).toFixed(2)}
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">Оберіть секцію для економічного аналізу</p>
-                  {selectedSectionId && !selectedSection?.estimatedCost && (
-                    <p className="text-red-500 mt-2">Секція не має розрахованої вартості проекту</p>
-                  )}
-                </div>
-              )}
-
-              {/* Manual calculation button */}
-              <div className="flex justify-center">
-                <Button 
-                  onClick={handleCalculateEconomics}
-                  disabled={!selectedSectionId || isCalculating}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {isCalculating ? 'Розрахунок...' : 'Перерахувати економічний аналіз'}
-                </Button>
-              </div>
-
-              <div className="mt-6 flex justify-between">
-                <Button variant="outline" className="flex items-center gap-2" onClick={onBack}>
-                  <ArrowLeft className="h-4 w-4" />
-                  Назад
-                </Button>
-                <Button className="flex items-center gap-2" onClick={onNext}>
-                  Далі
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Методологічні пояснення */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Методика економічного аналізу</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-gray-600">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-semibold mb-2">Розрахунок економічних вигід:</h4>
-              <ul className="space-y-1">
-                <li><strong>Реконструкція:</strong> 0.2% від річного обсягу трафіку</li>
-                <li><strong>Капітальний ремонт:</strong> 0.15% від річного обсягу трафіку</li>
-                <li><strong>Поточний ремонт:</strong> 0.1% від річного обсягу трафіку</li>
-                <li><strong>Коефіцієнти:</strong> міжнародні дороги +30%, оборонні +20%, державні +10%</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-2">Критерії ефективності:</h4>
-              <ul className="space-y-1">
-                <li><strong>ENPV {'>'} 0:</strong> Проект створює додаткову вартість</li>
-                <li><strong>BCR {'>'} 1:</strong> Вигоди перевищують витрати</li>
-                <li><strong>EIRR {'>'} ставка дисконтування:</strong> Рентабельність вища за альтернативні інвестиції</li>
-                <li><strong>DPP {'<='} термін проекту:</strong> Проект окупається</li>
-              </ul>
+                      </td>
+                      <td className="h-8 border border-gray-300 p-0">
+                        <div className="w-full h-full px-1 text-xs flex items-center justify-center bg-white hover:bg-blue-50 transition-colors">
+                          {(safeNumber(year.netCashFlow, 0) / 1000).toFixed(2)}
+                        </div>
+                      </td>
+                      <td className="h-8 border border-gray-300 p-0">
+                        <div className="w-full h-full px-1 text-xs flex items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors">
+                          {safeNumber(year.discountFactor, 0).toFixed(3)}
+                        </div>
+                      </td>
+                      <td className="h-8 border border-gray-300 p-0">
+                        <div className="w-full h-full px-1 text-xs flex items-center justify-center bg-white hover:bg-blue-50 transition-colors">
+                          {(safeNumber(year.discountedCashFlow, 0) / 1000).toFixed(2)}
+                        </div>
+                      </td>
+                      <td className="h-8 border border-gray-300 p-0">
+                        <div className="w-full h-full px-1 text-xs flex items-center justify-center bg-purple-50 text-purple-800 font-semibold hover:bg-purple-100 transition-colors">
+                          {(safeNumber(year.enpv, 0) / 1000).toFixed(2)}
+                        </div>
+                      </td>
+                      <td className="h-8 border border-gray-300 p-0">
+                        <div className="w-full h-full px-1 text-xs flex items-center justify-center bg-white hover:bg-blue-50 transition-colors">
+                          {(safeNumber(year.discountedBenefits, 0) / 1000).toFixed(2)}
+                        </div>
+                      </td>
+                      <td className="h-8 border border-gray-300 p-0">
+                        <div className="w-full h-full px-1 text-xs flex items-center justify-center bg-white hover:bg-blue-50 transition-colors">
+                          {(safeNumber(year.discountedCosts, 0) / 1000).toFixed(2)}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  
+                  {/* Итоговая строка */}
+                  <tr className="font-bold bg-yellow-100">
+                    <td className="h-10 bg-yellow-200 border-2 border-gray-400 text-center text-xs font-bold sticky left-0 z-10">
+                      Σ
+                    </td>
+                    <td className="h-10 border-2 border-gray-400 text-center text-xs font-bold bg-yellow-100">
+                      Разом
+                    </td>
+                    <td className="h-10 border-2 border-gray-400 bg-yellow-100"></td>
+                    <td className="h-10 border-2 border-gray-400 bg-yellow-100"></td>
+                    <td className="h-10 border-2 border-gray-400 bg-yellow-100"></td>
+                    <td className="h-10 border-2 border-gray-400 text-center text-xs font-bold bg-yellow-100">
+                      {(safeNumber(analysisResult?.summary.totalDiscountedCosts, 0) / 1000).toFixed(2)}
+                    </td>
+                    <td className="h-10 border-2 border-gray-400 text-center text-xs font-bold bg-yellow-100">
+                      {(safeNumber(analysisResult?.summary.totalDiscountedBenefits, 0) / 1000).toFixed(2)}
+                    </td>
+                    <td className="h-10 border-2 border-gray-400 bg-yellow-100"></td>
+                    <td className="h-10 border-2 border-gray-400 bg-yellow-100"></td>
+                    <td className="h-10 border-2 border-gray-400 bg-yellow-100"></td>
+                    <td className="h-10 border-2 border-gray-400 text-center text-sm font-bold bg-yellow-200">
+                      {(safeNumber(analysisResult?.totalENPV, 0) / 1000).toFixed(2)}
+                    </td>
+                    <td className="h-10 border-2 border-gray-400 bg-yellow-100"></td>
+                    <td className="h-10 border-2 border-gray-400 bg-yellow-100"></td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
-          <div className="mt-4 text-xs text-gray-500">
-            * Розрахунки виконуються згідно з методикою економічного аналізу інвестиційних проектів у сфері дорожнього господарства
+
+          {/* Информация о таблице */}
+          <div className="flex flex-col sm:flex-row justify-between text-xs text-gray-600 gap-2 px-4 pb-4">
+            <div className="flex flex-wrap gap-4">
+              <span>Період аналізу: <strong>{analysisParams.analysisYears} років</strong></span>
+              <span>Ставка дисконтування: <strong>{(analysisParams.discountRate * 100).toFixed(1)}%</strong></span>
+              <span>Протяжність: <strong>{selectedSection?.length} км</strong></span>
+            </div>
+            <Button 
+              onClick={() => window.print()}
+              className="glass-button glass-button--small"
+            >
+              Зберегти (коли дані для розрахунку по об'єкту внесені)
+            </Button>
           </div>
+
+          {/* Подсказка по структуре */}
+          <Card className="bg-yellow-50 border-yellow-200 mx-4 mb-4">
+            <CardContent className="p-4">
+              <div className="text-sm">
+                <div className="font-semibold text-yellow-800 mb-2">Структура колонок таблиці:</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                  <div><strong>A (1):</strong> Рік проекту</div>
+                  <div><strong>B (2):</strong> Інтенсивність руху транспорту</div>
+                  <div><strong>C (3):</strong> Витрати на капітальний ремонт</div>
+                  <div><strong>D (4):</strong> Витрати на експлуатаційне утримання</div>
+                  <div><strong>E (5):</strong> Всього витрат</div>
+                  <div><strong>F (6):</strong> Економічний ефект</div>
+                  <div><strong>G (7):</strong> Чистий грошовий потік</div>
+                  <div><strong>H (8):</strong> Коефіцієнт дисконтування</div>
+                  <div><strong>I (9):</strong> Дисконтований грошовий потік</div>
+                  <div><strong>J (10):</strong> ENPV</div>
+                  <div><strong>K (11):</strong> Дисконтовані вигоди</div>
+                  <div><strong>L (12):</strong> Дисконтовані витрати</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </CardContent>
       </Card>
-
-      {/* Debugging информация (можно убрать в продакшене) */}
-      {selectedSection && (
-        <Card className="bg-gray-50">
-          <CardHeader>
-            <CardTitle className="text-sm">Debug інформація</CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div><strong>ID секції:</strong> {selectedSection.id}</div>
-                <div><strong>Назва:</strong> {selectedSection.name}</div>
-                <div><strong>Вид робіт:</strong> {selectedSection.workTypeRaw || 'не визначено'}</div>
-                <div><strong>Поточна вартість:</strong> {selectedSection.estimatedCost || 0} млн грн</div>
-              </div>
-              <div>
-                <div><strong>Протяжність:</strong> {selectedSection.length} км</div>
-                <div><strong>Категорія:</strong> {selectedSection.category}</div>
-                <div><strong>Інтенсивність:</strong> {selectedSection.trafficIntensity} авт/добу</div>
-                <div><strong>Параметри аналізу:</strong> {analysisParams.discountRate * 100}% / {analysisParams.analysisYears} років</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };

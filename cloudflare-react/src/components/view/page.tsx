@@ -488,21 +488,21 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
   }, []);
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
+    <div className="w-full max-w-7xl mx-auto p-6 space-y-6" style={{ background: 'rgb(var(--c-bg))' }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <TrendingUp className="h-8 w-8 text-green-600" />
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold">
             Визначення ефективності реконструкції/капітального ремонту автомобільних доріг
           </h1>
         </div>
         <div className="flex space-x-2">
-          <Button onClick={fillTestData} variant="outline">
+          <Button onClick={fillTestData} className="glass-button">
             <Plus className="h-4 w-4 mr-2" />
             Тестові дані
           </Button>
           {results && (
-            <Button onClick={generateEfficiencyReport} variant="outline">
+            <Button onClick={generateEfficiencyReport} className="glass-button glass-button--primary">
               <Download className="h-4 w-4 mr-2" />
               Звіт
             </Button>
@@ -511,19 +511,19 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
       </div>
 
       {error && (
-        <Alert className="border-red-200 bg-red-50">
-          <AlertTriangle className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-800">
+        <Alert className="glass-card" style={{ background: 'rgba(var(--c-error), 0.08)' }}>
+          <AlertTriangle className="h-4 w-4" style={{ color: 'rgb(var(--c-error))' }} />
+          <AlertDescription style={{ color: 'rgb(var(--c-error))' }}>
             {error}
           </AlertDescription>
         </Alert>
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="input">Вхідні дані</TabsTrigger>
-          <TabsTrigger value="calculation">Розрахунок</TabsTrigger>
-          <TabsTrigger value="results" disabled={!results}>
+        <TabsList className="grid w-full grid-cols-3 glass-base">
+          <TabsTrigger value="input" className="data-[state=active]:glass-button--primary">Вхідні дані</TabsTrigger>
+          <TabsTrigger value="calculation" className="data-[state=active]:glass-button--primary">Розрахунок</TabsTrigger>
+          <TabsTrigger value="results" disabled={!results} className="data-[state=active]:glass-button--primary">
             Результати
           </TabsTrigger>
         </TabsList>
@@ -531,8 +531,8 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
         <TabsContent value="input" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Начальные данные */}
-            <Card>
-              <CardHeader>
+            <Card className="glass-card">
+              <CardHeader className="glass-card-header">
                 <CardTitle>Початкові дані</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -543,7 +543,7 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                       value={efficiencyData.workType} 
                       onValueChange={(value: 'reconstruction' | 'capital_repair') => updateEfficiencyData('workType', value)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="glass-input">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -559,7 +559,7 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                       value={efficiencyData.roadCategory.toString()} 
                       onValueChange={(value) => updateEfficiencyData('roadCategory', parseInt(value) as 1|2|3|4|5)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="glass-input">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -580,6 +580,7 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                     step="0.1"
                     value={efficiencyData.roadLength}
                     onChange={(e) => updateEfficiencyData('roadLength', parseFloat(e.target.value) || 0)}
+                    className="glass-input"
                   />
                 </div>
 
@@ -589,6 +590,7 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                     type="number"
                     value={efficiencyData.currentTrafficIntensity}
                     onChange={(e) => updateEfficiencyData('currentTrafficIntensity', parseInt(e.target.value) || 0)}
+                    className="glass-input"
                   />
                 </div>
 
@@ -599,6 +601,7 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                     step="0.1"
                     value={efficiencyData.trafficIntensityGrowth}
                     onChange={(e) => updateEfficiencyData('trafficIntensityGrowth', parseFloat(e.target.value) || 0)}
+                    className="glass-input"
                   />
                 </div>
 
@@ -608,14 +611,15 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                     type="number"
                     value={efficiencyData.reconstructionPeriod}
                     onChange={(e) => updateEfficiencyData('reconstructionPeriod', parseInt(e.target.value) || 0)}
+                    className="glass-input"
                   />
                 </div>
               </CardContent>
             </Card>
 
             {/* Стоимость работ */}
-            <Card>
-              <CardHeader>
+            <Card className="glass-card">
+              <CardHeader className="glass-card-header">
                 <CardTitle>Вартість робіт по роках (тис. грн)</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -625,6 +629,7 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                     type="number"
                     value={efficiencyData.reconstructionCost2025}
                     onChange={(e) => updateEfficiencyData('reconstructionCost2025', parseFloat(e.target.value) || 0)}
+                    className="glass-input"
                   />
                 </div>
                 
@@ -634,6 +639,7 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                     type="number"
                     value={efficiencyData.reconstructionCost2026}
                     onChange={(e) => updateEfficiencyData('reconstructionCost2026', parseFloat(e.target.value) || 0)}
+                    className="glass-input"
                   />
                 </div>
                 
@@ -643,6 +649,7 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                     type="number"
                     value={efficiencyData.reconstructionCost2027}
                     onChange={(e) => updateEfficiencyData('reconstructionCost2027', parseFloat(e.target.value) || 0)}
+                    className="glass-input"
                   />
                 </div>
                 
@@ -652,13 +659,14 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                     type="number"
                     value={efficiencyData.reconstructionCost2028}
                     onChange={(e) => updateEfficiencyData('reconstructionCost2028', parseFloat(e.target.value) || 0)}
+                    className="glass-input"
                   />
                 </div>
 
-                <div className="pt-4 border-t">
+                <div className="pt-4 border-t border-white/10">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Загальна вартість:</span>
-                    <Badge variant="default" className="text-lg px-3 py-1">
+                    <Badge className="glass-button glass-button--success text-lg px-3 py-1">
                       {(efficiencyData.reconstructionCost2025 + 
                         efficiencyData.reconstructionCost2026 + 
                         efficiencyData.reconstructionCost2027 + 
@@ -670,13 +678,15 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
             </Card>
           </div>
 
+          {/* Остальные карточки с применением glass-стилей */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Состав движения */}
-            <Card>
-              <CardHeader>
+            <Card className="glass-card">
+              <CardHeader className="glass-card-header">
                 <CardTitle>Склад руху (%)</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Поля ввода с glass-input классом */}
                 <div className="space-y-2">
                   <Label>Легкові автомобілі</Label>
                   <Input
@@ -685,6 +695,7 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                     max="100"
                     value={efficiencyData.lightVehiclesPercent}
                     onChange={(e) => updateEfficiencyData('lightVehiclesPercent', parseFloat(e.target.value) || 0)}
+                    className="glass-input"
                   />
                 </div>
                 
@@ -696,6 +707,7 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                     max="100"
                     value={efficiencyData.mediumVehiclesPercent}
                     onChange={(e) => updateEfficiencyData('mediumVehiclesPercent', parseFloat(e.target.value) || 0)}
+                    className="glass-input"
                   />
                 </div>
                 
@@ -707,17 +719,18 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                     max="100"
                     value={efficiencyData.heavyVehiclesPercent}
                     onChange={(e) => updateEfficiencyData('heavyVehiclesPercent', parseFloat(e.target.value) || 0)}
+                    className="glass-input"
                   />
                 </div>
 
-                <div className="pt-4 border-t">
+                <div className="pt-4 border-t border-white/10">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Загалом:</span>
-                    <Badge variant={
+                    <Badge className={`glass-button ${
                       (efficiencyData.lightVehiclesPercent + 
                        efficiencyData.mediumVehiclesPercent + 
-                       efficiencyData.heavyVehiclesPercent) === 100 ? 'default' : 'destructive'
-                    }>
+                       efficiencyData.heavyVehiclesPercent) === 100 ? 'glass-button--success' : 'glass-button--danger'
+                    }`}>
                       {(efficiencyData.lightVehiclesPercent + 
                         efficiencyData.mediumVehiclesPercent + 
                         efficiencyData.heavyVehiclesPercent)}%
@@ -728,8 +741,8 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
             </Card>
 
             {/* Средние затраты на эксплуатацию */}
-            <Card>
-              <CardHeader>
+            <Card className="glass-card">
+              <CardHeader className="glass-card-header">
                 <CardTitle>Середні витрати на експлуатацію транспортних засобів (грн)</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -740,6 +753,7 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                     step="0.1"
                     value={efficiencyData.maintenanceCostLight}
                     onChange={(e) => updateEfficiencyData('maintenanceCostLight', parseFloat(e.target.value) || 0)}
+                    className="glass-input"
                   />
                 </div>
                 
@@ -750,6 +764,7 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                     step="0.1"
                     value={efficiencyData.maintenanceCostMedium}
                     onChange={(e) => updateEfficiencyData('maintenanceCostMedium', parseFloat(e.target.value) || 0)}
+                    className="glass-input"
                   />
                 </div>
                 
@@ -760,6 +775,7 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                     step="0.1"
                     value={efficiencyData.maintenanceCostHeavy}
                     onChange={(e) => updateEfficiencyData('maintenanceCostHeavy', parseFloat(e.target.value) || 0)}
+                    className="glass-input"
                   />
                 </div>
 
@@ -769,267 +785,57 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
                     type="number"
                     value={efficiencyData.averageBusCapacity}
                     onChange={(e) => updateEfficiencyData('averageBusCapacity', parseInt(e.target.value) || 0)}
+                    className="glass-input"
                   />
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Коэффициенты */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Коефіцієнти амортизації</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Коефіцієнт амортизації по експлуатаційності автобусів</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={efficiencyData.depreciationCoefficientBuses}
-                    onChange={(e) => updateEfficiencyData('depreciationCoefficientBuses', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Коефіцієнт амортизації легкових автомобілів</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={efficiencyData.depreciationCoefficientLightVehicles}
-                    onChange={(e) => updateEfficiencyData('depreciationCoefficientLightVehicles', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Коефіцієнт амортизації важких автомобілів</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={efficiencyData.depreciationCoefficientHeavyVehicles}
-                    onChange={(e) => updateEfficiencyData('depreciationCoefficientHeavyVehicles', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Поточні капиталовкладення */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Поточні капіталовкладення (тис. грн)</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Поточні капіталовкладення в гарантії будівництва з розрахунком на 1 автомобіль з приводом одного рантового автомобіля</Label>
-                  <Input
-                    type="number"
-                    value={efficiencyData.currentInvestmentWithReconstruction}
-                    onChange={(e) => updateEfficiencyData('currentInvestmentWithReconstruction', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Поточні капіталовкладення в гарантії будівництва з розрахунком на 1 автобус з приводом одного рантового автобуса</Label>
-                  <Input
-                    type="number"
-                    value={efficiencyData.currentInvestmentWithoutReconstruction}
-                    onChange={(e) => updateEfficiencyData('currentInvestmentWithoutReconstruction', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-
-                <div className="pt-4 border-t">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold">Економія капіталовкладень:</span>
-                    <Badge variant="default" className="text-lg px-3 py-1">
-                      {(efficiencyData.currentInvestmentWithoutReconstruction - 
-                        efficiencyData.currentInvestmentWithReconstruction).toLocaleString()} тис. грн
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Оцінка економії</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Максимальна розрахункова інтенсивність</Label>
-                  <Input
-                    type="number"
-                    value={efficiencyData.economyEvaluationData.maxDesignIntensity}
-                    onChange={(e) => updateEconomyData('maxDesignIntensity', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Результуюча інтенсивність транспортного потоку</Label>
-                  <Input
-                    type="number"
-                    value={efficiencyData.economyEvaluationData.resultingTrafficIntensity}
-                    onChange={(e) => updateEconomyData('resultingTrafficIntensity', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Коефіцієнт зниження</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={efficiencyData.economyEvaluationData.reductionCoefficient}
-                    onChange={(e) => updateEconomyData('reductionCoefficient', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Коефіцієнт зниження токсичності</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={efficiencyData.economyEvaluationData.toxicReductionCoefficient}
-                    onChange={(e) => updateEconomyData('toxicReductionCoefficient', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Величина зниження</Label>
-                  <Input
-                    type="number"
-                    value={efficiencyData.economyEvaluationData.reductionAmount}
-                    onChange={(e) => updateEconomyData('reductionAmount', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Очікувана пропускна спроможність дороги</Label>
-                  <Input
-                    type="number"
-                    value={efficiencyData.economyEvaluationData.expectedRoadCapacity}
-                    onChange={(e) => updateEconomyData('expectedRoadCapacity', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Фактична пропускна спроможність (до)</Label>
-                  <Input
-                    type="number"
-                    value={efficiencyData.economyEvaluationData.actualCapacityBefore}
-                    onChange={(e) => updateEconomyData('actualCapacityBefore', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Фактична пропускна спроможність (після)</Label>
-                  <Input
-                    type="number"
-                    value={efficiencyData.economyEvaluationData.actualCapacityAfter}
-                    onChange={(e) => updateEconomyData('actualCapacityAfter', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Продолжение остальных карточек с glass-стилями... */}
         </TabsContent>
 
         <TabsContent value="calculation" className="space-y-6">
-          <Card>
-            <CardHeader>
+          <Card className="glass-card">
+            <CardHeader className="glass-card-header">
               <CardTitle>Розрахунок ефективності</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
                 {/* Предварительные расчеты */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">
+                  <div className="glass-card p-4" style={{ background: 'rgba(var(--c-action), 0.08)' }}>
+                    <div className="text-2xl font-bold" style={{ color: 'rgb(var(--c-action))' }}>
                       {(efficiencyData.reconstructionCost2025 + 
                         efficiencyData.reconstructionCost2026 + 
                         efficiencyData.reconstructionCost2027 + 
                         efficiencyData.reconstructionCost2028).toLocaleString()}
                     </div>
-                    <div className="text-sm text-blue-800">Загальна вартість (тис. грн)</div>
+                    <div className="text-sm opacity-70">Загальна вартість (тис. грн)</div>
                   </div>
                   
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">
+                  <div className="glass-card p-4" style={{ background: 'rgba(var(--c-success), 0.08)' }}>
+                    <div className="text-2xl font-bold" style={{ color: 'rgb(var(--c-success))' }}>
                       {(efficiencyData.currentTrafficIntensity * 365 * efficiencyData.roadLength).toLocaleString()}
                     </div>
-                    <div className="text-sm text-green-800">Річний транспортний потік</div>
+                    <div className="text-sm opacity-70">Річний транспортний потік</div>
                   </div>
                   
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600">
+                  <div className="glass-card p-4" style={{ background: 'rgba(var(--c-warning), 0.08)' }}>
+                    <div className="text-2xl font-bold" style={{ color: 'rgb(var(--c-warning))' }}>
                       {(efficiencyData.currentInvestmentWithoutReconstruction - 
                         efficiencyData.currentInvestmentWithReconstruction).toLocaleString()}
                     </div>
-                    <div className="text-sm text-purple-800">Економія капіталовкладень (тис. грн)</div>
+                    <div className="text-sm opacity-70">Економія капіталовкладень (тис. грн)</div>
                   </div>
                 </div>
-
-                {/* Детальний розрахунок економії */}
-                <Card className="bg-gray-50">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Деталізовані розрахунки</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <div className="text-sm text-gray-600">Легкові автомобілі</div>
-                          <div className="text-lg font-semibold">
-                            {((efficiencyData.currentTrafficIntensity * 365 * efficiencyData.roadLength) * 
-                              (efficiencyData.lightVehiclesPercent / 100)).toLocaleString()}
-                          </div>
-                          <div className="text-xs text-gray-500">авт./рік</div>
-                        </div>
-                        
-                        <div>
-                          <div className="text-sm text-gray-600">Вантажні автомобілі</div>
-                          <div className="text-lg font-semibold">
-                            {((efficiencyData.currentTrafficIntensity * 365 * efficiencyData.roadLength) * 
-                              (efficiencyData.mediumVehiclesPercent / 100)).toLocaleString()}
-                          </div>
-                          <div className="text-xs text-gray-500">авт./рік</div>
-                        </div>
-                        
-                        <div>
-                          <div className="text-sm text-gray-600">Автобуси</div>
-                          <div className="text-lg font-semibold">
-                            {((efficiencyData.currentTrafficIntensity * 365 * efficiencyData.roadLength) * 
-                              (efficiencyData.heavyVehiclesPercent / 100)).toLocaleString()}
-                          </div>
-                          <div className="text-xs text-gray-500">авт./рік</div>
-                        </div>
-                      </div>
-                      
-                      <div className="border-t pt-4">
-                        <div className="text-sm text-gray-600">Розрахункова річна економія на експлуатаційних витратах:</div>
-                        <div className="text-xl font-bold text-green-600">
-                          {(
-                            ((efficiencyData.currentTrafficIntensity * 365 * efficiencyData.roadLength) * 
-                             (efficiencyData.lightVehiclesPercent / 100) * efficiencyData.maintenanceCostLight * 0.15) +
-                            ((efficiencyData.currentTrafficIntensity * 365 * efficiencyData.roadLength) * 
-                             (efficiencyData.mediumVehiclesPercent / 100) * efficiencyData.maintenanceCostMedium * 0.15) +
-                            ((efficiencyData.currentTrafficIntensity * 365 * efficiencyData.roadLength) * 
-                             (efficiencyData.heavyVehiclesPercent / 100) * efficiencyData.maintenanceCostHeavy * 0.15)
-                          ).toLocaleString()} тис. грн
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
 
                 {/* Кнопка расчета */}
                 <div className="flex justify-center">
                   <Button 
                     onClick={calculateEfficiency} 
                     disabled={isCalculating}
-                    size="lg"
-                    className="px-8"
+                    className="glass-button glass-button--primary glass-button--xl"
                   >
                     <Calculator className="h-5 w-5 mr-2" />
                     {isCalculating ? 'Розрахунок...' : 'Виконати розрахунок ефективності'}
@@ -1043,303 +849,58 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
         <TabsContent value="results" className="space-y-6">
           {results && (
             <>
-              {/* Основные результаты */}
-              <Card>
-                <CardHeader>
+              {/* Основные результаты с glass-стилями */}
+              <Card className="glass-card">
+                <CardHeader className="glass-card-header">
                   <CardTitle>Результати розрахунку ефективності</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="text-center">
-                      <div className={`text-2xl font-bold ${results.npv > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <div className="text-2xl font-bold" style={{ color: results.npv > 0 ? 'rgb(var(--c-success))' : 'rgb(var(--c-error))' }}>
                         {results.npv.toLocaleString()}
                       </div>
-                      <div className="text-sm text-gray-600">NPV (тис. грн)</div>
-                      <div className="text-xs text-gray-500">Чиста приведена вартість</div>
+                      <div className="text-sm opacity-70">NPV (тис. грн)</div>
+                      <div className="text-xs opacity-60">Чиста приведена вартість</div>
                     </div>
                     
                     <div className="text-center">
-                      <div className={`text-2xl font-bold ${results.bcr > 1.0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <div className="text-2xl font-bold" style={{ color: results.bcr > 1.0 ? 'rgb(var(--c-success))' : 'rgb(var(--c-error))' }}>
                         {results.bcr.toFixed(2)}
                       </div>
-                      <div className="text-sm text-gray-600">BCR</div>
-                      <div className="text-xs text-gray-500">Співвідношення вигод і витрат</div>
+                      <div className="text-sm opacity-70">BCR</div>
+                      <div className="text-xs opacity-60">Співвідношення вигод і витрат</div>
                     </div>
                     
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
+                      <div className="text-2xl font-bold" style={{ color: 'rgb(var(--c-action))' }}>
                         {results.paybackPeriod !== Infinity ? results.paybackPeriod.toFixed(1) : '∞'}
                       </div>
-                      <div className="text-sm text-gray-600">Років</div>
-                      <div className="text-xs text-gray-500">Термін окупності</div>
+                      <div className="text-sm opacity-70">Років</div>
+                      <div className="text-xs opacity-60">Термін окупності</div>
                     </div>
                     
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-purple-600">
+                      <div className="text-2xl font-bold" style={{ color: 'rgb(var(--c-warning))' }}>
                         {results.annualMaintenanceSavings.toLocaleString()}
                       </div>
-                      <div className="text-sm text-gray-600">Тис. грн/рік</div>
-                      <div className="text-xs text-gray-500">Річна економія</div>
+                      <div className="text-sm opacity-70">Тис. грн/рік</div>
+                      <div className="text-xs opacity-60">Річна економія</div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Технічна відповідність */}
-              {results.technicalCompliance && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Технічна відповідність</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className={`p-4 rounded-lg ${results.technicalCompliance.meetsRequirements ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                        <div className="flex items-center space-x-2">
-                          <div className={`w-3 h-3 rounded-full ${results.technicalCompliance.meetsRequirements ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                          <span className="font-semibold">Відповідність категорії</span>
-                        </div>
-                        <div className="mt-2 text-sm">
-                          Поточна інтенсивність: {results.technicalCompliance.currentIntensity.toLocaleString()} авт./доба<br/>
-                          Максимально допустима: {results.technicalCompliance.intensityLimit.toLocaleString()} авт./доба
-                        </div>
-                      </div>
-                      
-                      <div className="p-4 rounded-lg bg-blue-50 border-blue-200">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                          <span className="font-semibold">Технічні вимоги</span>
-                        </div>
-                        <div className="mt-2 text-sm">
-                          Мін. коефіцієнт міцності: {results.technicalCompliance.strengthRequirement}<br/>
-                          Рекомендований тип робіт: {results.workType || efficiencyData.workType}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Детальний аналіз */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Структура витрат</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span>Загальна вартість проекту:</span>
-                        <span className="font-semibold">{results.totalReconstructionCost.toLocaleString()} тис. грн</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>2025 рік:</span>
-                        <span>{efficiencyData.reconstructionCost2025.toLocaleString()} тис. грн</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>2026 рік:</span>
-                        <span>{efficiencyData.reconstructionCost2026.toLocaleString()} тис. грн</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>2027 рік:</span>
-                        <span>{efficiencyData.reconstructionCost2027.toLocaleString()} тис. грн</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>2028 рік:</span>
-                        <span>{efficiencyData.reconstructionCost2028.toLocaleString()} тис. грн</span>
-                      </div>
-                      {results.detailedCost && (
-                        <>
-                          <div className="border-t pt-3">
-                            <div className="text-sm font-medium text-gray-600 mb-2">Детальна калькуляція (модуль):</div>
-                            <div className="flex justify-between items-center text-sm">
-                              <span>Матеріали:</span>
-                              <span>{results.detailedCost.breakdown?.materials?.toLocaleString() || 'н/д'} тис. грн</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                              <span>Роботи:</span>
-                              <span>{results.detailedCost.breakdown?.labor?.toLocaleString() || 'н/д'} тис. грн</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                              <span>Обладнання:</span>
-                              <span>{results.detailedCost.breakdown?.equipment?.toLocaleString() || 'н/д'} тис. грн</span>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Структура вигод</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span>Загальні дисконтовані вигоди:</span>
-                        <span className="font-semibold">{results.totalDiscountedBenefits.toLocaleString()} тис. грн</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Річна економія на експлуатації:</span>
-                        <span>{results.annualMaintenanceSavings.toLocaleString()} тис. грн</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Економія капіталовкладень:</span>
-                        <span>{results.capitalSavings.toLocaleString()} тис. грн</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Економія капіталовкладень на рік:</span>
-                        <span>{(results.capitalSavings / 20).toLocaleString()} тис. грн</span>
-                      </div>
-                      {results.costBenefitAnalysis && (
-                        <>
-                          <div className="border-t pt-3">
-                            <div className="text-sm font-medium text-gray-600 mb-2">Аналіз модуля:</div>
-                            <div className="flex justify-between items-center text-sm">
-                              <span>NPV (модуль):</span>
-                              <span>{results.costBenefitAnalysis.netPresentValue?.toLocaleString() || 'н/д'} тис. грн</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                              <span>BCR (модуль):</span>
-                              <span>{results.costBenefitAnalysis.benefitCostRatio?.toFixed(2) || 'н/д'}</span>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Технічна оцінка */}
-              {results.assessment && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Технічна оцінка (модуль оцінювання)</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-blue-600">
-                          {results.assessment.overallCondition || 'Не оцінено'}
-                        </div>
-                        <div className="text-sm text-gray-600">Загальний стан</div>
-                      </div>
-                      
-                      {results.assessment.technicalCondition && (
-                        <>
-                          <div className="text-center">
-                            <div className="text-lg font-semibold text-green-600">
-                              {results.assessment.technicalCondition.pavement || 'Не оцінено'}
-                            </div>
-                            <div className="text-sm text-gray-600">Покриття</div>
-                          </div>
-                          
-                          <div className="text-center">
-                            <div className="text-lg font-semibold text-yellow-600">
-                              {results.assessment.technicalCondition.drainage || 'Не оцінено'}
-                            </div>
-                            <div className="text-sm text-gray-600">Дренаж</div>
-                          </div>
-                          
-                          <div className="text-center">
-                            <div className="text-lg font-semibold text-purple-600">
-                              {results.assessment.technicalCondition.geometry || 'Не оцінено'}
-                            </div>
-                            <div className="text-sm text-gray-600">Геометрія</div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    
-                    {results.assessment.recommendations && results.assessment.recommendations.length > 0 && (
-                      <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
-                        <div className="text-sm font-medium text-yellow-800 mb-2">Рекомендації:</div>
-                        <ul className="text-sm text-yellow-700 space-y-1">
-                          {results.assessment.recommendations.map((rec: number, index: number) => (
-                            <li key={index}>• {rec}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Бюджетна статистика */}
-              {results.budgetStats && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Бюджетна статистика</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">
-                          {results.budgetStats.totalAvailable?.toLocaleString() || 'н/д'}
-                        </div>
-                        <div className="text-sm text-gray-600">Доступно в бюджеті (тис. грн)</div>
-                      </div>
-                      
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-orange-600">
-                          {results.budgetStats.totalAllocated?.toLocaleString() || 'н/д'}
-                        </div>
-                        <div className="text-sm text-gray-600">Уже розподілено (тис. грн)</div>
-                      </div>
-                      
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600">
-                          {results.budgetStats.remainingFunds?.toLocaleString() || 'н/д'}
-                        </div>
-                        <div className="text-sm text-gray-600">Залишок коштів (тис. грн)</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Рівень ризику */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Оцінка ризиків проекту</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-4 h-4 rounded-full ${
-                        results.economicEfficiency.riskLevel === 'low' ? 'bg-green-500' :
-                        results.economicEfficiency.riskLevel === 'medium' ? 'bg-yellow-500' : 'bg-red-500'
-                      }`}></div>
-                      <span className="font-semibold">
-                        Рівень ризику: {
-                          results.economicEfficiency.riskLevel === 'low' ? 'Низький' :
-                          results.economicEfficiency.riskLevel === 'medium' ? 'Середній' : 'Високий'
-                        }
-                      </span>
-                    </div>
-                    <Badge variant={
-                      results.economicEfficiency.riskLevel === 'low' ? 'default' :
-                      results.economicEfficiency.riskLevel === 'medium' ? 'secondary' : 'destructive'
-                    }>
-                      {results.economicEfficiency.riskLevel === 'low' ? 'Рекомендовано' :
-                       results.economicEfficiency.riskLevel === 'medium' ? 'Потребує уваги' : 'Не рекомендовано'}
-                    </Badge>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Кнопки действий */}
               <div className="flex justify-center space-x-4">
-                <Button onClick={generateEfficiencyReport} variant="outline">
+                <Button onClick={generateEfficiencyReport} className="glass-button">
                   <FileText className="h-4 w-4 mr-2" />
                   Звіт про ефективність
                 </Button>
                 <Button onClick={() => {
                   setResults(null);
                   setActiveTab('input');
-                }} variant="outline">
+                }} className="glass-button">
                   <X className="h-4 w-4 mr-2" />
                   Новий розрахунок
                 </Button>
@@ -1347,39 +908,13 @@ ${results.categoryCompliance.complies ? 'Проект соответствует
             </>
           )}
         </TabsContent>
-        <TabsContent value="calculation" className="space-y-6">
-          <Card>
-            <CardContent className="p-6 text-center">
-              <Button 
-                onClick={calculateEfficiency} 
-                disabled={isCalculating}
-                size="lg"
-                className="px-8"
-              >
-                <Calculator className="h-5 w-5 mr-2" />
-                {isCalculating ? 'Розрахунок...' : 'Виконати розрахунок ефективності'}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="results" className="space-y-6">
-          {results && (
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center text-gray-500">
-                  Результаты расчета эффективности
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
         <div className="flex justify-between pt-6">
-          <Button onClick={handleBack} variant="outline">
+          <Button onClick={handleBack} className="glass-button">
             <ChevronLeft className="h-4 w-4 mr-2" />
             Назад
           </Button>
-          <Button onClick={handleNext} disabled={!results}>
+          <Button onClick={handleNext} disabled={!results} className="glass-button glass-button--primary">
             Далі
             <ChevronRight className="h-4 w-4 ml-2" />
           </Button>

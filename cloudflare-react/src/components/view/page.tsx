@@ -1,39 +1,14 @@
-
-import React, { useState, useCallback, useEffect, type Dispatch, type SetStateAction } from 'react';
+import React, { useState, type Dispatch, type SetStateAction } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calculator, X, FileText, Download, AlertTriangle, Plus, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
-import {
-  getBlockOneBudgetData,
-  getBudgetAllocation,
-  checkCategoryComplianceByIntensity,
-  getBudgetStatistics,
-  type RoadSection,
-  type BlockOneBudgetData,
-  type BudgetAllocation,
-  type ExpertAssessment
-} from '@/modules/block_three';
-
-import {
-  executeComprehensiveAssessment,
-  determineWorkTypeByExpertMethod,
-  calculateDetailedWorkCost,
-  performDetailedCostBenefitAnalysis,
-  createTestRoadSection,
-  createTestExpertAssessment,
-  MAX_DESIGN_INTENSITY_BY_CATEGORY,
-  MIN_STRENGTH_COEFFICIENT_BY_CATEGORY,
-  type ComprehensiveRoadAssessment
-} from '@/modules/block_three_alghoritm';
+import { AlertTriangle, Calculator, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 import { type RoadSectionUI } from './block_three_page';
+import { Alert, AlertDescription } from '../ui/alert';
+
 interface RoadEfficiencyInterfaceProps {
   sections: RoadSectionUI[];
   onSectionsChange: Dispatch<SetStateAction<RoadSectionUI[]>>;
@@ -41,885 +16,1165 @@ interface RoadEfficiencyInterfaceProps {
   onBack: () => void;
 }
 
-
 // Типы данных для полной таблицы эффективности
-interface EfficiencyCalculationData {
-  // Начальные данные
-  workType: 'reconstruction' | 'capital_repair';
-  roadCategory: 1 | 2 | 3 | 4 | 5;
-  
-  // Стоимость работ по годам (строки 2-4)
-  reconstructionCost2025: number;
-  reconstructionCost2026: number;
-  reconstructionCost2027: number;
-  reconstructionCost2028: number;
-  
-  // Срок реконструкции/капитального ремонта (строка 4)
+interface TableEfficiencyData {
+  startYear: number;
+  roadCategory: number;
+  totalCost: number;
+  cost2025: number;
+  cost2026: number;
+  cost2027: number;
+  cost2028: number;
   reconstructionPeriod: number;
-  
-  // Прирост интенсивности дорожного движения (строки 5-6)
-  trafficIntensityGrowth: number;
-  currentTrafficIntensity: number;
-  
-  // Длина дороги (строка 7)
+  trafficGrowthRate: number;
+  trafficIntensity: number;
   roadLength: number;
-  
-  // Состав движения (строка 8)
   lightVehiclesPercent: number;
-  mediumVehiclesPercent: number;
-  heavyVehiclesPercent: number;
+  trucksPercent: number;
+  busesPercent: number;
+  lightCostAfter: number;
+  truckCostAfter: number;
+  busCostAfter: number;
+  lightCostBefore: number;
+  truckCostBefore: number;
+  busCostBefore: number;
+  truckCapital: number;
+  busCapital: number;
+  busCapacity: number;
+  busLoadFactor: number;
+  truckCapacity: number;
+  carCapacity: number;
+  truckLoadFactor: number;
+  timeSavings: number;
+  coefficientBefore: number;
+  coefficientAfter: number;
+  slopeCoefficient: number;
+  toxicCoefficient: number;
+  accidentsBefore: number;
+  accidentsAfter: number;
+  calculationPeriod: number;
+  toxicDamage: number;
+  deathLoss: number;
+  emissions: number;
+  maintenanceBefore: number;
+  maintenanceAfter: number;
+}
+
+interface EconomicIndicators {
+  totalInvestmentCost: number;
+  annualSavings: number;
+  npv: number;
+  bcr: number;
+  paybackPeriod: number;
+  totalDiscountedBenefits: number;
+}
+
+interface SocialEffects {
+  timeSavingsValue: number;
+  accidentSavings: number;
+  environmentalSavings: number;
+  maintenanceSavings: number;
+  totalSocialBenefits: number;
+}
+
+interface TotalEfficiency {
+  totalNPV: number;
+  totalBCR: number;
+  efficiencyPerKm: number;
+  isEconomicallyViable: boolean;
+  riskLevel: 'low' | 'medium' | 'high';
+}
+
+interface EfficiencyResults {
+  economicIndicators: EconomicIndicators;
+  socialEffects: SocialEffects;
+  totalEfficiency: TotalEfficiency;
+  recommendation: string;
+}
+
+function calculateNPV(initialCost: number, annualBenefits: number, years: number, discountRate: number = 0.05): number {
+  let npv = -initialCost;
   
-  // Средние затраты на эксплуатацию (строки 11-12)
-  maintenanceCostLight: number;
-  maintenanceCostMedium: number;
-  maintenanceCostHeavy: number;
+  for (let year = 1; year <= years; year++) {
+    const discountFactor = Math.pow(1 + discountRate, -year);
+    npv += annualBenefits * discountFactor;
+  }
   
-  // Поточные капиталовложения (строки 13-14)
-  currentInvestmentWithReconstruction: number;
-  currentInvestmentWithoutReconstruction: number;
+  return npv;
+}
+
+function calculateDiscountedBenefits(annualBenefits: number, years: number, discountRate: number = 0.05): number {
+  let totalBenefits = 0;
   
-  // Средняя газонаполняемость автобуса (строка 15)
-  averageBusCapacity: number;
+  for (let year = 1; year <= years; year++) {
+    const discountFactor = Math.pow(1 + discountRate, -year);
+    totalBenefits += annualBenefits * discountFactor;
+  }
   
-  // Коэффициенты (строки 16-18)
-  depreciationCoefficientBuses: number;
-  depreciationCoefficientLightVehicles: number;
-  depreciationCoefficientHeavyVehicles: number;
+  return totalBenefits;
+}
+
+function calculateEmissionReduction(data: TableEfficiencyData, annualVehicleKm: number): number {
+  const baseEmissions = annualVehicleKm * data.emissions;
+  const improvementFactor = (data.coefficientBefore - data.coefficientAfter) / data.coefficientBefore * 0.15;
+  const technologyReduction = baseEmissions * data.toxicCoefficient;
+  const totalReduction = baseEmissions * improvementFactor + technologyReduction;
   
-  // Оценка экономии (строки 19-31)
-  economyEvaluationData: {
-    maxDesignIntensity: number;
-    resultingTrafficIntensity: number;
-    reductionCoefficient: number;
-    toxicReductionCoefficient: number;
-    reductionAmount: number;
-    expectedRoadCapacity: number;
-    actualCapacityBefore: number;
-    actualCapacityAfter: number;
+  return totalReduction;
+}
+
+function calculatePassengerTimeSavings(data: TableEfficiencyData, annualVehicleKm: number): number {
+  const speedImprovement = (data.coefficientBefore - data.coefficientAfter) / data.coefficientBefore;
+  
+  const lightPassengerKm = annualVehicleKm * (data.lightVehiclesPercent / 100) * data.carCapacity;
+  const truckPassengerKm = annualVehicleKm * (data.trucksPercent / 100) * data.truckCapacity * data.truckLoadFactor;
+  const busPassengerKm = annualVehicleKm * (data.busesPercent / 100) * data.busCapacity * data.busLoadFactor;
+  
+  const totalPassengerKm = lightPassengerKm + truckPassengerKm + busPassengerKm;
+  const timeReductionHours = (totalPassengerKm / 60) * speedImprovement;
+  
+  return timeReductionHours;
+}
+
+function calculateSocialEffects(data: TableEfficiencyData): SocialEffects {
+  const annualVehicleKm = data.trafficIntensity * 365 * data.roadLength;
+  
+  const passengerHoursSaved = calculatePassengerTimeSavings(data, annualVehicleKm);
+  const timeSavingsValue = passengerHoursSaved * data.timeSavings;
+  
+  const accidentReduction = (data.accidentsBefore - data.accidentsAfter) * data.roadLength;
+  const accidentSavings = accidentReduction * data.deathLoss * 1000;
+  
+  const emissionReduction = calculateEmissionReduction(data, annualVehicleKm);
+  const environmentalSavings = emissionReduction * data.toxicDamage;
+  
+  const maintenanceSavings = (data.maintenanceBefore - data.maintenanceAfter) * 1000000;
+  
+  return {
+    timeSavingsValue,
+    accidentSavings,
+    environmentalSavings,
+    maintenanceSavings,
+    totalSocialBenefits: timeSavingsValue + accidentSavings + environmentalSavings + maintenanceSavings
+  };
+}
+
+function calculateEconomicIndicators(data: TableEfficiencyData): EconomicIndicators {
+  const totalInvestmentCost = data.cost2025 + data.cost2026 + data.cost2027 + data.cost2028;
+  
+  const annualVehicleKm = data.trafficIntensity * 365 * data.roadLength;
+  
+  const lightVehicleKm = annualVehicleKm * (data.lightVehiclesPercent / 100);
+  const truckVehicleKm = annualVehicleKm * (data.trucksPercent / 100);
+  const busVehicleKm = annualVehicleKm * (data.busesPercent / 100);
+  
+  const annualSavings = 
+    lightVehicleKm * (data.lightCostBefore - data.lightCostAfter) +
+    truckVehicleKm * (data.truckCostBefore - data.truckCostAfter) +
+    busVehicleKm * (data.busCostBefore - data.busCostAfter);
+  
+  const npv = calculateNPV(totalInvestmentCost, annualSavings, data.calculationPeriod);
+  const totalDiscountedBenefits = calculateDiscountedBenefits(annualSavings, data.calculationPeriod);
+  const bcr = totalDiscountedBenefits / totalInvestmentCost;
+  const paybackPeriod = totalInvestmentCost / annualSavings;
+  
+  return {
+    totalInvestmentCost,
+    annualSavings,
+    npv,
+    bcr,
+    paybackPeriod,
+    totalDiscountedBenefits
+  };
+}
+
+function calculateTotalEfficiency(
+  economic: EconomicIndicators, 
+  social: SocialEffects, 
+  data: TableEfficiencyData
+): TotalEfficiency {
+  const trafficGrowthFactor = Math.pow(1 + data.trafficGrowthRate / 100, data.calculationPeriod);
+  const adjustedBenefits = (economic.annualSavings + social.totalSocialBenefits) * trafficGrowthFactor;
+  
+  const totalNPV = calculateNPV(economic.totalInvestmentCost, adjustedBenefits, data.calculationPeriod);
+  const totalBCR = (economic.totalDiscountedBenefits + social.totalSocialBenefits * data.calculationPeriod) / economic.totalInvestmentCost;
+  const efficiencyPerKm = totalNPV / data.roadLength;
+  
+  return {
+    totalNPV,
+    totalBCR,
+    efficiencyPerKm,
+    isEconomicallyViable: totalNPV > 0 && totalBCR > 1.0,
+    riskLevel: totalNPV < 0 ? 'high' : totalBCR < 1.2 ? 'medium' : 'low'
+  };
+}
+
+function generateRecommendation(efficiency: TotalEfficiency): string {
+  if (efficiency.isEconomicallyViable) {
+    if (efficiency.totalBCR > 2.0) {
+      return 'Проект высокоэффективен и рекомендуется к первоочередной реализации';
+    } else if (efficiency.totalBCR > 1.5) {
+      return 'Проект экономически целесообразен и рекомендуется к реализации';
+    } else {
+      return 'Проект умеренно эффективен, рекомендуется при наличии бюджета';
+    }
+  } else {
+    return 'Проект требует дополнительного обоснования или пересмотра параметров';
+  }
+}
+
+function calculateRoadEfficiency(data: TableEfficiencyData): EfficiencyResults {
+  const economicIndicators = calculateEconomicIndicators(data);
+  const socialEffects = calculateSocialEffects(data);
+  const totalEfficiency = calculateTotalEfficiency(economicIndicators, socialEffects, data);
+  
+  return {
+    economicIndicators,
+    socialEffects,
+    totalEfficiency,
+    recommendation: generateRecommendation(totalEfficiency)
   };
 }
 
 const RoadEfficiencyInterface: React.FC<RoadEfficiencyInterfaceProps> = ({
-  sections,
-  onSectionsChange,
   onNext,
-  onBack
 }) => {
   const [activeTab, setActiveTab] = useState('input');
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<EfficiencyResults | null>(null);
   
-  // Интеграция с существующими модулями
-  const [budgetData, setBudgetData] = useState<BlockOneBudgetData | null>(null);
-  const [_budgetAllocation, setBudgetAllocationState] = useState<BudgetAllocation | null>(null);
-
-  // Загрузка данных при монтировании
-  useEffect(() => {
-    const existingBudgetData = getBlockOneBudgetData();
-    if (existingBudgetData) {
-      setBudgetData(existingBudgetData);
-    }
-    
-    const existingBudgetAllocation = getBudgetAllocation();
-    if (existingBudgetAllocation) {
-      setBudgetAllocationState(existingBudgetAllocation);
-    }
-  }, []);
-  
-  const [efficiencyData, setEfficiencyData] = useState<EfficiencyCalculationData>({
-    workType: 'reconstruction',
-    roadCategory: 3,
-    reconstructionCost2025: 0,
-    reconstructionCost2026: 0,
-    reconstructionCost2027: 0,
-    reconstructionCost2028: 0,
-    reconstructionPeriod: 4,
-    trafficIntensityGrowth: 3,
-    currentTrafficIntensity: 10000,
-    roadLength: 10,
-    lightVehiclesPercent: 70,
-    mediumVehiclesPercent: 20,
-    heavyVehiclesPercent: 10,
-    maintenanceCostLight: 2.5,
-    maintenanceCostMedium: 4.8,
-    maintenanceCostHeavy: 8.2,
-    currentInvestmentWithReconstruction: 15000,
-    currentInvestmentWithoutReconstruction: 25000,
-    averageBusCapacity: 35,
-    depreciationCoefficientBuses: 0.15,
-    depreciationCoefficientLightVehicles: 0.12,
-    depreciationCoefficientHeavyVehicles: 0.18,
-    economyEvaluationData: {
-      maxDesignIntensity: 12000,
-      resultingTrafficIntensity: 15000,
-      reductionCoefficient: 1.0,
-      toxicReductionCoefficient: 0.17,
-      reductionAmount: 2000,
-      expectedRoadCapacity: 18000,
-      actualCapacityBefore: 10000,
-      actualCapacityAfter: 15000
-    }
+  const [tableValues, setTableValues] = useState({
+    startYear: '',
+    roadCategory: '',
+    totalCost: '',
+    cost2025: '',
+    cost2026: '',
+    cost2027: '',
+    cost2028: '',
+    duration: '',
+    trafficGrowth: '',
+    trafficIntensity: '',
+    roadLength: '',
+    lightCars: '',
+    trucks: '',
+    buses: '',
+    lightCostAfter: '',
+    truckCostAfter: '',
+    busCostAfter: '',
+    lightCostBefore: '',
+    truckCostBefore: '',
+    busCostBefore: '',
+    truckCapital: '',
+    busCapital: '',
+    busCapacity: '',
+    busLoadFactor: '',
+    truckCapacity: '',
+    carCapacity: '',
+    truckLoadFactor: '',
+    timeSavings: '',
+    coefficientBefore: '',
+    coefficientAfter: '',
+    slopeCoefficient: '',
+    toxicCoefficient: '',
+    accidentsBefore: '',
+    accidentsAfter: '',
+    calculationPeriod: '',
+    toxicDamage: '',
+    deathLoss: '',
+    emissions: '',
+    maintenanceBefore: '',
+    maintenanceAfter: ''
   });
 
-  // Обновление данных эффективности
-  const updateEfficiencyData = useCallback((field: keyof EfficiencyCalculationData, value: any) => {
-    setEfficiencyData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  }, []);
-
-  // Обновление данных экономии
-  const updateEconomyData = useCallback((field: keyof EfficiencyCalculationData['economyEvaluationData'], value: number) => {
-    setEfficiencyData(prev => ({
-      ...prev,
-      economyEvaluationData: {
-        ...prev.economyEvaluationData,
-        [field]: value
-      }
-    }));
-  }, []);
-
-  // Функция для обработки кнопки "Далее"
-  const handleNext = useCallback(() => {
-    // Сохраняем данные эффективности в sections если необходимо
-    const updatedSections = sections.map(section => ({
-      ...section,
-      efficiencyData: efficiencyData,
-      efficiencyResults: results
-    }));
-    
-    onSectionsChange(updatedSections);
-    onNext();
-  }, [sections, onSectionsChange, onNext, efficiencyData, results]);
-
-  // Функция для обработки кнопки "Назад"
-  const handleBack = useCallback(() => {
-    onBack();
-  }, [onBack]);
-
-  // Расчет эффективности с использованием реальных модулей
-  const calculateEfficiency = useCallback(async () => {
+  const calculateEfficiency = () => {
     setIsCalculating(true);
     setError(null);
     
     try {
-      // Создаем секцию дороги на основе данных эффективности
-      const roadSection: RoadSection = createTestRoadSection(
-        'efficiency_calc',
-        `Расчет эффективности - категория ${efficiencyData.roadCategory}`,
-        efficiencyData.roadCategory,
-        efficiencyData.roadLength,
-        efficiencyData.currentTrafficIntensity,
-        'state',
-        'Расчетная'
-      );
-
-      // Проверяем соответствие категории по интенсивности
-      const categoryCompliance = checkCategoryComplianceByIntensity(roadSection);
-
-      // Выполняем комплексную оценку
-      const assessment: ComprehensiveRoadAssessment = executeComprehensiveAssessment(roadSection, true);
+      // Проверяем основные поля
+      const requiredFields = ['Без заповнених полів немає сенсу виконувати розрахунок'];
+      const missingFields = requiredFields.filter(field => !tableValues[field as keyof typeof tableValues]);
       
-      // Определяем тип работ экспертным методом
-      const expertAssessment: ExpertAssessment = createTestExpertAssessment(
-        75, // коэффициент прочности (operationalStateIndex)
-        efficiencyData.currentTrafficIntensity, // интенсивность движения
-        'Требуется плановое обслуживание'
-      );
-      
-      const workType = determineWorkTypeByExpertMethod(expertAssessment);
-      
-      // Расчет детальной стоимости с использованием реального модуля
-      const detailedCost = calculateDetailedWorkCost(
-        roadSection, 
-        efficiencyData.workType
-      );
-
-      // Анализ затрат и выгод
-      const costBenefitAnalysis = performDetailedCostBenefitAnalysis(
-        roadSection,
-        detailedCost
-      );
-
-      // Получаем статистику бюджета если доступны данные
-      let budgetStats = null;
-      if (budgetData) {
-        budgetStats = getBudgetStatistics();
+      if (missingFields.length > 0) {
+        setError(`Заповніть обов'язкові поля: ${missingFields.join(', ')}`);
+        setIsCalculating(false);
+        return;
       }
-
-      // Расчет показателей эффективности
-      const totalReconstructionCost = 
-        efficiencyData.reconstructionCost2025 +
-        efficiencyData.reconstructionCost2026 +
-        efficiencyData.reconstructionCost2027 +
-        efficiencyData.reconstructionCost2028;
-
-      // Расчет экономии от снижения эксплуатационных затрат
-      const annualTrafficVolume = efficiencyData.currentTrafficIntensity * 365 * efficiencyData.roadLength;
-      const lightVehicleVolume = annualTrafficVolume * (efficiencyData.lightVehiclesPercent / 100);
-      const mediumVehicleVolume = annualTrafficVolume * (efficiencyData.mediumVehiclesPercent / 100);
-      const heavyVehicleVolume = annualTrafficVolume * (efficiencyData.heavyVehiclesPercent / 100);
-
-      // Используем базовые расходы из модуля
-      const maintenanceReduction = 0.15; // 15% экономия после реконструкции
-      const annualMaintenanceSavings = 
-        lightVehicleVolume * efficiencyData.maintenanceCostLight * maintenanceReduction +
-        mediumVehicleVolume * efficiencyData.maintenanceCostMedium * maintenanceReduction +
-        heavyVehicleVolume * efficiencyData.maintenanceCostHeavy * maintenanceReduction;
-
-      // Расчет экономии от снижения капиталовложений
-      const capitalSavings = 
-        efficiencyData.currentInvestmentWithoutReconstruction - 
-        efficiencyData.currentInvestmentWithReconstruction;
-
-      // Расчет приведенных затрат и выгод с учетом результатов модуля
-      const discountRate = 0.05;
-      const analysisYears = 20;
-      let totalDiscountedBenefits = 0;
-      let totalDiscountedCosts = totalReconstructionCost;
-
-      for (let year = 1; year <= analysisYears; year++) {
-        const discountFactor = Math.pow(1 + discountRate, -year);
-        
-        // Учитываем рост интенсивности движения
-        const trafficGrowthFactor = Math.pow(1 + efficiencyData.trafficIntensityGrowth / 100, year);
-        const adjustedSavings = (annualMaintenanceSavings * trafficGrowthFactor) + (capitalSavings / analysisYears);
-        
-        totalDiscountedBenefits += adjustedSavings * discountFactor;
-      }
-
-      const npv = totalDiscountedBenefits - totalDiscountedCosts;
-      const bcr = totalDiscountedCosts > 0 ? totalDiscountedBenefits / totalDiscountedCosts : 0;
-
-      // Расчет срока окупаемости
-      const annualNetBenefit = annualMaintenanceSavings + (capitalSavings / analysisYears);
-      const paybackPeriod = annualNetBenefit > 0 ? totalDiscountedCosts / annualNetBenefit : Infinity;
-
-      // Проверка соответствия минимальным требованиям по категории
-      const minStrengthRequired = MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[efficiencyData.roadCategory] || 0.6;
-      const maxIntensityAllowed = MAX_DESIGN_INTENSITY_BY_CATEGORY[efficiencyData.roadCategory] || 10000;
-
-      const calculationResults = {
-        assessment,
-        costBenefitAnalysis,
-        categoryCompliance,
-        workType,
-        detailedCost,
-        budgetStats,
-        totalReconstructionCost,
-        annualMaintenanceSavings,
-        capitalSavings,
-        totalDiscountedBenefits,
-        totalDiscountedCosts,
-        npv,
-        bcr,
-        paybackPeriod,
-        technicalCompliance: {
-          strengthRequirement: minStrengthRequired,
-          intensityLimit: maxIntensityAllowed,
-          currentIntensity: efficiencyData.currentTrafficIntensity,
-          meetsRequirements: efficiencyData.currentTrafficIntensity <= maxIntensityAllowed
-        },
-        economicEfficiency: {
-          isEconomicallyFeasible: npv > 0 && bcr > 1.0,
-          recommendation: npv > 0 && bcr > 1.0 ? 
-            'Проект экономически целесообразен' : 
-            'Проект требует дополнительного обоснования',
-          riskLevel: npv < 0 ? 'high' : bcr < 1.2 ? 'medium' : 'low'
-        }
+      
+      const data: TableEfficiencyData = {
+        startYear: parseInt(tableValues.startYear) || 2025,
+        roadCategory: parseInt(tableValues.roadCategory) || 0,
+        totalCost: parseFloat(tableValues.totalCost) || 0,
+        cost2025: parseFloat(tableValues.cost2025) || 0,
+        cost2026: parseFloat(tableValues.cost2026) || 0,
+        cost2027: parseFloat(tableValues.cost2027) || 0,
+        cost2028: parseFloat(tableValues.cost2028) || 0,
+        reconstructionPeriod: parseFloat(tableValues.duration) || 4,
+        trafficGrowthRate: parseFloat(tableValues.trafficGrowth) || 3,
+        trafficIntensity: parseFloat(tableValues.trafficIntensity) || 0,
+        roadLength: parseFloat(tableValues.roadLength) || 0,
+        lightVehiclesPercent: parseFloat(tableValues.lightCars) || 70,
+        trucksPercent: parseFloat(tableValues.trucks) || 20,
+        busesPercent: parseFloat(tableValues.buses) || 10,
+        lightCostAfter: parseFloat(tableValues.lightCostAfter) || 0,
+        truckCostAfter: parseFloat(tableValues.truckCostAfter) || 0,
+        busCostAfter: parseFloat(tableValues.busCostAfter) || 0,
+        lightCostBefore: parseFloat(tableValues.lightCostBefore) || 0,
+        truckCostBefore: parseFloat(tableValues.truckCostBefore) || 0,
+        busCostBefore: parseFloat(tableValues.busCostBefore) || 0,
+        truckCapital: parseFloat(tableValues.truckCapital) || 0,
+        busCapital: parseFloat(tableValues.busCapital) || 0,
+        busCapacity: parseFloat(tableValues.busCapacity) || 45,
+        busLoadFactor: parseFloat(tableValues.busLoadFactor) || 0.6,
+        truckCapacity: parseFloat(tableValues.truckCapacity) || 12,
+        carCapacity: parseFloat(tableValues.carCapacity) || 3,
+        truckLoadFactor: parseFloat(tableValues.truckLoadFactor) || 0.7,
+        timeSavings: parseFloat(tableValues.timeSavings) || 15,
+        coefficientBefore: parseFloat(tableValues.coefficientBefore) || 1.2,
+        coefficientAfter: parseFloat(tableValues.coefficientAfter) || 1.0,
+        slopeCoefficient: parseFloat(tableValues.slopeCoefficient) || 1.04,
+        toxicCoefficient: parseFloat(tableValues.toxicCoefficient) || 0.17,
+        accidentsBefore: parseFloat(tableValues.accidentsBefore) || 2,
+        accidentsAfter: parseFloat(tableValues.accidentsAfter) || 1,
+        calculationPeriod: parseFloat(tableValues.calculationPeriod) || 20,
+        toxicDamage: parseFloat(tableValues.toxicDamage) || 50,
+        deathLoss: parseFloat(tableValues.deathLoss) || 2500,
+        emissions: parseFloat(tableValues.emissions) || 0.12,
+        maintenanceBefore: parseFloat(tableValues.maintenanceBefore) || 1.2,
+        maintenanceAfter: parseFloat(tableValues.maintenanceAfter) || 0.8
       };
-
-      setResults(calculationResults);
+    
+      const result = calculateRoadEfficiency(data);
+      setResults(result);
       setActiveTab('results');
-      
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка расчета эффективности');
-      console.error('Calculation error:', err);
+      setError(err instanceof Error ? err.message : 'Помилка розрахунку');
     } finally {
       setIsCalculating(false);
     }
-  }, [efficiencyData, budgetData]);
+  };    
 
-  // Генерация отчета с интеграцией модулей
-  const generateEfficiencyReport = useCallback(() => {
-    if (!results) return;
+  const handleInputChange = (field: string, value: string) => {
+    setTableValues(prev => ({ ...prev, [field]: value }));
+  };
 
-    // Создаем детализированный отчет с использованием реальных модулей
-    // const roadSection: RoadSection = createTestRoadSection(
-    //   'efficiency_calc',
-    //   `Расчет эффективности - категория ${efficiencyData.roadCategory}`,
-    //   efficiencyData.roadCategory,
-    //   efficiencyData.roadLength,
-    //   efficiencyData.currentTrafficIntensity,
-    //   'state',
-    //   'Расчетная'
-    // );
-
-    // Генерируем детализированный отчет по секции
-
-    const report = `
-# ОТЧЕТ ОБ ЭФФЕКТИВНОСТИ ${efficiencyData.workType === 'reconstruction' ? 'РЕКОНСТРУКЦИИ' : 'КАПИТАЛЬНОГО РЕМОНТА'}
-
-## ИСХОДНЫЕ ДАННЫЕ
-- Категория дороги: ${efficiencyData.roadCategory}
-- Длина участка: ${efficiencyData.roadLength} км
-- Текущая интенсивность движения: ${efficiencyData.currentTrafficIntensity} авт./сут.
-- Прирост интенсивности: ${efficiencyData.trafficIntensityGrowth}% в год
-- Максимально допустимая интенсивность для категории: ${results.technicalCompliance?.intensityLimit || 'не определено'} авт./сут.
-
-## ТЕХНИЧЕСКОЕ СООТВЕТСТВИЕ
-- Соответствие категории по интенсивности: ${results.technicalCompliance?.meetsRequirements ? 'СООТВЕТСТВУЕТ' : 'НЕ СООТВЕТСТВУЕТ'}
-- Минимальный коэффициент прочности: ${results.technicalCompliance?.strengthRequirement || 'не определено'}
-- Рекомендуемый тип работ: ${results.workType || efficiencyData.workType}
-
-## СТОИМОСТЬ РАБОТ
-- 2025 год: ${efficiencyData.reconstructionCost2025.toLocaleString()} тыс. грн
-- 2026 год: ${efficiencyData.reconstructionCost2026.toLocaleString()} тыс. грн
-- 2027 год: ${efficiencyData.reconstructionCost2027.toLocaleString()} тыс. грн
-- 2028 год: ${efficiencyData.reconstructionCost2028.toLocaleString()} тыс. грн
-- ОБЩАЯ СТОИМОСТЬ: ${results.totalReconstructionCost.toLocaleString()} тыс. грн
-
-## СОСТАВ ДВИЖЕНИЯ
-- Легковые автомобили: ${efficiencyData.lightVehiclesPercent}%
-- Грузовые автомобили (легкие): ${efficiencyData.mediumVehiclesPercent}%
-- Автобусы (тяжелые): ${efficiencyData.heavyVehiclesPercent}%
-
-## ЭКОНОМИЧЕСКАЯ ЭФФЕКТИВНОСТЬ
-- Чистая приведенная стоимость (NPV): ${results.npv.toLocaleString()} тыс. грн
-- Соотношение выгод и затрат (BCR): ${results.bcr.toFixed(2)}
-- Срок окупаемости: ${results.paybackPeriod !== Infinity ? results.paybackPeriod.toFixed(1) + ' лет' : 'не окупается'}
-- Годовая экономия на эксплуатационных затратах: ${results.annualMaintenanceSavings.toLocaleString()} тыс. грн
-- Экономия капиталовложений: ${results.capitalSavings.toLocaleString()} тыс. грн
-- Уровень риска: ${results.economicEfficiency.riskLevel === 'low' ? 'Низкий' : results.economicEfficiency.riskLevel === 'medium' ? 'Средний' : 'Высокий'}
-
-## ТЕХНИЧЕСКАЯ ОЦЕНКА
-${results.assessment ? 
-  `- Общее состояние: ${results.assessment.overallCondition}
-- Состояние покрытия: ${results.assessment.technicalCondition?.pavement || 'не оценено'}
-- Состояние дренажа: ${results.assessment.technicalCondition?.drainage || 'не оценено'}
-- Геометрические параметры: ${results.assessment.technicalCondition?.geometry || 'не оценено'}` : 
-  '- Техническая оценка не проводилась'}
-
-## ДЕТАЛИЗИРОВАННАЯ СТОИМОСТЬ
-${results.detailedCost ? 
-  `- Общая стоимость по расчету модуля: ${results.detailedCost.totalCost?.toLocaleString() || 'не рассчитано'} тыс. грн
-- Материалы: ${results.detailedCost.breakdown?.materials?.toLocaleString() || 'не указано'} тыс. грн  
-- Работы: ${results.detailedCost.breakdown?.labor?.toLocaleString() || 'не указано'} тыс. грн
-- Оборудование: ${results.detailedCost.breakdown?.equipment?.toLocaleString() || 'не указано'} тыс. грн` :
-  '- Детализированная стоимость не рассчитана'}
-
-## АНАЛИЗ ЗАТРАТ И ВЫГОД (МОДУЛЬ)
-${results.costBenefitAnalysis ?
-  `- NPV по модулю: ${results.costBenefitAnalysis.netPresentValue?.toLocaleString() || 'не рассчитано'} тыс. грн
-- BCR по модулю: ${results.costBenefitAnalysis.benefitCostRatio?.toFixed(2) || 'не рассчитано'}
-- Общие выгоды: ${results.costBenefitAnalysis.totalBenefits?.toLocaleString() || 'не рассчитано'} тыс. грн
-- Общие затраты: ${results.costBenefitAnalysis.totalCosts?.toLocaleString() || 'не рассчитано'} тыс. грн` :
-  '- Анализ затрат и выгод модулем не проводился'}
-
-## БЮДЖЕТНАЯ СТАТИСТИКА
-${results.budgetStats ?
-  `- Доступно в бюджете: ${results.budgetStats.totalAvailable?.toLocaleString() || 'не указано'} тыс. грн
-- Уже распределено: ${results.budgetStats.totalAllocated?.toLocaleString() || 'не указано'} тыс. грн
-- Остаток средств: ${results.budgetStats.remainingFunds?.toLocaleString() || 'не указано'} тыс. грн` :
-  '- Бюджетные данные недоступны'}
-
-## ЗАКЛЮЧЕНИЕ
-${results.economicEfficiency.recommendation}
-
-${results.categoryCompliance ? 
-  `\n## СООТВЕТСТВИЕ КАТЕГОРИИ
-${results.categoryCompliance.complies ? 'Проект соответствует требованиям категории дороги' : 'ВНИМАНИЕ: Проект не соответствует требованиям категории дороги'}
-Рекомендации: ${results.categoryCompliance.recommendations?.join('; ') || 'Нет специальных рекомендаций'}` : ''}
-
----
-Отчет сгенерирован: ${new Date().toLocaleString('ru-RU')}
-Использованы модули: block_three, block_three_algorithm
-    `;
-
-    const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `efficiency_report_${efficiencyData.workType}_${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, [results, efficiencyData]);
-
-  // Функция для заполнения тестовыми данными
-  const fillTestData = useCallback(() => {
-    setEfficiencyData({
-      workType: 'reconstruction',
-      roadCategory: 2,
-      reconstructionCost2025: 25000,
-      reconstructionCost2026: 35000,
-      reconstructionCost2027: 40000,
-      reconstructionCost2028: 30000,
-      reconstructionPeriod: 4,
-      trafficIntensityGrowth: 3,
-      currentTrafficIntensity: 8500,
-      roadLength: 15.5,
-      lightVehiclesPercent: 65,
-      mediumVehiclesPercent: 25,
-      heavyVehiclesPercent: 10,
-      maintenanceCostLight: 2.8,
-      maintenanceCostMedium: 5.2,
-      maintenanceCostHeavy: 9.1,
-      currentInvestmentWithReconstruction: 18000,
-      currentInvestmentWithoutReconstruction: 28000,
-      averageBusCapacity: 42,
-      depreciationCoefficientBuses: 0.15,
-      depreciationCoefficientLightVehicles: 0.12,
-      depreciationCoefficientHeavyVehicles: 0.18,
-      economyEvaluationData: {
-        maxDesignIntensity: 12000,
-        resultingTrafficIntensity: 15000,
-        reductionCoefficient: 1.0,
-        toxicReductionCoefficient: 0.17,
-        reductionAmount: 2500,
-        expectedRoadCapacity: 18000,
-        actualCapacityBefore: 8500,
-        actualCapacityAfter: 15000
-      }
-    });
-  }, []);
-
+  const EfficiencyResultsView = ({ results }: { results: EfficiencyResults }) => (
+    <div className="space-y-6">
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle>Економічні показники</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-600">NPV</p>
+              <p className="text-2xl font-bold">{results.totalEfficiency.totalNPV.toLocaleString()} тис. грн</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">BCR</p>
+              <p className="text-2xl font-bold">{results.totalEfficiency.totalBCR.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Термін окупності</p>
+              <p className="text-xl font-bold">{results.economicIndicators.paybackPeriod.toFixed(1)} років</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Рівень ризику</p>
+              <p className={`text-xl font-bold ${
+                results.totalEfficiency.riskLevel === 'low' ? 'text-green-600' :
+                results.totalEfficiency.riskLevel === 'medium' ? 'text-yellow-600' : 'text-red-600'
+              }`}>
+                {results.totalEfficiency.riskLevel === 'low' ? 'Низький' :
+                 results.totalEfficiency.riskLevel === 'medium' ? 'Середній' : 'Високий'}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <p className="text-lg">{results.recommendation}</p>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle>Соціальні ефекти</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-600">Економія часу</p>
+              <p className="text-lg font-semibold">{results.socialEffects.timeSavingsValue.toLocaleString()} грн</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Зниження аварійності</p>
+              <p className="text-lg font-semibold">{results.socialEffects.accidentSavings.toLocaleString()} грн</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Екологічні вигоди</p>
+              <p className="text-lg font-semibold">{results.socialEffects.environmentalSavings.toLocaleString()} грн</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Економія на утриманні</p>
+              <p className="text-lg font-semibold">{results.socialEffects.maintenanceSavings.toLocaleString()} грн</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+  
   return (
-    <div className="w-full max-w-7xl mx-auto p-6 space-y-6" style={{ background: 'rgb(var(--c-bg))' }}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <TrendingUp className="h-8 w-8 text-green-600" />
-          <h1 className="text-3xl font-bold">
-            Визначення ефективності реконструкції/капітального ремонту автомобільних доріг
-          </h1>
+    <div className="p-6 space-y-6" style={{ background: 'rgb(var(--c-bg))' }}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <h1 className="text-2xl font-bold">Визначення ефективності</h1>
+          </div>
         </div>
-        <div className="flex space-x-2">
-          <Button onClick={fillTestData} className="glass-button">
-            <Plus className="h-4 w-4 mr-2" />
-            Тестові дані
-          </Button>
-          {results && (
-            <Button onClick={generateEfficiencyReport} className="glass-button glass-button--primary">
-              <Download className="h-4 w-4 mr-2" />
-              Звіт
-            </Button>
-          )}
-        </div>
-      </div>
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="input">Вихідні дані</TabsTrigger>
+            <TabsTrigger value="results" disabled={!results}>Результати розрахунку</TabsTrigger>
+          </TabsList>
+          <TabsContent value="input">
+            <Card className="glass-card">
+              <CardContent className="p-0">
+                <div className="border-2 border-gray-400 overflow-hidden">
+                  <div className="overflow-auto max-h-[800px]">
+                    <table className="border-collapse w-full min-w-full">
+                      <thead className="sticky top-0 z-20">
+                        <tr>
+                          <th className="w-12 h-10 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-30">
+                            №п/п
+                          </th>
+                          <th className="w-80 h-10 bg-gray-200 border border-gray-400 text-center text-xs font-bold px-2">
+                            Вихідні дані
+                          </th>
+                          <th className="w-24 h-10 bg-gray-200 border border-gray-400 text-center text-xs font-bold px-1">
+                            Одиниця виміру
+                          </th>
+                          <th className="w-32 h-10 bg-gray-200 border border-gray-400 text-center text-xs font-bold px-1">
+                            Позначення
+                          </th>
+                          <th className="w-32 h-10 bg-gray-200 border border-gray-400 text-center text-xs font-bold px-1">
+                            Величина
+                          </th>
+                        </tr>
+                      </thead>
+                      
+                      <tbody>
+                        {/* Строка 1 */}
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">1</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Початок виконання робіт
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">рік</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.startYear}
+                              onChange={(e) => handleInputChange('startYear', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        {/* Строка 2 */}
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">2</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Категорія дороги
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input 
+                              value={tableValues.roadCategory}
+                              onChange={(e) => handleInputChange('roadCategory', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent" 
+                            />
+                          </td>
+                        </tr>
+
+                        {/* Строка 3 */}
+                        <tr>
+                          <td className="bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10 align-top p-1">3</td>
+                          <td className="border border-gray-400 p-2 text-xs">
+                            Вартість реконструкції/капітального ремонту загальна<br />
+                            Вартість реконструкції/капітального ремонту 2025<br />
+                            Вартість реконструкції/капітального ремонту 2026<br />
+                            Вартість реконструкції/капітального ремонту 2027<br />
+                            Вартість реконструкції/капітального ремонту 2028
+                          </td>
+                          <td className="border border-gray-400 text-center text-xs align-top p-1">
+                            <div className="leading-5">
+                              млн.грн<br />
+                              млн.грн<br />
+                              млн.грн<br />
+                              млн.грн<br />
+                              млн.грн
+                            </div>
+                          </td>
+                          <td className="border border-gray-400 text-center text-xs align-top p-1">
+                            <div className="leading-5">
+                              Кзаг<br />
+                              Ка<br />
+                              Ка<br />
+                              Ка<br />
+                              Ка
+                            </div>
+                          </td>
+                          <td className="border border-gray-400 p-0 align-top">
+                            <div className="flex flex-col">
+                              <Input 
+                                value={tableValues.totalCost}
+                                onChange={(e) => handleInputChange('totalCost', e.target.value)}
+                                className="w-full border-0 text-xs text-center h-5 rounded-none" 
+                              />
+                              <Input 
+                                value={tableValues.cost2025}
+                                onChange={(e) => handleInputChange('cost2025', e.target.value)}
+                                className="w-full border-0 text-xs text-center h-5 rounded-none" 
+                              />
+                              <Input 
+                                value={tableValues.cost2026}
+                                onChange={(e) => handleInputChange('cost2026', e.target.value)}
+                                className="w-full border-0 text-xs text-center h-5 rounded-none" 
+                              />
+                              <Input 
+                                value={tableValues.cost2027}
+                                onChange={(e) => handleInputChange('cost2027', e.target.value)}
+                                className="w-full border-0 text-xs text-center h-5 rounded-none" 
+                              />
+                              <Input 
+                                value={tableValues.cost2028}
+                                onChange={(e) => handleInputChange('cost2028', e.target.value)}
+                                className="w-full border-0 text-xs text-center h-5 rounded-none" 
+                              />
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* Строка 4 */}
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">4</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Термін реконструкції/капітального ремонту
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">роки</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">t</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input 
+                              value={tableValues.duration}
+                              onChange={(e) => handleInputChange('duration', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent" 
+                            />
+                          </td>
+                        </tr>
+
+                        {/* Строка 5 */}
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">5</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Приріст інтенсивності дорожнього руху
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">%</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">t</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input 
+                              value={tableValues.trafficGrowth}
+                              onChange={(e) => handleInputChange('trafficGrowth', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent" 
+                            />
+                          </td>
+                        </tr>
+
+                        {/* Строка 6 */}
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">6</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Розрахункова інтенсивність дорожнього руху
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">авт/добу</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">N</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input 
+                              value={tableValues.trafficIntensity}
+                              onChange={(e) => handleInputChange('trafficIntensity', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent" 
+                            />
+                          </td>
+                        </tr>
+
+                        {/* Строка 7 */}
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">7</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Довжина ділянки дороги
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">км</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">l</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input 
+                              value={tableValues.roadLength}
+                              onChange={(e) => handleInputChange('roadLength', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent" 
+                            />
+                          </td>
+                        </tr>
+
+                        {/* Строка 8 */}
+                        <tr>
+                          <td className="bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10 align-top p-1">8</td>
+                          <td className="border border-gray-400 p-2 text-xs">
+                            Склад руху:<br />
+                            легкові автомобілі<br />
+                            вантажні автомобілі (легкі)<br />
+                            автобуси (важкі)
+                          </td>
+                          <td className="border border-gray-400 text-center text-xs align-top p-1">
+                            <div className="leading-5">
+                              -<br />
+                              %<br />
+                              %<br />
+                              %
+                            </div>
+                          </td>
+                          <td className="border border-gray-400 text-center text-xs align-top p-1">
+                            <div className="leading-5">
+                              -<br />
+                              dл<br />
+                              dв<br />
+                              dт
+                            </div>
+                          </td>
+                          <td className="border border-gray-400 p-0 align-top">
+                            <div className="flex flex-col">
+                              <div className="h-5"></div>
+                              <Input
+                                value={tableValues.lightCars}
+                                onChange={(e) => handleInputChange('lightCars', e.target.value)}
+                                className="w-full border-0 text-xs text-center h-5 rounded-none"
+                              />
+                              <Input
+                                value={tableValues.trucks}
+                                onChange={(e) => handleInputChange('trucks', e.target.value)}
+                                className="w-full border-0 text-xs text-center h-5 rounded-none"
+                              />                        
+                              <Input
+                                value={tableValues.buses}
+                                onChange={(e) => handleInputChange('buses', e.target.value)}
+                                className="w-full border-0 text-xs text-center h-5 rounded-none"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* Строки 9-10 пустые */}
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">9</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs"></td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">10</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs"></td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                        </tr>
+
+                        {/* Строка 11 */}
+                        <tr>
+                          <td className="bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10 align-top p-1">11</td>
+                          <td className="border border-gray-400 p-2 text-xs">
+                            Середні витрати на експлуатацію транспортних засобів після<br />
+                            легкові автомобілі<br />
+                            вантажні автомобілі (легкі)<br />
+                            автобуси (важкі)
+                          </td>
+                          <td className="border border-gray-400 text-center text-xs align-top p-1">
+                            <div className="leading-5">
+                              -<br />
+                              грн.<br />
+                              грн.<br />
+                              грн.
+                            </div>
+                          </td>
+                          <td className="border border-gray-400 text-center text-xs align-top p-1">
+                            <div className="leading-5">
+                              -<br />
+                              S1л<br />
+                              S1в<br />
+                              S1т
+                            </div>
+                          </td>
+                          <td className="border border-gray-400 p-0 align-top">
+                            <div className="flex flex-col">
+                              <div className="h-5"></div>
+                                <Input
+                                  value={tableValues.lightCostAfter}
+                                  onChange={(e) => handleInputChange('lightCostAfter', e.target.value)}
+                                  className="w-full border-0 text-xs text-center h-5 rounded-none"
+                                />
+                                <Input
+                                  value={tableValues.truckCostAfter}
+                                  onChange={(e) => handleInputChange('truckCostAfter', e.target.value)}
+                                  className="w-full border-0 text-xs text-center h-5 rounded-none"
+                                />
+                                <Input
+                                  value={tableValues.busCostAfter}
+                                  onChange={(e) => handleInputChange('busCostAfter', e.target.value)}
+                                  className="w-full border-0 text-xs text-center h-5 rounded-none"
+                                />
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* Строка 12 */}
+                        <tr>
+                          <td className="bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10 align-top p-1">12</td>
+                          <td className="border border-gray-400 p-2 text-xs">
+                            Середні витрати на експлуатацію транспортних засобів до<br />
+                            легкові автомобілі<br />
+                            вантажні автомобілі (легкі)<br />
+                            автобуси (важкі)
+                          </td>
+                          <td className="border border-gray-400 text-center text-xs align-top p-1">
+                            <div className="leading-5">
+                              -<br />
+                              грн.<br />
+                              грн.<br />
+                              грн.
+                            </div>
+                          </td>
+                          <td className="border border-gray-400 text-center text-xs align-top p-1">
+                            <div className="leading-5">
+                              -<br />
+                              S0л<br />
+                              S0в<br />
+                              S0т
+                            </div>
+                          </td>
+                          <td className="border border-gray-400 p-0 align-top">
+                            <div className="flex flex-col">
+                              <div className="h-5"></div>
+                                <Input
+                                  value={tableValues.lightCostBefore}
+                                  onChange={(e) => handleInputChange('lightCostBefore', e.target.value)}
+                                  className="w-full border-0 text-xs text-center h-5 rounded-none"
+                                />
+                                <Input
+                                  value={tableValues.truckCostBefore}
+                                  onChange={(e) => handleInputChange('truckCostBefore', e.target.value)}
+                                  className="w-full border-0 text-xs text-center h-5 rounded-none"
+                                />
+                                <Input
+                                  value={tableValues.busCostBefore}
+                                  onChange={(e) => handleInputChange('busCostBefore', e.target.value)}
+                                  className="w-full border-0 text-xs text-center h-5 rounded-none"
+                                />                      
+                              </div>
+                          </td>
+                        </tr>
+
+                        {/* Остальные строки с правильными значениями */}
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">13</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Питомі капіталовкладення вантажний автомобіль
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">тис.грн</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">Кв</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.truckCapital}
+                              onChange={(e) => handleInputChange('truckCapital', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">14</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Питомі капіталовкладення автобус
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">тис.грн</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">Кт</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.busCapital}
+                              onChange={(e) => handleInputChange('busCapital', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">15</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Середня пасажиромісткість автобуса
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">осіб</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">Gт</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.busCapacity}
+                              onChange={(e) => handleInputChange('busCapacity', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">16</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Коефіцієнт використання пасажиромісткості автобуса
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">βт</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.busLoadFactor}
+                              onChange={(e) => handleInputChange('busLoadFactor', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">17</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Середня вантажопідйомність вантажного автомобіля
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">т</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">Gв</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.truckCapacity}
+                              onChange={(e) => handleInputChange('truckCapacity', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">18</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Середня пасажиромісткість легкового автомобіля
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">осіб</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">Gл</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.carCapacity}
+                              onChange={(e) => handleInputChange('carCapacity', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">19</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Коефіцієнт використання вантажопідйомності
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">βв</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.truckLoadFactor}
+                              onChange={(e) => handleInputChange('truckLoadFactor', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">20</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Оцінка економії часу пасажирів
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">грн</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">Ст</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.timeSavings}
+                              onChange={(e) => handleInputChange('timeSavings', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">21</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Коефіцієнт ДО реконструкції
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">К1ст</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.coefficientBefore}
+                              onChange={(e) => handleInputChange('coefficientBefore', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">22</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Коефіцієнт ПІСЛЯ реконструкції
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">К1сн</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.coefficientAfter}
+                              onChange={(e) => handleInputChange('coefficientAfter', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">23</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Коефіцієнт поздовжнього похилу
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">К2</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.slopeCoefficient}
+                              onChange={(e) => handleInputChange('slopeCoefficient', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">24</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Коефіцієнт токсичності
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">К3</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.toxicCoefficient}
+                              onChange={(e) => handleInputChange('toxicCoefficient', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">25</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Кількість ДТП ДО реконструкції
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">dт</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.accidentsBefore}
+                              onChange={(e) => handleInputChange('accidentsBefore', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">26</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Кількість ДТП ПІСЛЯ реконструкції
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">dн</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.accidentsAfter}
+                              onChange={(e) => handleInputChange('accidentsAfter', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">27</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Розрахунковий період
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">роки</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">п</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.calculationPeriod}
+                              onChange={(e) => handleInputChange('calculationPeriod', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">28</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Вартість шкоди від токсичних речовин
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">грн</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">δт</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.toxicDamage}
+                              onChange={(e) => handleInputChange('toxicDamage', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">29</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Втрати від смертельного ДТП
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">тис.грн</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">Пвтр</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.deathLoss}
+                              onChange={(e) => handleInputChange('deathLoss', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">30</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Об'єм викидів автомобілями
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">кг/км</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">qі</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.emissions}
+                              onChange={(e) => handleInputChange('emissions', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">31</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Витрати на утримання ДО
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">млн.грн</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.maintenanceBefore}
+                              onChange={(e) => handleInputChange('maintenanceBefore', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="h-8 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-10">32</td>
+                          <td className="h-8 border border-gray-400 p-2 text-xs">
+                            Витрати на утримання ПІСЛЯ
+                          </td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">млн.грн</td>
+                          <td className="h-8 border border-gray-400 text-center text-xs">-</td>
+                          <td className="h-8 border border-gray-400 p-0">
+                            <Input
+                              value={tableValues.maintenanceAfter}
+                              onChange={(e) => handleInputChange('maintenanceAfter', e.target.value)}
+                              className="w-full h-full border-0 text-xs text-center bg-transparent"
+                            />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Информация о таблице */}
+                <div className="flex flex-col sm:flex-row justify-between text-xs text-gray-600 gap-2 p-4">
+                  <div className="flex flex-wrap gap-4">
+                    <span>Загалом полів: <strong>32</strong></span>
+                    <span>Заповнено: <strong>{Object.values(tableValues).filter(v => v !== '').length}</strong></span>
+                    <span>Потребує уваги: <strong>{32 - Object.values(tableValues).filter(v => v !== '').length}</strong></span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="results">
+            <Card className="glass-card">
+              <CardContent>
+                {results && <EfficiencyResultsView results={results} />}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+      <Button 
+        onClick={calculateEfficiency} 
+        disabled={isCalculating}
+        className="glass-button glass-button--primary text-black"
+      >
+        {isCalculating ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin text-black" />
+            Розраховується...
+          </>
+        ) : (
+          <>
+            <Calculator className="h-4 w-4 mr-2 text-black" />
+            Розрахувати
+          </>
+        )}
+      </Button>
 
       {error && (
-        <Alert className="glass-card" style={{ background: 'rgba(var(--c-error), 0.08)' }}>
-          <AlertTriangle className="h-4 w-4" style={{ color: 'rgb(var(--c-error))' }} />
-          <AlertDescription style={{ color: 'rgb(var(--c-error))' }}>
-            {error}
-          </AlertDescription>
+        <Alert variant="destructive" className="mt-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 glass-base">
-          <TabsTrigger value="input" className="data-[state=active]:glass-button--primary">Вхідні дані</TabsTrigger>
-          <TabsTrigger value="calculation" className="data-[state=active]:glass-button--primary">Розрахунок</TabsTrigger>
-          <TabsTrigger value="results" disabled={!results} className="data-[state=active]:glass-button--primary">
-            Результати
-          </TabsTrigger>
-        </TabsList>
+      <div className="flex flex-wrap gap-4">
+        <span>Загалом полів: <strong>32</strong></span>
+        <span>Заповнено: <strong>{Object.values(tableValues).filter(v => v !== '').length}</strong></span>
+        <span>Потребує уваги: <strong>{32 - Object.values(tableValues).filter(v => v !== '').length}</strong></span>
+        {results && <span className="text-green-600">Розрахунок виконано ✓</span>}
+      </div>
 
-        <TabsContent value="input" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Начальные данные */}
-            <Card className="glass-card">
-              <CardHeader className="glass-card-header">
-                <CardTitle>Початкові дані</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Вид робіт</Label>
-                    <Select 
-                      value={efficiencyData.workType} 
-                      onValueChange={(value: 'reconstruction' | 'capital_repair') => updateEfficiencyData('workType', value)}
-                    >
-                      <SelectTrigger className="glass-input">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="reconstruction">Реконструкція</SelectItem>
-                        <SelectItem value="capital_repair">Капітальний ремонт</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Категорія дороги</Label>
-                    <Select 
-                      value={efficiencyData.roadCategory.toString()} 
-                      onValueChange={(value) => updateEfficiencyData('roadCategory', parseInt(value) as 1|2|3|4|5)}
-                    >
-                      <SelectTrigger className="glass-input">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">1 категорія</SelectItem>
-                        <SelectItem value="2">2 категорія</SelectItem>
-                        <SelectItem value="3">3 категорія</SelectItem>
-                        <SelectItem value="4">4 категорія</SelectItem>
-                        <SelectItem value="5">5 категорія</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Довжина дороги (км)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={efficiencyData.roadLength}
-                    onChange={(e) => updateEfficiencyData('roadLength', parseFloat(e.target.value) || 0)}
-                    className="glass-input"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Поточна інтенсивність дорожнього руху (авт./доба)</Label>
-                  <Input
-                    type="number"
-                    value={efficiencyData.currentTrafficIntensity}
-                    onChange={(e) => updateEfficiencyData('currentTrafficIntensity', parseInt(e.target.value) || 0)}
-                    className="glass-input"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Приріст інтенсивності дорожнього руху (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={efficiencyData.trafficIntensityGrowth}
-                    onChange={(e) => updateEfficiencyData('trafficIntensityGrowth', parseFloat(e.target.value) || 0)}
-                    className="glass-input"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Термін реконструкції/капітального ремонту (роки)</Label>
-                  <Input
-                    type="number"
-                    value={efficiencyData.reconstructionPeriod}
-                    onChange={(e) => updateEfficiencyData('reconstructionPeriod', parseInt(e.target.value) || 0)}
-                    className="glass-input"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Стоимость работ */}
-            <Card className="glass-card">
-              <CardHeader className="glass-card-header">
-                <CardTitle>Вартість робіт по роках (тис. грн)</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Вартість реконструкції/капітального ремонту 2025</Label>
-                  <Input
-                    type="number"
-                    value={efficiencyData.reconstructionCost2025}
-                    onChange={(e) => updateEfficiencyData('reconstructionCost2025', parseFloat(e.target.value) || 0)}
-                    className="glass-input"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Вартість реконструкції/капітального ремонту 2026</Label>
-                  <Input
-                    type="number"
-                    value={efficiencyData.reconstructionCost2026}
-                    onChange={(e) => updateEfficiencyData('reconstructionCost2026', parseFloat(e.target.value) || 0)}
-                    className="glass-input"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Вартість реконструкції/капітального ремонту 2027</Label>
-                  <Input
-                    type="number"
-                    value={efficiencyData.reconstructionCost2027}
-                    onChange={(e) => updateEfficiencyData('reconstructionCost2027', parseFloat(e.target.value) || 0)}
-                    className="glass-input"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Вартість реконструкції/капітального ремонту 2028</Label>
-                  <Input
-                    type="number"
-                    value={efficiencyData.reconstructionCost2028}
-                    onChange={(e) => updateEfficiencyData('reconstructionCost2028', parseFloat(e.target.value) || 0)}
-                    className="glass-input"
-                  />
-                </div>
-
-                <div className="pt-4 border-t border-white/10">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold">Загальна вартість:</span>
-                    <Badge className="glass-button glass-button--success text-lg px-3 py-1">
-                      {(efficiencyData.reconstructionCost2025 + 
-                        efficiencyData.reconstructionCost2026 + 
-                        efficiencyData.reconstructionCost2027 + 
-                        efficiencyData.reconstructionCost2028).toLocaleString()} тис. грн
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Остальные карточки с применением glass-стилей */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Состав движения */}
-            <Card className="glass-card">
-              <CardHeader className="glass-card-header">
-                <CardTitle>Склад руху (%)</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Поля ввода с glass-input классом */}
-                <div className="space-y-2">
-                  <Label>Легкові автомобілі</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={efficiencyData.lightVehiclesPercent}
-                    onChange={(e) => updateEfficiencyData('lightVehiclesPercent', parseFloat(e.target.value) || 0)}
-                    className="glass-input"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Вантажні автомобілі (легкі)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={efficiencyData.mediumVehiclesPercent}
-                    onChange={(e) => updateEfficiencyData('mediumVehiclesPercent', parseFloat(e.target.value) || 0)}
-                    className="glass-input"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Автобуси (тяжкі)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={efficiencyData.heavyVehiclesPercent}
-                    onChange={(e) => updateEfficiencyData('heavyVehiclesPercent', parseFloat(e.target.value) || 0)}
-                    className="glass-input"
-                  />
-                </div>
-
-                <div className="pt-4 border-t border-white/10">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold">Загалом:</span>
-                    <Badge className={`glass-button ${
-                      (efficiencyData.lightVehiclesPercent + 
-                       efficiencyData.mediumVehiclesPercent + 
-                       efficiencyData.heavyVehiclesPercent) === 100 ? 'glass-button--success' : 'glass-button--danger'
-                    }`}>
-                      {(efficiencyData.lightVehiclesPercent + 
-                        efficiencyData.mediumVehiclesPercent + 
-                        efficiencyData.heavyVehiclesPercent)}%
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Средние затраты на эксплуатацию */}
-            <Card className="glass-card">
-              <CardHeader className="glass-card-header">
-                <CardTitle>Середні витрати на експлуатацію транспортних засобів (грн)</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Легкові автомобілі</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={efficiencyData.maintenanceCostLight}
-                    onChange={(e) => updateEfficiencyData('maintenanceCostLight', parseFloat(e.target.value) || 0)}
-                    className="glass-input"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Вантажні автомобілі (легкі)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={efficiencyData.maintenanceCostMedium}
-                    onChange={(e) => updateEfficiencyData('maintenanceCostMedium', parseFloat(e.target.value) || 0)}
-                    className="glass-input"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Автобуси (тяжкі)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={efficiencyData.maintenanceCostHeavy}
-                    onChange={(e) => updateEfficiencyData('maintenanceCostHeavy', parseFloat(e.target.value) || 0)}
-                    className="glass-input"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Середня газоємність автобуса</Label>
-                  <Input
-                    type="number"
-                    value={efficiencyData.averageBusCapacity}
-                    onChange={(e) => updateEfficiencyData('averageBusCapacity', parseInt(e.target.value) || 0)}
-                    className="glass-input"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Продолжение остальных карточек с glass-стилями... */}
-        </TabsContent>
-
-        <TabsContent value="calculation" className="space-y-6">
-          <Card className="glass-card">
-            <CardHeader className="glass-card-header">
-              <CardTitle>Розрахунок ефективності</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {/* Предварительные расчеты */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="glass-card p-4" style={{ background: 'rgba(var(--c-action), 0.08)' }}>
-                    <div className="text-2xl font-bold" style={{ color: 'rgb(var(--c-action))' }}>
-                      {(efficiencyData.reconstructionCost2025 + 
-                        efficiencyData.reconstructionCost2026 + 
-                        efficiencyData.reconstructionCost2027 + 
-                        efficiencyData.reconstructionCost2028).toLocaleString()}
-                    </div>
-                    <div className="text-sm opacity-70">Загальна вартість (тис. грн)</div>
-                  </div>
-                  
-                  <div className="glass-card p-4" style={{ background: 'rgba(var(--c-success), 0.08)' }}>
-                    <div className="text-2xl font-bold" style={{ color: 'rgb(var(--c-success))' }}>
-                      {(efficiencyData.currentTrafficIntensity * 365 * efficiencyData.roadLength).toLocaleString()}
-                    </div>
-                    <div className="text-sm opacity-70">Річний транспортний потік</div>
-                  </div>
-                  
-                  <div className="glass-card p-4" style={{ background: 'rgba(var(--c-warning), 0.08)' }}>
-                    <div className="text-2xl font-bold" style={{ color: 'rgb(var(--c-warning))' }}>
-                      {(efficiencyData.currentInvestmentWithoutReconstruction - 
-                        efficiencyData.currentInvestmentWithReconstruction).toLocaleString()}
-                    </div>
-                    <div className="text-sm opacity-70">Економія капіталовкладень (тис. грн)</div>
-                  </div>
-                </div>
-
-                {/* Кнопка расчета */}
-                <div className="flex justify-center">
-                  <Button 
-                    onClick={calculateEfficiency} 
-                    disabled={isCalculating}
-                    className="glass-button glass-button--primary glass-button--xl"
-                  >
-                    <Calculator className="h-5 w-5 mr-2" />
-                    {isCalculating ? 'Розрахунок...' : 'Виконати розрахунок ефективності'}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="results" className="space-y-6">
-          {results && (
-            <>
-              {/* Основные результаты с glass-стилями */}
-              <Card className="glass-card">
-                <CardHeader className="glass-card-header">
-                  <CardTitle>Результати розрахунку ефективності</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold" style={{ color: results.npv > 0 ? 'rgb(var(--c-success))' : 'rgb(var(--c-error))' }}>
-                        {results.npv.toLocaleString()}
-                      </div>
-                      <div className="text-sm opacity-70">NPV (тис. грн)</div>
-                      <div className="text-xs opacity-60">Чиста приведена вартість</div>
-                    </div>
-                    
-                    <div className="text-center">
-                      <div className="text-2xl font-bold" style={{ color: results.bcr > 1.0 ? 'rgb(var(--c-success))' : 'rgb(var(--c-error))' }}>
-                        {results.bcr.toFixed(2)}
-                      </div>
-                      <div className="text-sm opacity-70">BCR</div>
-                      <div className="text-xs opacity-60">Співвідношення вигод і витрат</div>
-                    </div>
-                    
-                    <div className="text-center">
-                      <div className="text-2xl font-bold" style={{ color: 'rgb(var(--c-action))' }}>
-                        {results.paybackPeriod !== Infinity ? results.paybackPeriod.toFixed(1) : '∞'}
-                      </div>
-                      <div className="text-sm opacity-70">Років</div>
-                      <div className="text-xs opacity-60">Термін окупності</div>
-                    </div>
-                    
-                    <div className="text-center">
-                      <div className="text-2xl font-bold" style={{ color: 'rgb(var(--c-warning))' }}>
-                        {results.annualMaintenanceSavings.toLocaleString()}
-                      </div>
-                      <div className="text-sm opacity-70">Тис. грн/рік</div>
-                      <div className="text-xs opacity-60">Річна економія</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Кнопки действий */}
-              <div className="flex justify-center space-x-4">
-                <Button onClick={generateEfficiencyReport} className="glass-button">
-                  <FileText className="h-4 w-4 mr-2" />
-                  Звіт про ефективність
-                </Button>
-                <Button onClick={() => {
-                  setResults(null);
-                  setActiveTab('input');
-                }} className="glass-button">
-                  <X className="h-4 w-4 mr-2" />
-                  Новий розрахунок
-                </Button>
-              </div>
-            </>
-          )}
-        </TabsContent>
-
-        <div className="flex justify-between pt-6">
-          <Button onClick={handleBack} className="glass-button">
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Назад
-          </Button>
-          <Button onClick={handleNext} disabled={!results} className="glass-button glass-button--primary">
-            Далі
-            <ChevronRight className="h-4 w-4 ml-2" />
-          </Button>
-        </div>
-      </Tabs>
+      <div className="flex justify-between pt-6">
+        <Button className="glass-button text-black">
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          Назад
+        </Button>
+        <Button 
+          onClick={onNext} 
+          disabled={!results}
+          className="glass-button glass-button--primary text-black"
+        >
+          Далі
+          <ChevronRight className="h-4 w-4 ml-2" />
+        </Button>
+      </div>
     </div>
   );
 };

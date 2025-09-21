@@ -859,139 +859,174 @@ const Page1_Coefficients: React.FC<Props> = ({
     reconstruction: number;
     compliant: number;
   } | null>(null);
+  const [progress, setProgress] = useState(0);
 
   console.log('Page1_Coefficients rendered with sections:', sections.length);
 
-  // Инициализация при получении новых данных
-  React.useEffect(() => {
-    if (sections.length > 0) {
-      console.log('Received sections, checking if calculation needed...');
-      
-      const hasCalculatedData = sections.every(section => 
-        section.intensityCoeff !== undefined &&
-        section.strengthCoeff !== undefined &&
-        section.evennessCoeff !== undefined &&
-        section.rutCoeff !== undefined &&
-        section.frictionFactorCoeff !== undefined &&
-        section.workType !== undefined &&
-        section.estimatedCost !== undefined
-      );
-
-      if (hasCalculatedData) {
-        console.log('Data already calculated, using existing');
-        setCalculatedSections(sections);
-        calculateSummary(sections);
-      } else {
-        console.log('Data needs calculation');
-        handleCalculate();
-      }
-    } else {
-      setCalculatedSections([]);
-      setCalculationSummary(null);
-    }
+  // Мемоизация проверки готовности данных
+  const hasCalculatedData = React.useMemo(() => {
+    return sections.length > 0 && sections.every(section => 
+      section.intensityCoeff !== undefined &&
+      section.strengthCoeff !== undefined &&
+      section.evennessCoeff !== undefined &&
+      section.rutCoeff !== undefined &&
+      section.frictionFactorCoeff !== undefined &&
+      section.workType !== undefined &&
+      section.estimatedCost !== undefined
+    );
   }, [sections]);
 
-  // Расчет сводной статистики
-  const calculateSummary = (sectionsData: RoadSectionUI[]) => {
+  // Мемоизация сводной статистики
+  const calculateSummary = React.useCallback((sectionsData: RoadSectionUI[]) => {
     const summary = {
       total: sectionsData.length,
-      needsRepair: sectionsData.filter(s => s.workTypeRaw !== 'no_work_needed').length,
-      currentRepair: sectionsData.filter(s => s.workTypeRaw === 'current_repair').length,
-      capitalRepair: sectionsData.filter(s => s.workTypeRaw === 'capital_repair').length,
-      reconstruction: sectionsData.filter(s => s.workTypeRaw === 'reconstruction').length,
-      compliant: sectionsData.filter(s => s.workTypeRaw === 'no_work_needed').length
+      needsRepair: 0,
+      currentRepair: 0,
+      capitalRepair: 0,
+      reconstruction: 0,
+      compliant: 0
     };
-    setCalculationSummary(summary);
-  };
 
-  // Валидация данных секций
-  const validateSections = (sectionsToValidate: RoadSectionUI[]): string[] => {
+    // Одним проходом считаем все метрики
+    sectionsData.forEach(s => {
+      const workType = s.workTypeRaw;
+      if (workType === 'current_repair') summary.currentRepair++;
+      else if (workType === 'capital_repair') summary.capitalRepair++;
+      else if (workType === 'reconstruction') summary.reconstruction++;
+      else if (workType === 'no_work_needed') summary.compliant++;
+      
+      if (workType !== 'no_work_needed') summary.needsRepair++;
+    });
+
+    setCalculationSummary(summary);
+  }, []);
+
+  // Оптимизированная валидация с ранним выходом
+  const validateSections = React.useCallback((sectionsToValidate: RoadSectionUI[]): string[] => {
     const errors: string[] = [];
+    const maxErrors = 10; // Ограничиваем количество ошибок
     
-    sectionsToValidate.forEach((section, index) => {
-      if (!section.name || section.name.trim() === '') {
-        errors.push(`Секція ${index + 1}: відсутнє найменування`);
+    for (let i = 0; i < sectionsToValidate.length && errors.length < maxErrors; i++) {
+      const section = sectionsToValidate[i];
+      
+      if (!section.name?.trim()) {
+        errors.push(`Секція ${i + 1}: відсутнє найменування`);
       }
       
       if (!section.length || section.length <= 0) {
-        errors.push(`Секція ${index + 1}: некоректна протяжність`);
+        errors.push(`Секція ${i + 1}: некоректна протяжність`);
       }
       
-      if (section.intensityCoeff !== undefined && (isNaN(section.intensityCoeff) || section.intensityCoeff < 0)) {
-        errors.push(`Секція ${index + 1}: некоректний коефіцієнт інтенсивності`);
-      }
+      // Проверяем коэффициенты только если они определены
+      const coeffs = [
+        { val: section.intensityCoeff, name: 'інтенсивності' },
+        { val: section.strengthCoeff, name: 'міцності' },
+        { val: section.evennessCoeff, name: 'рівності' },
+        { val: section.rutCoeff, name: 'колійності' },
+        { val: section.frictionFactorCoeff, name: 'зчеплення' },
+        { val: section.estimatedCost, name: 'вартості' }
+      ];
       
-      if (section.strengthCoeff !== undefined && (isNaN(section.strengthCoeff) || section.strengthCoeff < 0)) {
-        errors.push(`Секція ${index + 1}: некоректний коефіцієнт міцності`);
+      for (const coeff of coeffs) {
+        if (coeff.val !== undefined && (isNaN(coeff.val) || coeff.val < 0)) {
+          errors.push(`Секція ${i + 1}: некоректний коефіцієнт ${coeff.name}`);
+          break; // Не проверяем остальные коэффициенты для этой секции
+        }
       }
-      
-      if (section.evennessCoeff !== undefined && (isNaN(section.evennessCoeff) || section.evennessCoeff < 0)) {
-        errors.push(`Секція ${index + 1}: некоректний коефіцієнт рівності`);
-      }
-      
-      if (section.rutCoeff !== undefined && (isNaN(section.rutCoeff) || section.rutCoeff < 0)) {
-        errors.push(`Секція ${index + 1}: некоректний коефіцієнт колійності`);
-      }
-      
-      if (section.frictionFactorCoeff !== undefined && (isNaN(section.frictionFactorCoeff) || section.frictionFactorCoeff < 0)) {
-        errors.push(`Секція ${index + 1}: некоректний коефіцієнт зчеплення`);
-      }
-      
-      if (section.estimatedCost !== undefined && (isNaN(section.estimatedCost) || section.estimatedCost < 0)) {
-        errors.push(`Секція ${index + 1}: некоректна розрахункова вартість`);
-      }
-    });
+    }
+    
+    if (errors.length >= maxErrors) {
+      errors.push('... та інші помилки');
+    }
     
     return errors;
-  };
+  }, []);
 
-  // Основная функция расчета
-  const handleCalculate = async () => {
+  // Оптимизированная обработка одной секции
+  const processSingleSection = React.useCallback((section: RoadSectionUI): RoadSectionUI => {
+    try {
+      // Шаг 1: Расчет коэффициентов (оптимизированный)
+      const withCoeffs = calculateCoefficients(section);
+      
+      // Шаг 2: Определение типа работ
+      const withWorkType = determineWorkType(withCoeffs);
+      
+      // Шаг 3: Расчет стоимости
+      const estimatedCost = calculateEstimatedCost(withWorkType, withWorkType.workTypeRaw || 'no_work_needed');
+      
+      return {
+        ...withWorkType,
+        estimatedCost: estimatedCost
+      };
+    } catch (error) {
+      console.error('Error processing section:', section.name, error);
+      // Возвращаем секцию с базовыми значениями
+      return {
+        ...section,
+        intensityCoeff: 1.0,
+        strengthCoeff: 1.0,
+        evennessCoeff: 1.0,
+        rutCoeff: 1.0,
+        frictionFactorCoeff: 1.0,
+        workType: 'Не потрібно',
+        workTypeRaw: 'no_work_needed' as const,
+        estimatedCost: 0
+      };
+    }
+  }, []);
+
+  // Батчевая обработка с прогрессом
+  const processBatch = React.useCallback(async (
+    sectionsToProcess: RoadSectionUI[], 
+    batchSize: number = 50
+  ): Promise<RoadSectionUI[]> => {
+    const results: RoadSectionUI[] = [];
+    const totalBatches = Math.ceil(sectionsToProcess.length / batchSize);
+    
+    for (let i = 0; i < sectionsToProcess.length; i += batchSize) {
+      const batch = sectionsToProcess.slice(i, i + batchSize);
+      const currentBatch = Math.floor(i / batchSize) + 1;
+      
+      // Обрабатываем батч
+      const batchResults = batch.map(processSingleSection);
+      results.push(...batchResults);
+      
+      // Обновляем прогресс
+      const progressPercent = Math.round((currentBatch / totalBatches) * 100);
+      setProgress(progressPercent);
+      
+      // Даем браузеру передышку для больших батчей
+      if (batch.length >= batchSize && currentBatch < totalBatches) {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+    }
+    
+    return results;
+  }, [processSingleSection]);
+
+  // Оптимизированная основная функция расчета
+  const handleCalculate = React.useCallback(async () => {
+    if (sections.length === 0) return;
+    
     setIsCalculating(true);
     setValidationErrors([]);
+    setProgress(0);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log(`Starting calculation for ${sections.length} sections`);
+      const startTime = performance.now();
       
-      const updated = sections.map(section => {
-        console.log('Processing section:', section.name);
-        
-        try {
-          // Шаг 1: Расчет коэффициентов
-          const withCoeffs = calculateCoefficients(section);
-          
-          // Шаг 2: Определение типа работ
-          const withWorkType = determineWorkType(withCoeffs);
-          
-          // Шаг 3: Расчет стоимости
-          const estimatedCost = calculateEstimatedCost(withWorkType, withWorkType.workTypeRaw || 'no_work_needed');
-          
-          const result = {
-            ...withWorkType,
-            estimatedCost: estimatedCost
-          };
-          
-          return result;
-        } catch (error) {
-          console.error('Error processing section:', section.name, error);
-          // Возвращаем секцию с базовыми значениями в случае ошибки
-          return {
-            ...section,
-            intensityCoeff: 1.0,
-            strengthCoeff: 1.0,
-            evennessCoeff: 1.0,
-            rutCoeff: 1.0,
-            frictionFactorCoeff: 1.0,
-            workType: 'Не потрібно',
-            workTypeRaw: 'no_work_needed' as const,
-            estimatedCost: 0
-          };
-        }
-      });
+      // Определяем размер батча в зависимости от количества секций
+      const batchSize = sections.length > 1000 ? 100 : sections.length > 500 ? 50 : 25;
+      
+      const updated = await processBatch(sections, batchSize);
+      
+      const endTime = performance.now();
+      console.log(`Calculation completed in ${(endTime - startTime).toFixed(2)}ms`);
       
       setCalculatedSections(updated);
       
-      // Автоматическое сохранение после расчета
+      // Валидация и сохранение
       const errors = validateSections(updated);
       if (errors.length === 0) {
         onSectionsChange(updated);
@@ -1008,11 +1043,31 @@ const Page1_Coefficients: React.FC<Props> = ({
       setValidationErrors(['Помилка при розрахунку коефіцієнтів']);
     } finally {
       setIsCalculating(false);
+      setProgress(0);
     }
-  };
+  }, [sections, processBatch, validateSections, calculateSummary, onSectionsChange]);
+
+  // Инициализация при получении новых данных
+  React.useEffect(() => {
+    if (sections.length > 0) {
+      console.log('Received sections, checking if calculation needed...');
+      
+      if (hasCalculatedData) {
+        console.log('Data already calculated, using existing');
+        setCalculatedSections(sections);
+        calculateSummary(sections);
+      } else {
+        console.log('Data needs calculation');
+        handleCalculate();
+      }
+    } else {
+      setCalculatedSections([]);
+      setCalculationSummary(null);
+    }
+  }, [sections, hasCalculatedData, handleCalculate, calculateSummary]);
 
   // Функция сохранения с валидацией
-  const handleSave = () => {
+  const handleSave = React.useCallback(() => {
     const sectionsToSave = tempSections.length > 0 ? tempSections : calculatedSections;
     const errors = validateSections(sectionsToSave);
     setValidationErrors(errors);
@@ -1031,53 +1086,56 @@ const Page1_Coefficients: React.FC<Props> = ({
     } else {
       console.error('Validation errors:', errors);
     }
-  };
+  }, [tempSections, calculatedSections, validateSections, onSectionsChange]);
 
   // Отмена изменений
-  const handleCancel = () => {
+  const handleCancel = React.useCallback(() => {
     setTempSections([]);
     setEditMode(false);
     setValidationErrors([]);
-  };
+  }, []);
 
   // Вход в режим редактирования
-  const handleEdit = () => {
+  const handleEdit = React.useCallback(() => {
     setTempSections([...calculatedSections]);
     setEditMode(true);
     setValidationErrors([]);
-  };
+  }, [calculatedSections]);
 
-  // Функция для badge соответствия нормам
-  const getComplianceBadge = (value: number, threshold: number, isInverse: boolean = false) => {
-    const isCompliant = isInverse ? value <= threshold : value >= threshold;
-    return (
-      <Badge variant={isCompliant ? "secondary" : "destructive"} className="gap-1">
-        {value.toFixed(2)}
-        {isCompliant ? (
-          <CheckCircleIcon className="h-3 w-3" />
-        ) : (
-          <XCircleIcon className="h-3 w-3" />
-        )}
-      </Badge>
-    );
-  };
+  // Мемоизированные функции для badge
+  const getComplianceBadge = React.useMemo(() => 
+    (value: number, threshold: number, isInverse: boolean = false) => {
+      const isCompliant = isInverse ? value <= threshold : value >= threshold;
+      return (
+        <Badge variant={isCompliant ? "secondary" : "destructive"} className="gap-1">
+          {value.toFixed(2)}
+          {isCompliant ? (
+            <CheckCircleIcon className="h-3 w-3" />
+          ) : (
+            <XCircleIcon className="h-3 w-3" />
+          )}
+        </Badge>
+      );
+    }, []
+  );
 
-  // Функция для badge типа работ
-  const getWorkTypeBadge = (workType: string) => {
-    const variants = {
-      'Не потрібно': { variant: 'secondary' as const, color: 'text-green-700' },
-      'Поточний ремонт': { variant: 'default' as const, color: 'text-blue-700' },
-      'Капітальний ремонт': { variant: 'destructive' as const, color: 'text-orange-700' },
-      'Реконструкція': { variant: 'outline' as const, color: 'text-red-700' }
-    };
-    
-    const config = variants[workType as keyof typeof variants] || variants['Не потрібно'];
-    return (
-      <Badge variant={config.variant} className={`${config.color} font-medium`}>
-        {workType}
-      </Badge>
-    );
-  };
+  const getWorkTypeBadge = React.useMemo(() => 
+    (workType: string) => {
+      const variants = {
+        'Не потрібно': { variant: 'secondary' as const, color: 'text-green-700' },
+        'Поточний ремонт': { variant: 'default' as const, color: 'text-blue-700' },
+        'Капітальний ремонт': { variant: 'destructive' as const, color: 'text-white' },
+        'Реконструкція': { variant: 'outline' as const, color: 'text-white' }
+      };
+      
+      const config = variants[workType as keyof typeof variants] || variants['Не потрібно'];
+      return (
+        <Badge variant={config.variant} className={`${config.color} font-medium`}>
+          {workType}
+        </Badge>
+      );
+    }, []
+  );
 
   // Если нет данных для расчета
   if (sections.length === 0) {
@@ -1116,7 +1174,7 @@ const Page1_Coefficients: React.FC<Props> = ({
                 className="gap-2"
               >
                 <CalculatorIcon className={`h-4 w-4 ${isCalculating ? 'animate-spin' : ''}`} />
-                {isCalculating ? 'Розраховуємо...' : 'Перерахувати'}
+                {isCalculating ? `Розраховуємо... ${progress}%` : 'Перерахувати'}
               </Button>
               
               {!editMode ? (
@@ -1169,6 +1227,22 @@ const Page1_Coefficients: React.FC<Props> = ({
         </CardHeader>
         
         <CardContent>
+          {/* Прогресс бар для больших вычислений */}
+          {isCalculating && sections.length > 100 && (
+            <div className="mb-4">
+              <div className="flex justify-between text-sm text-gray-600 mb-1">
+                <span>Обробка секцій...</span>
+                <span>{progress}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+
           {/* Отображение ошибок валидации */}
           {validationErrors.length > 0 && (
             <Alert className="mb-6" variant="destructive">
@@ -1210,6 +1284,15 @@ const Page1_Coefficients: React.FC<Props> = ({
             </div>
           )}
 
+          {/* Виртуализированная таблица для больших данных */}
+          {displaySections.length > 500 ? (
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
+              <p className="text-sm text-yellow-800">
+                Велика кількість секцій ({displaySections.length}). Для кращої продуктивності показані перші 500 записів.
+              </p>
+            </div>
+          ) : null}
+
           {/* Таблица с результатами */}
           <div className="overflow-x-auto">
             <Table>
@@ -1229,7 +1312,7 @@ const Page1_Coefficients: React.FC<Props> = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {displaySections.map((section) => (
+                {displaySections.slice(0, 500).map((section) => (
                   <TableRow key={section.id} className={isCalculating ? 'opacity-50' : ''}>
                     <TableCell className="font-medium">
                       <div>
@@ -1788,7 +1871,7 @@ const Page2_Component: React.FC<{
       <Card className="w-full">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Визначення показників фактичного транспортно-експлуатаційного стану доріг державного та місцевого значення</span>
+            <span>Визначення показників фактичного транспортно-експлуатаційного стану доріг</span>
             <div className="flex gap-2">
               <input
                 ref={fileInputRef}
@@ -1842,19 +1925,16 @@ const Page2_Component: React.FC<{
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead rowSpan={2} className="w-48">Найменування ділянки дороги</TableHead>
-                  <TableHead rowSpan={2} className="w-24">Протяжність дороги, км</TableHead>
-                  <TableHead rowSpan={2} className="w-32">Категорія ділянки дороги</TableHead>
-                  <TableHead className="text-center border-b" colSpan={6}>Фактичні показники</TableHead>
-                  <TableHead rowSpan={2} className="w-24">Дії</TableHead>
-                </TableRow>
-                <TableRow>
-                  <TableHead className="w-28">Фактична інтенсивність руху ТЗ у приведених одиницях до легкового автомобіля за данними обліку (авт./добу)</TableHead>
-                  <TableHead className="w-28">Фактичний загальний модуль пружності дорожньої конструкції (МПа)</TableHead>
-                  <TableHead className="w-28">Фактична рівність поверхні дорожнього покриву, яку оцінюють за профілометричним методом (м/км)</TableHead>
-                  <TableHead className="w-28">Фактична рівність поверхні дорожнього покриву, яку оцінюють за показником поштовхоміра (см/км)</TableHead>
-                  <TableHead className="w-24">Фактична глибина колії (мм)</TableHead>
-                  <TableHead className="w-24">Фактичний коефіцієнт зчеплення</TableHead>
+                  <TableHead className="w-48 min-w-48">Найменування ділянки дороги</TableHead>
+                  <TableHead className="w-20 min-w-20">Протяжність, км</TableHead>
+                  <TableHead className="w-24 min-w-24">Категорія</TableHead>
+                  <TableHead className="w-24 min-w-24">Інтенсивність авт/добу</TableHead>
+                  <TableHead className="w-24 min-w-24">Модуль пружності МПа</TableHead>
+                  <TableHead className="w-24 min-w-24">Рівність м/км</TableHead>
+                  <TableHead className="w-24 min-w-24">Рівність см/км</TableHead>
+                  <TableHead className="w-20 min-w-20">Колія мм</TableHead>
+                  <TableHead className="w-20 min-w-20">Зчеплення</TableHead>
+                  <TableHead className="w-20 min-w-20">Дії</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1868,7 +1948,7 @@ const Page2_Component: React.FC<{
                             <Input
                               value={formData.name}
                               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                              className="w-full"
+                              className="w-full min-w-40"
                             />
                           </TableCell>
                           <TableCell>
@@ -1877,7 +1957,7 @@ const Page2_Component: React.FC<{
                               step="0.1"
                               value={formData.length}
                               onChange={(e) => setFormData({ ...formData, length: parseFloat(e.target.value) || 1 })}
-                              className="w-20"
+                              className="w-16"
                             />
                           </TableCell>
                           <TableCell>
@@ -1885,7 +1965,7 @@ const Page2_Component: React.FC<{
                               value={formData.category.toString()} 
                               onValueChange={(value) => setFormData({ ...formData, category: parseInt(value) as 1|2|3|4|5 })}
                             >
-                              <SelectTrigger className="w-full">
+                              <SelectTrigger className="w-20">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -1902,7 +1982,7 @@ const Page2_Component: React.FC<{
                               type="number"
                               value={formData.trafficIntensity}
                               onChange={(e) => setFormData({ ...formData, trafficIntensity: parseInt(e.target.value) || 1000 })}
-                              className="w-24"
+                              className="w-20"
                             />
                           </TableCell>
                           <TableCell>
@@ -1935,7 +2015,7 @@ const Page2_Component: React.FC<{
                               type="number"
                               value={formData.rutDepth}
                               onChange={(e) => setFormData({ ...formData, rutDepth: parseInt(e.target.value) || 25 })}
-                              className="w-20"
+                              className="w-16"
                             />
                           </TableCell>
                           <TableCell>
@@ -1944,7 +2024,7 @@ const Page2_Component: React.FC<{
                               step="0.01"
                               value={formData.frictionCoeff}
                               onChange={(e) => setFormData({ ...formData, frictionCoeff: parseFloat(e.target.value) || 0.35 })}
-                              className="w-20"
+                              className="w-16"
                             />
                           </TableCell>
                           <TableCell>
@@ -1961,30 +2041,32 @@ const Page2_Component: React.FC<{
                       ) : (
                         <>
                           <TableCell className="font-medium">
-                            <div>
-                              {section.name}
-                              {section.significance === 'state' && (
-                                <Badge variant="outline" className="ml-2 text-xs">Державна</Badge>
-                              )}
-                              {section.isInternationalRoad && (
-                                <Badge variant="secondary" className="ml-1 text-xs">Міжнар.</Badge>
-                              )}
+                            <div className="max-w-44">
+                              <div className="truncate" title={section.name}>{section.name}</div>
+                              <div className="flex gap-1 mt-1">
+                                {section.significance === 'state' && (
+                                  <Badge variant="outline" className="text-[10px] px-1 py-0">Держ</Badge>
+                                )}
+                                {section.isInternationalRoad && (
+                                  <Badge variant="secondary" className="text-[10px] px-1 py-0">Міжн</Badge>
+                                )}
+                              </div>
                             </div>
                           </TableCell>
-                          <TableCell>{section.length}</TableCell>
+                          <TableCell className="text-center">{section.length}</TableCell>
                           <TableCell>
-                            <div className="text-sm">
-                              <div className="font-medium">{CATEGORIES[section.category]?.name}</div>
-                              <div className="text-xs text-gray-500">
-                                Макс: {CATEGORIES[section.category]?.maxIntensity.toLocaleString()} авт/добу
+                            <div className="text-center">
+                              <div className="font-medium text-sm">{section.category}</div>
+                              <div className="text-[10px] text-gray-500">
+                                {CATEGORIES[section.category]?.name}
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="text-center">
-                              <div className="font-medium">{section.trafficIntensity}</div>
+                              <div className="font-medium text-sm">{section.trafficIntensity}</div>
                               {metrics && (
-                                <div className="text-xs mt-1">
+                                <div className="text-[10px]">
                                   {getComplianceBadge(metrics.intensityCoeff, 1.0)}
                                 </div>
                               )}
@@ -1992,9 +2074,9 @@ const Page2_Component: React.FC<{
                           </TableCell>
                           <TableCell>
                             <div className="text-center">
-                              <div className="font-medium">{section.strengthModulus}</div>
+                              <div className="font-medium text-sm">{section.strengthModulus}</div>
                               {metrics && (
-                                <div className="text-xs mt-1">
+                                <div className="text-[10px]">
                                   {getComplianceBadge(metrics.strengthCoeff, MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[section.category])}
                                 </div>
                               )}
@@ -2002,9 +2084,9 @@ const Page2_Component: React.FC<{
                           </TableCell>
                           <TableCell>
                             <div className="text-center">
-                              <div className="font-medium">{section.roughnessProfile}</div>
+                              <div className="font-medium text-sm">{section.roughnessProfile}</div>
                               {metrics && (
-                                <div className="text-xs mt-1">
+                                <div className="text-[10px]">
                                   {getComplianceBadge(metrics.evennessCoeff, 1.0)}
                                 </div>
                               )}
@@ -2012,15 +2094,14 @@ const Page2_Component: React.FC<{
                           </TableCell>
                           <TableCell>
                             <div className="text-center">
-                              <div className="font-medium">{section.roughnessBump}</div>
-                              <div className="text-xs text-gray-500">см/км</div>
+                              <div className="font-medium text-sm">{section.roughnessBump}</div>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="text-center">
-                              <div className="font-medium">{section.rutDepth}</div>
+                              <div className="font-medium text-sm">{section.rutDepth}</div>
                               {metrics && (
-                                <div className="text-xs mt-1">
+                                <div className="text-[10px]">
                                   {getComplianceBadge(metrics.rutCoeff, 1.0)}
                                 </div>
                               )}
@@ -2028,9 +2109,9 @@ const Page2_Component: React.FC<{
                           </TableCell>
                           <TableCell>
                             <div className="text-center">
-                              <div className="font-medium">{section.frictionCoeff}</div>
+                              <div className="font-medium text-sm">{section.frictionCoeff}</div>
                               {metrics && (
-                                <div className="text-xs mt-1">
+                                <div className="text-[10px]">
                                   {getComplianceBadge(metrics.frictionCoeff, 1.0)}
                                 </div>
                               )}
@@ -2067,7 +2148,7 @@ const Page2_Component: React.FC<{
                   return (
                     <Card key={section.id} className="p-4">
                       <div className="space-y-2">
-                        <div className="font-medium text-sm">{section.name}</div>
+                        <div className="font-medium text-sm truncate" title={section.name}>{section.name}</div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm">Рекомендація:</span>
                           {getWorkTypeBadge(metrics.workType)}
@@ -2498,39 +2579,7 @@ const Page3_CostIndicators: React.FC<{
                 </TableRow>
               </TableBody>
             </Table>
-          </div>
-
-          {/* Інформаційна панель */}
-          <Alert className="mt-6">
-            <InfoIcon className="h-4 w-4" />
-            <AlertDescription>
-              <div className="space-y-2">
-                <div className="font-semibold">Рекомендації по використанню показників:</div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <div className="font-medium mb-1">Джерела даних:</div>
-                    <ul className="space-y-1">
-                      <li>• Аналогічні проекти останніх 2-3 років</li>
-                      <li>• Ринкові ціни будівельних матеріалів</li>
-                      <li>• Регіональні коефіцієнти вартості</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <div className="font-medium mb-1">Фактори корекції:</div>
-                    <ul className="space-y-1">
-                      <li>• +15% для міжнародних доріг</li>
-                      <li>• +10% для доріг оборонного значення</li>
-                      <li>• +5% за наявність освітлення</li>
-                      <li>• ±20% залежно від регіону</li>
-                    </ul>
-                  </div>
-                </div>
-                <div className="text-xs text-gray-600 mt-2">
-                  * Показники наведені в цінах 2023 року та потребують корекції на поточну дату
-                </div>
-              </div>
-            </AlertDescription>
-          </Alert>
+          </div>      
           
           <div className="mt-6 flex justify-between">
             <Button onClick={onBack} variant="outline">

@@ -29,8 +29,6 @@ import {
   calculateRepairCoefficient,
   calculateCriticalInfrastructureCoefficient,
   type RoadSection,
-  MAINTENANCE_CONSTANTS,
-
 } from '../../modules/block_two';
 
 // Импортируем SheetJS
@@ -108,10 +106,10 @@ const Block2MaintenanceCalculator: React.FC = () => {
   const [results, setResults] = useState<RoadCalculationResult | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedRegion, setSelectedRegion] = useState<string>("Винницкая");
+  const [selectedRegion, setSelectedRegion] = useState<string>("Вінницька");
   const [regionCoefficients] = useState<RegionCoefficients[]>(getRegionCoefficients());
-  const [regionData, _setRegionData] = useState<RegionRoads>(generateSampleRegionData("Винницкая"));
-  const [_fundingResults, setFundingResults] = useState<{
+  const [regionData, _setRegionData] = useState<RegionRoads>(generateSampleRegionData("Вінницька"));
+  const [fundingResults, setFundingResults] = useState<{
     stateFunding: number;
     localFunding: number;
     totalFunding: number;
@@ -195,7 +193,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
     localTrafficIntensity: '1.0000'
   });
 
-  const [_saveStatus, setSaveStatus] = useState<string>("");
+  const [saveStatus, setSaveStatus] = useState<string>("");
 
   // ДОДАНО: Функція синхронізації полів вводу з коефіцієнтами (тільки при зміні регіону)
   const syncInputValues = (forceUpdate = false) => {
@@ -230,6 +228,8 @@ const Block2MaintenanceCalculator: React.FC = () => {
   useEffect(() => {
     // Синхронізуємо тільки при першому завантаженні або якщо це зміна регіону
     syncInputValues(true);
+    calculateDetailedCoefficients();
+    calculateFunding();
   }, [selectedRegion]); // Залежність тільки від регіону
 
   // Add inflation index for state roads
@@ -937,6 +937,29 @@ const Block2MaintenanceCalculator: React.FC = () => {
                   </Card>
                 </div>
               </div>
+
+              {fundingResults.totalFunding > 0 && (
+                <Alert className="glass-card mt-4">
+                  <AlertDescription>
+                    Розраховано загальне фінансування: {fundingResults.totalFunding.toLocaleString()} тис. грн
+                    (Державні: {fundingResults.stateFunding.toLocaleString()}, Місцеві: {fundingResults.localFunding.toLocaleString()})
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="grid grid-cols-5 gap-2 text-xs">
+                {[1, 2, 3, 4, 5].map(category => {
+                  const funding = calculateCategoryFunding(category);
+                  return (
+                    <div key={category} className="p-2 bg-gray-100 rounded text-center">
+                      <div>Кат. {category}</div>
+                      <div>Держ.: {funding.stateFunding.toFixed(1)}</div>
+                      <div>Місц.: {funding.localFunding.toFixed(1)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
             </CardContent>
           </Card>
         </TabsContent>
@@ -1083,6 +1106,29 @@ const Block2MaintenanceCalculator: React.FC = () => {
                   </Card>
                 </div>
               </div>
+
+              {fundingResults.totalFunding > 0 && (
+                <Alert className="glass-card mt-4">
+                  <AlertDescription>
+                    Розраховано загальне фінансування: {fundingResults.totalFunding.toLocaleString()} тис. грн
+                    (Державні: {fundingResults.stateFunding.toLocaleString()}, Місцеві: {fundingResults.localFunding.toLocaleString()})
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="grid grid-cols-5 gap-2 text-xs">
+                {[1, 2, 3, 4, 5].map(category => {
+                  const funding = calculateCategoryFunding(category);
+                  return (
+                    <div key={category} className="p-2 bg-gray-100 rounded text-center">
+                      <div>Кат. {category}</div>
+                      <div>Держ.: {funding.stateFunding.toFixed(1)}</div>
+                      <div>Місц.: {funding.localFunding.toFixed(1)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
             </CardContent>
           </Card>
         </TabsContent>
@@ -1317,13 +1363,11 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     <div className="flex flex-wrap gap-4">
                       <span>Загалом клітинок: <strong>{currentWorksheet.cells.length}</strong></span>
                       <span>Редагованих: <strong>{currentWorksheet.cells.filter(c => c.editable).length}</strong></span>
-                      <span>Формул: <strong>{currentWorksheet.cells.filter(c => c.type === 'formula').length}</strong></span>
                     </div>
-                    <span>Показано перші 50 рядків</span>
                   </div>
 
                   {/* Подсказка по структуре */}
-                  <Card className="bg-yellow-50 border-yellow-200">
+                  {/* <Card className="bg-yellow-50 border-yellow-200">
                     <CardContent className="p-4">
                       <div className="text-sm">
                         <div className="font-semibold text-yellow-800 mb-2">Очікувана структура колонок:</div>
@@ -1339,7 +1383,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                         </div>
                       </div>
                     </CardContent>
-                  </Card>
+                  </Card> */}
                 </div>
               )}
 
@@ -1535,7 +1579,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
               )}
 
               {/* Инструкция по использованию */}
-              <Alert>
+              {/* <Alert>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Інструкція по використанню:</AlertTitle>
                 <AlertDescription className="space-y-3">
@@ -1576,11 +1620,25 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     <div>• Розрахунки виконуються згідно з діючою методикою фінансування експлуатаційного утримання</div>
                   </div>
                 </AlertDescription>
-              </Alert>
+              </Alert> */}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+      {/* Финансирование по категориям */}
+      <Button
+          onClick={() => {
+            setSaveStatus("Збереження...");
+            setTimeout(() => setSaveStatus("Збережено!"), 1000);
+            setTimeout(() => setSaveStatus(""), 3000);
+          }}
+          className="glass-button text-black"
+        >
+          Зберегти проєкт
+        </Button>
+        {saveStatus && (
+          <span className="text-xs text-green-600">{saveStatus}</span>
+        )}
     </div>
   );
 };

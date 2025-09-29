@@ -3168,7 +3168,7 @@ const calculateEstimatedCostForSection = (section: RoadSectionUI): number => {
   };
   
   const baseRate = baseCosts[workType][section.category] || 1.0;
-  let totalCost = baseRate * section.length * 1000; // конвертируем в тыс. грн
+  let totalCost = baseRate * section.length * section.category * 1000; // конвертируем в тыс. грн
   
   // Поправочные коэффициенты
   if (section.isInternationalRoad) totalCost *= 1.15;

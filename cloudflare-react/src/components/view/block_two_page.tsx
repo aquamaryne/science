@@ -67,7 +67,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
   // State for state road calculation (Block 2.1)
   const [stateRoadBaseRate, setStateRoadBaseRate] = useState<number>(604.761);
   const [stateInflationIndexes, setStateInflationIndexes] = useState<number[]>([10]);
-  const [stateRoadRates, setStateRoadRates] = useState<{
+  const [stateRoadRate, setStateRoadRates] = useState<{
     category1: number;
     category2: number;
     category3: number;
@@ -84,7 +84,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
   // State for local road calculation (Block 2.2)
   const [localRoadBaseRate, setLocalRoadBaseRate] = useState<number>(360.544);
   const [localInflationIndexes, setLocalInflationIndexes] = useState<number[]>([10]);
-  const [localRoadRates, setLocalRoadRates] = useState<{
+  const [localRoadRate, setLocalRoadRates] = useState<{
     category1: number;
     category2: number;
     category3: number;
@@ -195,6 +195,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
 
   const [saveStatus, setSaveStatus] = useState<string>("");
 
+  const [uploadProgress, _setUploadProgress] = useState(0);
   // ДОДАНО: Функція синхронізації полів вводу з коефіцієнтами (тільки при зміні регіону)
   const syncInputValues = (forceUpdate = false) => {
     // Синхронізуємо тільки якщо це примусове оновлення (зміна регіону) або поля ще не заповнені
@@ -424,8 +425,8 @@ const Block2MaintenanceCalculator: React.FC = () => {
     const stateRoadLength = stateRoadSections.reduce((sum, section) => sum + section.length, 0);
     const localRoadLength = localRoadSections.reduce((sum, section) => sum + section.length, 0);
     
-    const stateFunding = stateRoadRates[`category${category}` as keyof typeof stateRoadRates] * stateRoadLength;
-    const localFunding = localRoadRates[`category${category}` as keyof typeof localRoadRates] * localRoadLength;
+    const stateFunding = stateRoadRate[`category${category}` as keyof typeof stateRoadRate] * stateRoadLength;
+    const localFunding = localRoadRate[`category${category}` as keyof typeof localRoadRate] * localRoadLength;
     
     return { stateFunding, localFunding };
   };
@@ -875,7 +876,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     <CardContent className="p-0 text-center">
                       <h3 className="font-bold">Категорія I</h3>
                       <div className="text-xl font-bold mt-2">
-                        {stateRoadRates.category1.toFixed(2)}
+                        {stateRoadRate.category1.toFixed(2)}
                       </div>
                       <div className="text-sm text-gray-500">тис. грн/км</div>
                       <div className="text-xs text-blue-600 mt-1">
@@ -888,7 +889,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     <CardContent className="p-0 text-center">
                       <h3 className="font-bold">Категорія II</h3>
                       <div className="text-xl font-bold mt-2">
-                        {stateRoadRates.category2.toFixed(2)}
+                        {stateRoadRate.category2.toFixed(2)}
                       </div>
                       <div className="text-sm text-gray-500">тис. грн/км</div>
                       <div className="text-xs text-blue-600 mt-1">
@@ -901,7 +902,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     <CardContent className="p-0 text-center">
                       <h3 className="font-bold">Категорія III</h3>
                       <div className="text-xl font-bold mt-2">
-                        {stateRoadRates.category3.toFixed(2)}
+                        {stateRoadRate.category3.toFixed(2)}
                       </div>
                       <div className="text-sm text-gray-500">тис. грн/км</div>
                       <div className="text-xs text-blue-600 mt-1">
@@ -914,7 +915,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     <CardContent className="p-0 text-center">
                       <h3 className="font-bold">Категорія IV</h3>
                       <div className="text-xl font-bold mt-2">
-                        {stateRoadRates.category4.toFixed(2)}
+                        {stateRoadRate.category4.toFixed(2)}
                       </div>
                       <div className="text-sm text-gray-500">тис. грн/км</div>
                       <div className="text-xs text-blue-600 mt-1">
@@ -927,7 +928,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     <CardContent className="p-0 text-center">
                       <h3 className="font-bold">Категорія V</h3>
                       <div className="text-xl font-bold mt-2">
-                        {stateRoadRates.category5.toFixed(2)}
+                        {stateRoadRate.category5.toFixed(2)}
                       </div>
                       <div className="text-sm text-gray-500">тис. грн/км</div>
                       <div className="text-xs text-blue-600 mt-1">
@@ -1044,7 +1045,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     <CardContent className="p-0 text-center">
                       <h3 className="font-bold">Категорія I</h3>
                       <div className="text-xl font-bold mt-2">
-                        {localRoadRates.category1.toFixed(2)}
+                        {localRoadRate.category1.toFixed(2)}
                       </div>
                       <div className="text-sm text-gray-500">тис. грн/км</div>
                       <div className="text-xs text-blue-600 mt-1">
@@ -1057,7 +1058,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     <CardContent className="p-0 text-center">
                       <h3 className="font-bold">Категорія II</h3>
                       <div className="text-xl font-bold mt-2">
-                        {localRoadRates.category2.toFixed(2)}
+                        {localRoadRate.category2.toFixed(2)}
                       </div>
                       <div className="text-sm text-gray-500">тис. грн/км</div>
                       <div className="text-xs text-blue-600 mt-1">
@@ -1070,7 +1071,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     <CardContent className="p-0 text-center">
                       <h3 className="font-bold">Категорія III</h3>
                       <div className="text-xl font-bold mt-2">
-                        {localRoadRates.category3.toFixed(2)}
+                        {localRoadRate.category3.toFixed(2)}
                       </div>
                       <div className="text-sm text-gray-500">тис. грн/км</div>
                       <div className="text-xs text-blue-600 mt-1">
@@ -1083,7 +1084,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     <CardContent className="p-0 text-center">
                       <h3 className="font-bold">Категорія IV</h3>
                       <div className="text-xl font-bold mt-2">
-                        {localRoadRates.category4.toFixed(2)}
+                        {localRoadRate.category4.toFixed(2)}
                       </div>
                       <div className="text-sm text-gray-500">тис. грн/км</div>
                       <div className="text-xs text-blue-600 mt-1">
@@ -1096,7 +1097,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                     <CardContent className="p-0 text-center">
                       <h3 className="font-bold">Категорія V</h3>
                       <div className="text-xl font-bold mt-2">
-                        {localRoadRates.category5.toFixed(2)}
+                        {localRoadRate.category5.toFixed(2)}
                       </div>
                       <div className="text-sm text-gray-500">тис. грн/км</div>
                       <div className="text-xs text-blue-600 mt-1">
@@ -1176,6 +1177,15 @@ const Block2MaintenanceCalculator: React.FC = () => {
                       }>
                         {uploadStatus}
                       </span>
+                    </div>
+                  )}
+
+                  {uploadProgress > 0 && uploadProgress < 100 && (
+                    <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
                     </div>
                   )}
                 </div>
@@ -1284,7 +1294,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                         <tbody>
                           {Object.entries(tableData.rows)
                             .sort(([a], [b]) => parseInt(a) - parseInt(b))
-                            .slice(0, 50) // Показываем больше строк
+                            .slice(0, Math.min(100, Object.keys(tableData.rows).length)) // ОГРАНИЧЕНИЕ
                             .map(([rowNum, rowCells]) => {
                               const rowIndex = parseInt(rowNum);
                               const isHeaderRow = rowIndex === 0;
@@ -1350,6 +1360,15 @@ const Block2MaintenanceCalculator: React.FC = () => {
                                       </td>
                                     );
                                   })}
+                                  {Object.keys(tableData.rows).length > 100 && (
+                                    <Alert className="mb-4">
+                                      <AlertTriangle className="h-4 w-4" />
+                                      <AlertDescription>
+                                        Показані перші 100 рядків з {Object.keys(tableData.rows).length}. 
+                                        Для кращої продуктивності решта рядків приховані.
+                                      </AlertDescription>
+                                    </Alert>
+                                  )}
                                 </tr>
                               );
                             })}

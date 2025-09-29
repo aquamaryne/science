@@ -2965,7 +2965,7 @@ const Page4_EstimatedCosts: React.FC<Page4EstimatedCostsProps> = ({
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" />
-                Распределение работ
+                Розподіл робіт
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -3000,12 +3000,12 @@ const Page4_EstimatedCosts: React.FC<Page4EstimatedCostsProps> = ({
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Средние коэффициенты</CardTitle>
+              <CardTitle className="text-base">Середні коефіцієнти</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span>Интенсивность:</span>
+                  <span>Інтенсивність:</span>
                   <span className="font-medium">
                     {assessments.length > 0 
                       ? (assessments.reduce((s, a) => s + a.technicalState.intensityCoefficient, 0) / assessments.length).toFixed(2)
@@ -3014,7 +3014,7 @@ const Page4_EstimatedCosts: React.FC<Page4EstimatedCostsProps> = ({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Прочность:</span>
+                  <span>Прочність:</span>
                   <span className="font-medium">
                     {assessments.length > 0 
                       ? (assessments.reduce((s, a) => s + a.technicalState.strengthCoefficient, 0) / assessments.length).toFixed(2)
@@ -3023,7 +3023,7 @@ const Page4_EstimatedCosts: React.FC<Page4EstimatedCostsProps> = ({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Ровность:</span>
+                  <span>Рівність:</span>
                   <span className="font-medium">
                     {assessments.length > 0 
                       ? (assessments.reduce((s, a) => s + a.technicalState.evennessCoefficient, 0) / assessments.length).toFixed(2)
@@ -3032,7 +3032,7 @@ const Page4_EstimatedCosts: React.FC<Page4EstimatedCostsProps> = ({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Колейность:</span>
+                  <span>Колійність:</span>
                   <span className="font-medium">
                     {assessments.length > 0 
                       ? (assessments.reduce((s, a) => s + a.technicalState.rutCoefficient, 0) / assessments.length).toFixed(2)
@@ -3046,14 +3046,14 @@ const Page4_EstimatedCosts: React.FC<Page4EstimatedCostsProps> = ({
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Экономические показатели</CardTitle>
+              <CardTitle className="text-base">Економічні показники</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 text-sm">
                 {(() => {
                   const econAssessments = assessments.filter(a => a.costBenefitAnalysis);
                   if (econAssessments.length === 0) {
-                    return <div className="text-gray-500">Нет данных</div>;
+                    return <div className="text-gray-500">Немає даних</div>;
                   }
                   
                   const avgENPV = econAssessments.reduce((s, a) => s + a.costBenefitAnalysis!.enpv, 0) / econAssessments.length;
@@ -3064,13 +3064,13 @@ const Page4_EstimatedCosts: React.FC<Page4EstimatedCostsProps> = ({
                   return (
                     <>
                       <div className="flex justify-between">
-                        <span>Средний ENPV:</span>
+                        <span>Середній ENPV:</span>
                         <span className={`font-medium ${avgENPV > 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {(avgENPV / 1000).toFixed(0)} тыс.
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Средний BCR:</span>
+                        <span>Середній BCR:</span>
                         <span className={`font-medium ${avgBCR > 1 ? 'text-green-600' : 'text-red-600'}`}>
                           {avgBCR.toFixed(2)}
                         </span>

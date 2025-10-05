@@ -1161,7 +1161,7 @@ const Page1_Coefficients: React.FC<Props> = ({
   const displaySections = calculatedSections.length > 0 ? calculatedSections : sections;
 
   return (
-    <div>
+    <div className='grid grid-cols-1 w-full px-6'>
       <Card className="border-black">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">

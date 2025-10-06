@@ -109,7 +109,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
   const [selectedRegion, setSelectedRegion] = useState<string>("Вінницька");
   const [regionCoefficients] = useState<RegionCoefficients[]>(getRegionCoefficients());
   const [regionData, _setRegionData] = useState<RegionRoads>(generateSampleRegionData("Вінницька"));
-  const [fundingResults, setFundingResults] = useState<{
+  const [_fundingResults, setFundingResults] = useState<{
     stateFunding: number;
     localFunding: number;
     totalFunding: number;
@@ -417,20 +417,6 @@ const Block2MaintenanceCalculator: React.FC = () => {
   
   // Handle save results
   
-  // Calculate category-specific funding
-  const calculateCategoryFunding = (category: number) => {
-    const stateRoadSections = regionData.roadSections.filter(s => s.stateImportance && s.category === category);
-    const localRoadSections = regionData.roadSections.filter(s => !s.stateImportance && s.category === category);
-    
-    const stateRoadLength = stateRoadSections.reduce((sum, section) => sum + section.length, 0);
-    const localRoadLength = localRoadSections.reduce((sum, section) => sum + section.length, 0);
-    
-    const stateFunding = stateRoadRate[`category${category}` as keyof typeof stateRoadRate] * stateRoadLength;
-    const localFunding = localRoadRate[`category${category}` as keyof typeof localRoadRate] * localRoadLength;
-    
-    return { stateFunding, localFunding };
-  };
-
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -863,13 +849,13 @@ const Block2MaintenanceCalculator: React.FC = () => {
                   </div>
                 </div>
                 
-                <Button 
+                {/* <Button 
                   onClick={calculateStateRoadRates}
-                  className="mt-4 bg-green-600 hover:bg-green-700"
+                  className="mt-4 bg-green-600 hover:bg-green-700 px-2 py-1 text-sm"
                 >
                   <Calculator className="h-4 w-4 mr-2" />
                   Розрахувати нормативи
-                </Button>
+                </Button> */}
                 
                 <div className="grid grid-cols-5 gap-4 mt-6">
                   <Card className="p-4">
@@ -1010,13 +996,13 @@ const Block2MaintenanceCalculator: React.FC = () => {
                   </div>
                 </div>
                 
-                <Button 
+                {/* <Button 
                   onClick={calculateLocalRoadRates}
                   className="mt-4 bg-green-600 hover:bg-green-700"
                 >
                   <Calculator className="h-4 w-4 mr-2" />
                   Розрахувати нормативи
-                </Button>
+                </Button> */}
                 
                 <div className="grid grid-cols-5 gap-4 mt-6">
                   <Card className="p-4">
@@ -1085,29 +1071,6 @@ const Block2MaintenanceCalculator: React.FC = () => {
                   </Card>
                 </div>
               </div>
-
-              {fundingResults.totalFunding > 0 && (
-                <Alert className="glass-card mt-4">
-                  <AlertDescription>
-                    Розраховано загальне фінансування: {fundingResults.totalFunding.toLocaleString()} тис. грн
-                    (Державні: {fundingResults.stateFunding.toLocaleString()}, Місцеві: {fundingResults.localFunding.toLocaleString()})
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="grid grid-cols-5 gap-2 text-xs">
-                {[1, 2, 3, 4, 5].map(category => {
-                  const funding = calculateCategoryFunding(category);
-                  return (
-                    <div key={category} className="p-2 bg-gray-100 rounded text-center">
-                      <div>Кат. {category}</div>
-                      <div>Держ.: {funding.stateFunding.toFixed(1)}</div>
-                      <div>Місц.: {funding.localFunding.toFixed(1)}</div>
-                    </div>
-                  );
-                })}
-              </div>
-
             </CardContent>
           </Card>
         </TabsContent>

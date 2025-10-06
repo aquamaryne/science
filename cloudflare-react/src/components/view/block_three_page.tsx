@@ -2812,7 +2812,7 @@ const Page4_EstimatedCosts: React.FC<Page4EstimatedCostsProps> = ({
             <Button 
               onClick={handleCalculateCosts} 
               disabled={isCalculating}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-white"
             >
               {isCalculating ? (
                 <>

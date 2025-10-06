@@ -9,19 +9,17 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-    { to: "/", label: 'Інтсрукція' },
+    { to: "/", label: 'Інструкція' },
     { to: "/block_one_page", label: "Розрахунок бюджетного фінансування доріг" },
-    { to: "/block_two_page", label: "Експлуатаційне утримання дорі" },
+    { to: "/block_two_page", label: "Експлуатаційне утримання доріг" },
     { to: "/block_three_page", label: "Планування ремонтів автомобільних доріг" },
-    // { to: "/history", label: "Історія минулих розрахунків" },
 ]
-
 
 export const Sidebar: React.FC = () => {
     return (
-        <aside className="w-64 h-screen relative overflow-hidden">
+        <aside className="w-80 h-screen relative overflow-hidden">
             {/* Background with animated blobs */}
-            <div className="absolute inset-0 bg-white">
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-gray-100">
                 {/* Morphing blob 1 */}
                 <div 
                     className="absolute w-96 h-96 rounded-full opacity-10 blur-3xl"
@@ -43,34 +41,36 @@ export const Sidebar: React.FC = () => {
             </div>
 
             {/* Main glass container */}
-            <div className="glass-sidebar">
+            <div className="glass-sidebar-container">
                 {/* Content */}
-                <div className="relative z-20 h-full flex flex-col p-4">
+                <div className="relative z-20 h-full flex flex-col py-6 px-4">
                     {/* Header */}
-                    <div className="p-4 mb-2">
-                        <h1 className="text-xl font-medium text-gray-800 tracking-wide">ІАС Дороги</h1>
-                        <div className="w-8 h-0.5 bg-gradient-to-r from-gray-400/60 to-transparent mt-2 rounded-full" />
+                    <div className="mb-6 px-2">
+                        <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent tracking-wide">
+                            ІАС Дороги
+                        </h1>
+                        <div className="glass-divider" style={{ margin: '0.75rem 0' }} />
                     </div>
 
                     {/* Navigation */}
-                    <ScrollArea className="flex-1 px-4">
-                        <nav className="space-y-2">
+                    <ScrollArea className="flex-1">
+                        <nav className="space-y-6 px-2 pt-1">
                             {navItems.map(({to, label}, index) => (
                                 <NavLink
                                     key={to}
                                     to={to}
-                                    className={({ isActive}) => cn(
-                                        "glass-button group relative block overflow-hidden transform-gpu",
-                                        isActive ? "glass-button--active" : ""
+                                    className={({ isActive }) => cn(
+                                        "glass-nav-button group relative block overflow-hidden",
+                                        isActive && "glass-nav-button--active"
                                     )}
                                     style={{
                                         animationDelay: `${index * 100}ms`
                                     }}
                                 >
-                                    {/* Liquid effects */}
-                                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-700">
+                                    {/* Liquid ripple effect */}
+                                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none">
                                         <div 
-                                            className="absolute inset-0 rounded-2xl"
+                                            className="absolute inset-0 rounded-xl"
                                             style={{
                                                 background: 'radial-gradient(circle at 50% 50%, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.03) 40%, transparent 70%)',
                                                 transform: 'scale(0)',
@@ -79,18 +79,19 @@ export const Sidebar: React.FC = () => {
                                         />
                                     </div>
 
-                                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    {/* Shine effect */}
+                                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                                         <div 
-                                            className="absolute top-0 left-0 w-full h-full"
+                                            className="absolute top-0 left-0 w-full h-full rounded-xl"
                                             style={{
-                                                background: 'linear-gradient(45deg, transparent 30%, rgba(0,0,0,0.04) 50%, transparent 70%)',
+                                                background: 'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%)',
                                                 transform: 'translateX(-100%)',
                                                 animation: 'shine 1.5s ease-out forwards'
                                             }}
                                         />
                                     </div>
 
-                                    <span className="relative z-10 block px-4 py-3 font-medium tracking-wide text-gray-700">
+                                    <span className="relative z-10 block px-5 py-4 text-base font-semibold text-gray-700 group-hover:text-gray-900 transition-colors leading-snug">
                                         {label}
                                     </span>
                                 </NavLink>
@@ -99,9 +100,10 @@ export const Sidebar: React.FC = () => {
                     </ScrollArea>
 
                     {/* Footer */}
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                        <div className="text-xs text-gray-500 px-2">
-                            <p>@ 2025 ДП "НІРІ"</p>
+                    <div className="mt-6 pt-4 px-1">
+                        <div className="glass-divider" style={{ margin: '0 0 1rem 0' }} />
+                        <div className="glass-badge px-4 py-2 text-center">
+                            <span className="text-xs font-medium text-gray-600">© 2025 ДП "НІРІ"</span>
                         </div>
                     </div>
                 </div>
@@ -109,106 +111,162 @@ export const Sidebar: React.FC = () => {
 
             {/* CSS Styles */}
             <style>{`
+                /* Import glass variables */
                 :root {
-                    --c-glass: #bbbbbc;
-                    --c-light: #fff;
-                    --c-dark: #000;
+                    --glass-base: 187 187 188;
+                    --glass-light: 255 255 255;
+                    --glass-dark: 0 0 0;
+                    --glass-content: 34 34 68;
+                    --glass-action: 0 82 245;
                     --glass-reflex-dark: 1;
                     --glass-reflex-light: 1;
-                    --saturation: 150%;
+                    --glass-saturation: 150%;
+                    --glass-radius: 0.875rem;
+                    --glass-radius-sm: 0.5rem;
+                    --glass-blur-strong: 16px;
+                    --glass-blur-medium: 10px;
+                    --glass-blur-light: 6px;
+                    --glass-transition: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+                    --glass-transition-fast: 150ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
                 }
 
-                .glass-sidebar {
+                /* Sidebar Container */
+                .glass-sidebar-container {
                     position: relative;
                     width: 100%;
                     height: 100%;
-                    box-sizing: border-box;
-                    border: none;
-                    border-radius: 0;
-                    background-color: color-mix(in srgb, var(--c-glass) 8%, transparent);
-                    backdrop-filter: blur(12px) saturate(var(--saturation));
-                    -webkit-backdrop-filter: blur(12px) saturate(var(--saturation));
-                    border-right: 1px solid color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 15%), transparent);
+                    background: rgba(var(--glass-base), 0.08);
+                    backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturation));
+                    -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturation));
+                    border-right: 1px solid rgba(255, 255, 255, 0.15);
                     box-shadow: 
-                        inset 0 0 0 1px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 8%), transparent),
-                        inset 1.8px 3px 0px -2px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 60%), transparent), 
-                        inset -2px -2px 0px -2px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 50%), transparent), 
-                        inset -3px -8px 1px -6px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 40%), transparent), 
-                        inset -0.3px -1px 4px 0px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 8%), transparent), 
-                        inset -1.5px 2.5px 0px -2px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 15%), transparent), 
-                        inset 0px 3px 4px -2px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 15%), transparent), 
-                        inset 2px -6.5px 1px -4px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 8%), transparent), 
-                        0px 1px 5px 0px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 6%), transparent), 
-                        0px 6px 16px 0px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 4%), transparent);
-                    transition: 
-                        background-color 400ms cubic-bezier(1, 0.0, 0.4, 1),
-                        box-shadow 400ms cubic-bezier(1, 0.0, 0.4, 1);
+                        inset 0 0 0 1px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.08)),
+                        inset 2px 3px 0 -2px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.6)),
+                        inset -2px -2px 0 -2px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.5)),
+                        0 4px 12px 0 rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.06));
+                    transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
                 }
 
-                .glass-button {
+                /* Navigation Button */
+                .glass-nav-button {
                     position: relative;
                     display: block;
-                    box-sizing: border-box;
-                    padding: 0;
-                    border: none;
-                    border-radius: 1.5rem;
-                    background-color: color-mix(in srgb, var(--c-glass) 4%, transparent);
-                    backdrop-filter: blur(8px) saturate(var(--saturation));
-                    -webkit-backdrop-filter: blur(8px) saturate(var(--saturation));
-                    box-shadow: 
-                        inset 0 0 0 1px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 6%), transparent),
-                        inset 1.2px 2px 0px -1px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 50%), transparent), 
-                        inset -1px -1px 0px -1px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 40%), transparent), 
-                        inset -2px -5px 1px -4px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 30%), transparent), 
-                        inset -0.5px 1.5px 2px -0.5px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 12%), transparent), 
-                        inset 0px -3px 1px -1px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 8%), transparent), 
-                        0px 2px 4px 0px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 6%), transparent);
-                    transition: all 600ms cubic-bezier(0.23, 1, 0.32, 1), transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+                    background: rgba(var(--glass-base), 0.05);
+                    backdrop-filter: blur(var(--glass-blur-medium)) saturate(var(--glass-saturation));
+                    -webkit-backdrop-filter: blur(var(--glass-blur-medium)) saturate(var(--glass-saturation));
+                    border: 1.5px solid rgba(255, 255, 255, 0.12);
+                    border-radius: var(--glass-radius);
+                    transition: all var(--glass-transition);
                     transform: scale(1) translateZ(0);
-                }
-
-                .glass-button:hover {
-                    transform: scale(1.02) translateZ(0);
-                    background-color: color-mix(in srgb, var(--c-glass) 8%, transparent);
+                    will-change: transform;
                     box-shadow: 
-                        inset 0 0 0 1px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 10%), transparent),
-                        inset 1.5px 2.5px 0px -1px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 60%), transparent), 
-                        inset -1.5px -1.5px 0px -1px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 50%), transparent), 
-                        inset -2.5px -6px 1px -4px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 35%), transparent), 
-                        inset -0.8px 2px 3px -0.5px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 15%), transparent), 
-                        inset 0px -4px 1px -1px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 10%), transparent), 
-                        0px 3px 6px 0px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 8%), transparent);
+                        inset 0 0 0 1px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.08)),
+                        inset 1.5px 2.5px 0 -1px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.5)),
+                        0 2px 4px 0 rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.06));
                 }
 
-                .glass-button:active {
+                .glass-nav-button:hover {
+                    transform: scale(1.02) translateY(-1px) translateZ(0);
+                    background: rgba(var(--glass-base), 0.1);
+                    border-color: rgba(255, 255, 255, 0.18);
+                    box-shadow: 
+                        inset 0 0 0 1px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.12)),
+                        inset 2px 3px 0 -1px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.6)),
+                        0 4px 8px 0 rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.1)),
+                        0 0 0 4px rgba(255, 255, 255, 0.05);
+                }
+
+                .glass-nav-button:active {
                     transform: scale(0.98) translateZ(0);
-                    transition: all 150ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                    transition: all var(--glass-transition-fast);
                 }
 
-                .glass-button--active {
-                    transform: scale(1) translateZ(0);
-                    background-color: color-mix(in srgb, var(--c-glass) 15%, transparent);
+                /* Active Navigation Button */
+                .glass-nav-button--active {
+                    background: rgba(var(--glass-action), 0.15);
+                    border-color: rgba(var(--glass-action), 0.3);
                     box-shadow: 
-                        inset 0 0 0 1px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 12%), transparent),
-                        inset 2px 3px 0px -1px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 70%), transparent), 
-                        inset -2px -2px 0px -1px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 60%), transparent), 
-                        inset -3px -7px 1px -4px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 40%), transparent), 
-                        inset -1px 2.5px 4px -0.5px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 18%), transparent), 
-                        inset 0px -5px 1px -1px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 12%), transparent), 
-                        0px 1px 3px 0px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 10%), transparent);
+                        inset 0 0 0 1px rgba(var(--glass-action), 0.25),
+                        inset 2px 3px 0 -1px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.7)),
+                        inset -2px -2px 0 -1px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.6)),
+                        0 4px 12px 0 rgba(var(--glass-action), 0.2),
+                        0 0 0 3px rgba(var(--glass-action), 0.1);
                 }
 
+                .glass-nav-button--active:hover {
+                    background: rgba(var(--glass-action), 0.18);
+                    border-color: rgba(var(--glass-action), 0.35);
+                    transform: scale(1.02) translateY(-1px) translateZ(0);
+                }
+
+                .glass-nav-button--active span {
+                    color: rgb(var(--glass-action));
+                    font-weight: 700;
+                }
+
+                /* Divider */
+                .glass-divider {
+                    height: 1px;
+                    background: linear-gradient(
+                        90deg,
+                        transparent,
+                        rgba(255, 255, 255, 0.25) 50%,
+                        transparent
+                    );
+                    margin: 1rem 0;
+                }
+
+                /* Badge */
+                .glass-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 100%;
+                    background: rgba(var(--glass-base), 0.12);
+                    backdrop-filter: blur(var(--glass-blur-light)) saturate(var(--glass-saturation));
+                    -webkit-backdrop-filter: blur(var(--glass-blur-light)) saturate(var(--glass-saturation));
+                    border: 1px solid rgba(255, 255, 255, 0.18);
+                    border-radius: var(--glass-radius-sm);
+                    padding: 0.5rem;
+                    color: rgb(var(--glass-content));
+                    box-shadow: 
+                        inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+                        0 1px 3px 0 rgba(0, 0, 0, 0.05);
+                }
+
+                /* Animations */
                 @keyframes morph1 {
-                    0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: translate(0, 0) rotate(0deg); }
-                    25% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; transform: translate(30px, -50px) rotate(90deg); }
-                    50% { border-radius: 50% 60% 30% 60% / 30% 60% 70% 40%; transform: translate(-20px, 20px) rotate(180deg); }
-                    75% { border-radius: 60% 40% 60% 30% / 40% 40% 60% 50%; transform: translate(50px, 30px) rotate(270deg); }
+                    0%, 100% { 
+                        border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; 
+                        transform: translate(0, 0) rotate(0deg); 
+                    }
+                    25% { 
+                        border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; 
+                        transform: translate(30px, -50px) rotate(90deg); 
+                    }
+                    50% { 
+                        border-radius: 50% 60% 30% 60% / 30% 60% 70% 40%; 
+                        transform: translate(-20px, 20px) rotate(180deg); 
+                    }
+                    75% { 
+                        border-radius: 60% 40% 60% 30% / 40% 40% 60% 50%; 
+                        transform: translate(50px, 30px) rotate(270deg); 
+                    }
                 }
                 
                 @keyframes morph2 {
-                    0%, 100% { border-radius: 40% 60% 60% 40% / 40% 50% 60% 50%; transform: translate(0, 0) rotate(0deg); }
-                    33% { border-radius: 70% 30% 50% 50% / 60% 40% 50% 40%; transform: translate(-30px, 40px) rotate(120deg); }
-                    66% { border-radius: 50% 50% 40% 60% / 50% 70% 30% 60%; transform: translate(20px, -30px) rotate(240deg); }
+                    0%, 100% { 
+                        border-radius: 40% 60% 60% 40% / 40% 50% 60% 50%; 
+                        transform: translate(0, 0) rotate(0deg); 
+                    }
+                    33% { 
+                        border-radius: 70% 30% 50% 50% / 60% 40% 50% 40%; 
+                        transform: translate(-30px, 40px) rotate(120deg); 
+                    }
+                    66% { 
+                        border-radius: 50% 50% 40% 60% / 50% 70% 30% 60%; 
+                        transform: translate(20px, -30px) rotate(240deg); 
+                    }
                 }
                 
                 @keyframes float1 {
@@ -233,7 +291,16 @@ export const Sidebar: React.FC = () => {
                     0% { transform: translateX(-100%) skewX(-15deg); }
                     100% { transform: translateX(200%) skewX(-15deg); }
                 }
+
+                /* Reduced motion */
+                @media (prefers-reduced-motion: reduce) {
+                    .glass-sidebar-container,
+                    .glass-nav-button {
+                        animation: none;
+                        transition: none;
+                    }
+                }
             `}</style>
         </aside>
-    )
+    );
 }

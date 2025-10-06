@@ -1651,7 +1651,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
             setTimeout(() => setSaveStatus("Збережено!"), 1000);
             setTimeout(() => setSaveStatus(""), 3000);
           }}
-          className="glass-button text-black"
+          className="glass-button text-white"
         >
           Зберегти проєкт
         </Button>

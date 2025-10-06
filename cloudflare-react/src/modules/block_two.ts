@@ -396,6 +396,7 @@ export function calculateTotalFunding(
 export function getRegionCoefficients(): RegionCoefficients[] {
   return [
     { regionalName: "АР Крим", mountainous: 1.15, operatingConditions: 1.15, criticalInfrastructure: 1.0 },
+    { regionalName: "Івано-Франківська", mountainous: 1.13, operatingConditions: 1.13, criticalInfrastructure: 1.0 },
     { regionalName: "Вінницька", mountainous: 1.0, operatingConditions: 1.0, criticalInfrastructure: 1.0 },
     { regionalName: "Волинська", mountainous: 1.0, operatingConditions: 1.0, criticalInfrastructure: 1.0 },
     { regionalName: "Дніпропетровська", mountainous: 1.0, operatingConditions: 1.0, criticalInfrastructure: 1.0 },
@@ -403,7 +404,6 @@ export function getRegionCoefficients(): RegionCoefficients[] {
     { regionalName: "Житомирська", mountainous: 1.0, operatingConditions: 1.0, criticalInfrastructure: 1.0 },
     { regionalName: "Закарпатська", mountainous: 1.11, operatingConditions: 1.11, criticalInfrastructure: 1.03 },
     { regionalName: "Запорізька", mountainous: 1.0, operatingConditions: 1.0, criticalInfrastructure: 1.0 },
-    { regionalName: "Івано-Франківська", mountainous: 1.13, operatingConditions: 1.13, criticalInfrastructure: 1.0 },
     { regionalName: "Київська", mountainous: 1.0, operatingConditions: 1.15, criticalInfrastructure: 1.05 },
     { regionalName: "Кіровоградська", mountainous: 1.0, operatingConditions: 1.0, criticalInfrastructure: 1.0 },
     { regionalName: "Луганська", mountainous: 1.0, operatingConditions: 1.0, criticalInfrastructure: 1.01 },

@@ -1132,16 +1132,16 @@ const RoadEfficiencyInterface: React.FC<RoadEfficiencyInterfaceProps> = ({
       <Button 
         onClick={calculateEfficiency} 
         disabled={isCalculating}
-        className="glass-button glass-button--primary text-black"
+        className="glass-button glass-button--primary text-white"
       >
         {isCalculating ? (
           <>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin text-black" />
+            <Loader2 className="h-4 w-4 mr-2 animate-spin text-white" />
             Розраховується...
           </>
         ) : (
           <>
-            <Calculator className="h-4 w-4 mr-2 text-black" />
+            <Calculator className="h-4 w-4 mr-2 text-white" />
             Розрахувати
           </>
         )}
@@ -1162,7 +1162,7 @@ const RoadEfficiencyInterface: React.FC<RoadEfficiencyInterfaceProps> = ({
       </div>
 
       <div className="flex justify-between pt-6">
-        <Button className="glass-button text-black">
+        <Button className="glass-button text-white">
           <ChevronLeft className="h-4 w-4 mr-2" />
           Назад
         </Button>

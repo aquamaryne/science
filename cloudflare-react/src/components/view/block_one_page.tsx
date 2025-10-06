@@ -438,7 +438,7 @@ const StateRoadFundingBlock = ({
 
         <Button 
           onClick={handleCalculate} 
-          className="glass-button glass-button--primary glass-button--large mt-2 w-36 text-black"
+          className="glass-button glass-button--primary glass-button--large mt-2 w-36 text-white"
         >
           Розрахувати
         </Button>
@@ -585,7 +585,7 @@ const LocalRoadFundingBlock = ({
 
         <Button 
           onClick={handleCalculate} 
-          className="glass-button glass-button--primary glass-button--large mt-2 w-36 text-black"
+          className="glass-button glass-button--primary glass-button--large mt-2 w-36 text-white"
         >
           Розрахувати
         </Button>
@@ -719,7 +719,7 @@ const RoadFundingApp: React.FC = () => {
 
               <Button 
                 onClick={saveResults}
-                className="glass-button glass-button--success glass-button--xl w-full mt-6 text-blue-600"
+                className="glass-button glass-button--success glass-button--xl w-full mt-6 text-blue-600 text-blue"
               >
                 💾 Зберегти результати в сесію розрахунків
               </Button>

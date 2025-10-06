@@ -939,28 +939,6 @@ const Block2MaintenanceCalculator: React.FC = () => {
                 </div>
               </div>
 
-              {fundingResults.totalFunding > 0 && (
-                <Alert className="glass-card mt-4">
-                  <AlertDescription>
-                    Розраховано загальне фінансування: {fundingResults.totalFunding.toLocaleString()} тис. грн
-                    (Державні: {fundingResults.stateFunding.toLocaleString()}, Місцеві: {fundingResults.localFunding.toLocaleString()})
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <div className="grid grid-cols-5 gap-2 text-xs">
-                {[1, 2, 3, 4, 5].map(category => {
-                  const funding = calculateCategoryFunding(category);
-                  return (
-                    <div key={category} className="p-2 bg-gray-100 rounded text-center">
-                      <div>Кат. {category}</div>
-                      <div>Держ.: {funding.stateFunding.toFixed(1)}</div>
-                      <div>Місц.: {funding.localFunding.toFixed(1)}</div>
-                    </div>
-                  );
-                })}
-              </div>
-
             </CardContent>
           </Card>
         </TabsContent>

@@ -1688,14 +1688,47 @@ const Page2_Component: React.FC<{
   }
 
   // Масовий розрахунок
-  const calculateAllSections = () => {
-    const results = new Map();
-    sections.forEach(section => {
-      const metrics = calculateSectionMetricsSafe(section);
-      results.set(section.id, metrics);
-    });
-    setCalculatedResults(results);
-  };
+  // const calculateAllSections = async() => {
+  //   setIsCalculating(true);
+  
+  //   try {
+  //     const results = new Map();
+      
+  //     // Обрабатываем секции пакетами
+  //     const batchSize = 5;
+  //     for (let i = 0; i < sections.length; i += batchSize) {
+  //       const batch = sections.slice(i, i + batchSize);
+        
+  //       const batchPromises = batch.map(async (section) => {
+  //         try {
+  //           const metrics = await calculateSectionMetricsSafe(section);
+  //           return { id: section.id, metrics };
+  //         } catch (error) {
+  //           console.warn(`Ошибка расчета для секции ${section.id}:`, error);
+  //           return { 
+  //             id: section.id, 
+  //             metrics: getDefaultMetrics() 
+  //           };
+  //         }
+  //       });
+        
+  //       const batchResults = await Promise.all(batchPromises);
+  //       batchResults.forEach(({ id, metrics }) => {
+  //         results.set(id, metrics);
+  //       });
+        
+  //       if (i + batchSize < sections.length) {
+  //         await new Promise(resolve => setTimeout(resolve, 100));
+  //       }
+  //     }
+      
+  //     setCalculatedResults(results);
+  //   } catch (error) {
+  //     console.error('Критическая ошибка при расчете:', error);
+  //   } finally {
+  //     setIsCalculating(false);
+  //   }
+  // };
 
   const handleAdd = () => {
     const newSection: RoadSectionUI = {
@@ -1733,7 +1766,7 @@ const Page2_Component: React.FC<{
     setFormData(null);
     
     // Перерахунок після збереження
-    setTimeout(calculateAllSections, 100);
+    setTimeout(() => { debouncedCalculateAllSections() }, 100);
   };
 
   const handleDelete = (id: string) => {

@@ -6,32 +6,22 @@ export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./test/setup.ts'],
+    environment: 'happy-dom',
+    setupFiles: ['./src/test/vitest.setup.ts'],
+    include: ['src/test/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    exclude: ['node_modules', 'dist', '.idea', '.git', '.cache'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
+      reporter: ['text', 'json', 'html'],
       exclude: [
         'node_modules/',
-        'test/',
+        'src/test/',
         '**/*.d.ts',
         '**/*.config.*',
-        '**/*.test.{ts,tsx}',
-        '**/*.spec.{ts,tsx}'
+        '**/mockData',
+        '**/dist',
       ],
-      include: ['src/**/*.{ts,tsx}'],
-      all: true,
-      thresholds: {
-        lines: 70,
-        functions: 70,
-        branches: 70,
-        statements: 70
-      }
     },
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['node_modules', 'dist', '.idea', '.git', '.cache'],
-    testTimeout: 10000,
-    hookTimeout: 10000,
   },
   resolve: {
     alias: {

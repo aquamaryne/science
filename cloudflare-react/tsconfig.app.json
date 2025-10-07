@@ -27,5 +27,5 @@
       "@/*": ["./src/*"]
     },
   },
-  "include": ["src", "components/pages"]
+  "include": ["src", "components/pages", "vitest.config.ts"]
 }

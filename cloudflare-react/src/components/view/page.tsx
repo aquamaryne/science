@@ -292,15 +292,22 @@ const RoadEfficiencyInterface: React.FC<RoadEfficiencyInterfaceProps> = ({
     setError(null);
     
     try {
-      // Проверяем основные поля
-      const requiredFields = ['Без заповнених полів немає сенсу виконувати розрахунок'];
-      const missingFields = requiredFields.filter(field => !tableValues[field as keyof typeof tableValues]);
+      // // Перевіряємо основні обов'язкові поля
+      // const requiredFields = [
+      //   'totalCost', 'trafficIntensity', 'roadLength', 
+      //   'lightCostAfter', 'lightCostBefore'
+      // ];
       
-      if (missingFields.length > 0) {
-        setError(`Заповніть обов'язкові поля: ${missingFields.join(', ')}`);
-        setIsCalculating(false);
-        return;
-      }
+      // const missingFields = requiredFields.filter(
+      //   field => !tableValues[field as keyof typeof tableValues] || 
+      //   tableValues[field as keyof typeof tableValues] === ''
+      // );
+      
+      // if (missingFields.length > 0) {
+      //   setError('Заповніть обов\'язкові поля для розрахунку');
+      //   setIsCalculating(false);
+      //   return;
+      // };
       
       const data: TableEfficiencyData = {
         startYear: parseInt(tableValues.startYear) || 2025,

@@ -3124,31 +3124,6 @@ const Page4_EstimatedCosts: React.FC<Page4EstimatedCostsProps> = ({
           </Card>
         </div>
       )}
-
-      {/* Пояснения по методике */}
-      <Card>
-        <CardContent className="text-sm text-gray-600">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <ul className="space-y-1">
-                <li><strong>Реконструкція:</strong> при коефіцієнті інтенсивності &lt; 1.0</li>
-                <li><strong>Капремонт:</strong> при коефіцієнті міцності нижче нормативу</li>
-                <li><strong>Поточний ремонт:</strong> при порушенні рівності, колійності або зчеплення</li>
-                <li><strong>Не потрібно:</strong> при відповідності всім нормативам</li>
-              </ul>
-            </div>
-            <div>
-              <ul className="space-y-1">
-                <li><strong>Міжнародні дороги:</strong> +15%</li>
-                <li><strong>Оборонні дороги:</strong> +10%</li>
-                <li><strong>Освітлення:</strong> +5%</li>
-                <li><strong>Прикордонні переходи:</strong> +8%</li>
-                <li><strong>Регіональні:</strong> від 5% до +20%</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

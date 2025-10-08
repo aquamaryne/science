@@ -9,8 +9,16 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
+    "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "test:block-one": "vitest run src/test/block_one.test.tsx",
+    "test:block-two": "vitest run src/test/block_two.test.tsx",
+    "test:block-three": "vitest run src/test/block_three.test.tsx",
+    "test:all-blocks": "vitest run src/test/block_*.test.tsx",
+    "test:ci": "vitest run --coverage --reporter=junit --reporter=json",
+    "test:debug": "vitest --inspect-brk --single-thread"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

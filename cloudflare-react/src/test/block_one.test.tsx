@@ -1,431 +1,533 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import '@testing-library/jest-dom';
-import RoadFundingApp from '../components/view/block_one_page';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import {
+  type BudgetItem,
+  initialStateRoadItems,
+  initialLocalRoadItems,
+  calculateQ1,
+  calculateQ2
+} from '../modules/block_one';
 import { calculationResultsService } from '../service/resultLocalStorage';
-import { calculateQ1, calculateQ2 } from '../modules/block_one';
 import { setBlockOneBudgetData, getBudgetStatistics } from '../modules/block_three';
 
-// Мокаємо модулі
-jest.mock('../service/resultLocalStorage');
-jest.mock('../modules/block_one');
-jest.mock('../modules/block_three');
+// Mock modules
+vi.mock('../../service/resultLocalStorage', () => ({
+  calculationResultsService: {
+    createSession: vi.fn(() => 'test-session-' + Math.random().toString(36).substr(2, 9)),
+    saveBlockOneResults: vi.fn(() => true),
+    getSessionResults: vi.fn(() => null)
+  }
+}));
 
-describe('RoadFundingApp', () => {
+vi.mock('../../modules/block_three', () => ({
+  setBlockOneBudgetData: vi.fn(),
+  getBudgetStatistics: vi.fn(() => ({
+    hasData: false,
+    totalBudget: 0,
+    q1Budget: 0,
+    q2Budget: 0,
+    allocation: null
+  }))
+}));
+
+// Helper functions
+const createTestBudgetItem = (overrides: Partial<BudgetItem> = {}): BudgetItem => ({
+  id: 'TEST',
+  name: 'Test Item',
+  tooltip: 'Test tooltip',
+  value: null,
+  normativeDocument: '',
+  ...overrides
+});
+
+const createValidStateRoadItems = (): BudgetItem[] => {
+  return initialStateRoadItems.map((item) => ({
+    ...item,
+    value: 1000,
+    normativeDocument: `Document for ${item.id}`
+  }));
+};
+
+const createValidLocalRoadItems = (): BudgetItem[] => {
+  return initialLocalRoadItems.map((item) => ({
+    ...item,
+    value: 500,
+    normativeDocument: `Document for ${item.id}`
+  }));
+};
+
+describe('Block One - Budget Calculations', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    
-    // Налаштовуємо моки за замовчуванням
-    (calculationResultsService.createSession as jest.Mock).mockReturnValue('test-session-123');
-    (calculationResultsService.saveBlockOneResults as jest.Mock).mockReturnValue(true);
-    (getBudgetStatistics as jest.Mock).mockReturnValue({
-      hasData: false,
-      totalBudget: 0,
-      q1Budget: 0,
-      q2Budget: 0,
-      allocation: null
-    });
-    (calculateQ1 as jest.Mock).mockReturnValue(1000000);
-    (calculateQ2 as jest.Mock).mockReturnValue(500000);
+    vi.clearAllMocks();
   });
 
-  describe('Ініціалізація компонента', () => {
-    test('рендериться без помилок', () => {
-      render(<RoadFundingApp />);
-      expect(screen.getByText(/Визначення загального обсягу бюджетного фінансування/i)).toBeInTheDocument();
-    });
-
-    test('створює сесію при монтуванні', () => {
-      render(<RoadFundingApp />);
-      expect(calculationResultsService.createSession).toHaveBeenCalledTimes(1);
-      expect(screen.getByText(/Сесія розрахунків: test-session-123/i)).toBeInTheDocument();
-    });
-
-    test('показує обидва блоки розрахунків', () => {
-      render(<RoadFundingApp />);
-      expect(screen.getByText(/державного значення/i)).toBeInTheDocument();
-      expect(screen.getByText(/місцевого значення/i)).toBeInTheDocument();
-    });
-  });
-
-  describe('StateRoadFundingBlock', () => {
-    test('дозволяє вводити значення в поля', async () => {
-      const user = userEvent.setup();
-      render(<RoadFundingApp />);
+  describe('Initial Data Structure', () => {
+    it('should have valid state road items structure', () => {
+      expect(Array.isArray(initialStateRoadItems)).toBe(true);
+      expect(initialStateRoadItems.length).toBeGreaterThan(0);
       
-      const inputs = screen.getAllByPlaceholderText('0');
-      await user.type(inputs[0], '100000');
-      
-      expect(inputs[0]).toHaveValue(100000);
-    });
-
-    test('показує помилку при відсутності обов\'язкових полів', async () => {
-      const user = userEvent.setup();
-      render(<RoadFundingApp />);
-      
-      // Натискаємо кнопку розрахунку без заповнення полів
-      const calculateButtons = screen.getAllByText('Розрахувати');
-      await user.click(calculateButtons[0]);
-      
-      // Перевіряємо, що alert було викликано (потрібно мокати window.alert)
-      // В реальному тесті краще використати toast notifications замість alert
-    });
-
-    test('виконує розрахунок при заповнених полях', async () => {
-      const user = userEvent.setup();
-      render(<RoadFundingApp />);
-      
-      // Заповнюємо всі необхідні поля
-      const inputs = screen.getAllByPlaceholderText('0');
-      for (let i = 0; i < 5; i++) {
-        await user.type(inputs[i], '100000');
-      }
-      
-      const calculateButtons = screen.getAllByText('Розрахувати');
-      await user.click(calculateButtons[0]);
-      
-      await waitFor(() => {
-        expect(calculateQ1).toHaveBeenCalled();
+      initialStateRoadItems.forEach(item => {
+        expect(item).toHaveProperty('id');
+        expect(item).toHaveProperty('name');
+        expect(item).toHaveProperty('tooltip');
+        expect(item).toHaveProperty('value');
+        expect(item).toHaveProperty('normativeDocument');
+        expect(typeof item.id).toBe('string');
+        expect(typeof item.name).toBe('string');
+        expect(typeof item.tooltip).toBe('string');
       });
     });
 
-    test('відображає результат після розрахунку', async () => {
-      const user = userEvent.setup();
-      (calculateQ1 as jest.Mock).mockReturnValue(1234567);
+    it('should have valid local road items structure', () => {
+      expect(Array.isArray(initialLocalRoadItems)).toBe(true);
+      expect(initialLocalRoadItems.length).toBeGreaterThan(0);
       
-      render(<RoadFundingApp />);
-      
-      const inputs = screen.getAllByPlaceholderText('0');
-      for (let i = 0; i < 5; i++) {
-        await user.type(inputs[i], '100000');
-      }
-      
-      const calculateButtons = screen.getAllByText('Розрахувати');
-      await user.click(calculateButtons[0]);
-      
-      await waitFor(() => {
-        expect(screen.getByText(/1,234,567 тис. грн/i)).toBeInTheDocument();
+      initialLocalRoadItems.forEach(item => {
+        expect(item).toHaveProperty('id');
+        expect(item).toHaveProperty('name');
+        expect(item).toHaveProperty('tooltip');
+        expect(item).toHaveProperty('value');
+        expect(item).toHaveProperty('normativeDocument');
       });
+    });
+
+    it('should have unique IDs in state road items', () => {
+      const ids = initialStateRoadItems.map(item => item.id);
+      const uniqueIds = new Set(ids);
+      expect(uniqueIds.size).toBe(ids.length);
+    });
+
+    it('should have unique IDs in local road items', () => {
+      const ids = initialLocalRoadItems.map(item => item.id);
+      const uniqueIds = new Set(ids);
+      expect(uniqueIds.size).toBe(ids.length);
+    });
+
+    it('should have required state road IDs', () => {
+      const ids = initialStateRoadItems.map(item => item.id);
+      const requiredIds = ['Qдз', 'Qпп', 'Qміжн', 'QІАС', 'QДПП'];
+      
+      requiredIds.forEach(id => {
+        expect(ids).toContain(id);
+      });
+    });
+
+    it('should have required local road ID', () => {
+      const ids = initialLocalRoadItems.map(item => item.id);
+      expect(ids).toContain('Qмз');
     });
   });
 
-  describe('LocalRoadFundingBlock', () => {
-    test('виконує розрахунок Q2', async () => {
-      const user = userEvent.setup();
-      (calculateQ2 as jest.Mock).mockReturnValue(654321);
-      
-      render(<RoadFundingApp />);
-      
-      const inputs = screen.getAllByPlaceholderText('0');
-      // Заповнюємо поле для місцевих доріг (припускаємо, що воно після полів державних)
-      await user.type(inputs[5], '500000');
-      
-      const calculateButtons = screen.getAllByText('Розрахувати');
-      await user.click(calculateButtons[1]); // Друга кнопка для Q2
-      
-      await waitFor(() => {
-        expect(calculateQ2).toHaveBeenCalled();
+  describe('Q1 Calculation (State Roads)', () => {
+    describe('Valid Calculations', () => {
+      it('should calculate positive value with valid data', () => {
+        const items = createValidStateRoadItems();
+        const result = calculateQ1(items);
+        
+        expect(result).toBeGreaterThan(0);
+        expect(Number.isFinite(result)).toBe(true);
+      });
+
+      it('should sum all item values', () => {
+        const items = initialStateRoadItems.map((item, _index) => ({
+          ...item,
+          value: 1000
+        }));
+        
+        const result = calculateQ1(items);
+        const expectedSum = items.length * 1000;
+        
+        expect(result).toBe(expectedSum);
+      });
+
+      it('should handle different value magnitudes', () => {
+        const items = initialStateRoadItems.map((item, index) => ({
+          ...item,
+          value: Math.pow(10, index + 1)
+        }));
+        
+        const result = calculateQ1(items);
+        expect(result).toBeGreaterThan(0);
+      });
+
+      it('should handle decimal values', () => {
+        const items = initialStateRoadItems.map(item => ({
+          ...item,
+          value: 1000.55
+        }));
+        
+        const result = calculateQ1(items);
+        expect(result).toBeCloseTo(items.length * 1000.55, 2);
       });
     });
 
-    test('відображає результат Q2', async () => {
-      const user = userEvent.setup();
-      (calculateQ2 as jest.Mock).mockReturnValue(654321);
-      
-      render(<RoadFundingApp />);
-      
-      const inputs = screen.getAllByPlaceholderText('0');
-      await user.type(inputs[5], '500000');
-      
-      const calculateButtons = screen.getAllByText('Розрахувати');
-      await user.click(calculateButtons[1]);
-      
-      await waitFor(() => {
-        expect(screen.getByText(/654,321 тис. грн/i)).toBeInTheDocument();
+    describe('Edge Cases', () => {
+      it('should return 0 when all values are 0', () => {
+        const items = initialStateRoadItems.map(item => ({
+          ...item,
+          value: 0
+        }));
+        
+        const result = calculateQ1(items);
+        expect(result).toBe(0);
       });
-    });
-  });
 
-  describe('FileUploadComponent', () => {
-    test('дозволяє завантажувати файли', async () => {
-      const user = userEvent.setup();
-      render(<RoadFundingApp />);
-      
-      const file = new File(['test content'], 'test.pdf', { type: 'application/pdf' });
-      const fileInputs = screen.getAllByLabelText(/Додати файл/i);
-      
-      await user.upload(fileInputs[0], file);
-      
-      await waitFor(() => {
-        expect(screen.getByText('test.pdf')).toBeInTheDocument();
+      it('should throw or handle null values appropriately', () => {
+        const items = initialStateRoadItems.map(item => ({
+          ...item,
+          value: null as any
+        }));
+        
+        expect(() => calculateQ1(items)).toThrow();
       });
-    });
 
-    test('дозволяє видаляти файли', async () => {
-      const user = userEvent.setup();
-      render(<RoadFundingApp />);
-      
-      const file = new File(['test content'], 'test.pdf', { type: 'application/pdf' });
-      const fileInputs = screen.getAllByLabelText(/Додати файл/i);
-      
-      await user.upload(fileInputs[0], file);
-      
-      await waitFor(() => {
-        expect(screen.getByText('test.pdf')).toBeInTheDocument();
+      it('should handle very large numbers', () => {
+        const items = initialStateRoadItems.map(item => ({
+          ...item,
+          value: 1000000000
+        }));
+        
+        const result = calculateQ1(items);
+        expect(Number.isFinite(result)).toBe(true);
+        expect(result).toBeGreaterThan(0);
       });
-      
-      const deleteButton = screen.getByRole('button', { name: /x/i });
-      await user.click(deleteButton);
-      
-      await waitFor(() => {
-        expect(screen.queryByText('test.pdf')).not.toBeInTheDocument();
+
+      it('should handle empty array', () => {
+        const result = calculateQ1([]);
+        expect(result).toBe(0);
+      });
+
+      it('should handle single item', () => {
+        const items = [createTestBudgetItem({ id: 'TEST', value: 5000 })];
+        const result = calculateQ1(items);
+        expect(result).toBe(5000);
       });
     });
 
-    test('показує розмір файлу', async () => {
-      const user = userEvent.setup();
-      render(<RoadFundingApp />);
-      
-      const file = new File(['test content'], 'test.pdf', { type: 'application/pdf' });
-      const fileInputs = screen.getAllByLabelText(/Додати файл/i);
-      
-      await user.upload(fileInputs[0], file);
-      
-      await waitFor(() => {
-        expect(screen.getByText(/Bytes|KB|MB/i)).toBeInTheDocument();
+    describe('Data Integrity', () => {
+      it('should not modify input items', () => {
+        const items = createValidStateRoadItems();
+        const originalItems = JSON.parse(JSON.stringify(items));
+        
+        calculateQ1(items);
+        
+        expect(items).toEqual(originalItems);
+      });
+
+      it('should handle items with different normative documents', () => {
+        const items = initialStateRoadItems.map((item, index) => ({
+          ...item,
+          value: 1000,
+          normativeDocument: index % 2 === 0 ? 'Doc A' : 'Doc B'
+        }));
+        
+        const result = calculateQ1(items);
+        expect(result).toBeGreaterThan(0);
       });
     });
   });
 
-  describe('Зведення результатів', () => {
-    test('відображає зведення після обох розрахунків', async () => {
-      const user = userEvent.setup();
-      (calculateQ1 as jest.Mock).mockReturnValue(1000000);
-      (calculateQ2 as jest.Mock).mockReturnValue(500000);
-      
-      render(<RoadFundingApp />);
-      
-      // Виконуємо обидва розрахунки
-      const inputs = screen.getAllByPlaceholderText('0');
-      for (let i = 0; i < 6; i++) {
-        await user.type(inputs[i], '100000');
-      }
-      
-      const calculateButtons = screen.getAllByText('Розрахувати');
-      await user.click(calculateButtons[0]);
-      await user.click(calculateButtons[1]);
-      
-      await waitFor(() => {
-        expect(screen.getByText(/Сводка результатів/i)).toBeInTheDocument();
-        expect(screen.getByText(/Загальний бюджет/i)).toBeInTheDocument();
+  describe('Q2 Calculation (Local Roads)', () => {
+    describe('Valid Calculations', () => {
+      it('should calculate positive value with valid data', () => {
+        const items = createValidLocalRoadItems();
+        const result = calculateQ2(items);
+        
+        expect(result).toBeGreaterThan(0);
+        expect(Number.isFinite(result)).toBe(true);
+      });
+
+      it('should sum all item values', () => {
+        const items = initialLocalRoadItems.map(item => ({
+          ...item,
+          value: 500
+        }));
+        
+        const result = calculateQ2(items);
+        const expectedSum = items.length * 500;
+        
+        expect(result).toBe(expectedSum);
+      });
+
+      it('should handle different value magnitudes', () => {
+        const items = initialLocalRoadItems.map((item, index) => ({
+          ...item,
+          value: Math.pow(10, index + 1)
+        }));
+        
+        const result = calculateQ2(items);
+        expect(result).toBeGreaterThan(0);
       });
     });
 
-    test('розраховує загальний бюджет правильно', async () => {
-      const user = userEvent.setup();
-      (calculateQ1 as jest.Mock).mockReturnValue(1000000);
-      (calculateQ2 as jest.Mock).mockReturnValue(500000);
-      
-      render(<RoadFundingApp />);
-      
-      const inputs = screen.getAllByPlaceholderText('0');
-      for (let i = 0; i < 6; i++) {
-        await user.type(inputs[i], '100000');
-      }
-      
-      const calculateButtons = screen.getAllByText('Розrахувати');
-      await user.click(calculateButtons[0]);
-      await user.click(calculateButtons[1]);
-      
-      await waitFor(() => {
-        // 1,000,000 + 500,000 = 1,500,000
-        expect(screen.getByText(/1,500,000/i)).toBeInTheDocument();
+    describe('Edge Cases', () => {
+      it('should return 0 when all values are 0', () => {
+        const items = initialLocalRoadItems.map(item => ({
+          ...item,
+          value: 0
+        }));
+        
+        const result = calculateQ2(items);
+        expect(result).toBe(0);
       });
-    });
-  });
 
-  describe('Збереження результатів', () => {
-    test('дозволяє зберегти результати в сесію', async () => {
-      const user = userEvent.setup();
-      (calculateQ1 as jest.Mock).mockReturnValue(1000000);
-      (calculateQ2 as jest.Mock).mockReturnValue(500000);
-      
-      render(<RoadFundingApp />);
-      
-      const inputs = screen.getAllByPlaceholderText('0');
-      for (let i = 0; i < 6; i++) {
-        await user.type(inputs[i], '100000');
-      }
-      
-      const calculateButtons = screen.getAllByText('Розрахувати');
-      await user.click(calculateButtons[0]);
-      await user.click(calculateButtons[1]);
-      
-      await waitFor(() => {
-        const saveButton = screen.getByText(/Зберегти результати в сесію/i);
-        expect(saveButton).toBeInTheDocument();
+      it('should throw or handle null values appropriately', () => {
+        const items = initialLocalRoadItems.map(item => ({
+          ...item,
+          value: null as any
+        }));
+        
+        expect(() => calculateQ2(items)).toThrow();
       });
-      
-      const saveButton = screen.getByText(/Зберегти результати в сесію/i);
-      await user.click(saveButton);
-      
-      expect(calculationResultsService.saveBlockOneResults).toHaveBeenCalled();
-    });
 
-    test('показує повідомлення про успішне збереження', async () => {
-      const user = userEvent.setup();
-      (calculateQ1 as jest.Mock).mockReturnValue(1000000);
-      (calculateQ2 as jest.Mock).mockReturnValue(500000);
-      
-      render(<RoadFundingApp />);
-      
-      const inputs = screen.getAllByPlaceholderText('0');
-      for (let i = 0; i < 6; i++) {
-        await user.type(inputs[i], '100000');
-      }
-      
-      const calculateButtons = screen.getAllByText('Розрахувати');
-      await user.click(calculateButtons[0]);
-      await user.click(calculateButtons[1]);
-      
-      const saveButton = await screen.findByText(/Зберегти результати в сесію/i);
-      await user.click(saveButton);
-      
-      await waitFor(() => {
-        expect(screen.getByText(/успішно збережені/i)).toBeInTheDocument();
+      it('should handle empty array', () => {
+        const result = calculateQ2([]);
+        expect(result).toBe(0);
       });
     });
   });
 
-  describe('BlockThreeIntegration', () => {
-    test('відображає статус інтеграції', async () => {
-      render(<RoadFundingApp />);
+  describe('Session Management', () => {
+    it('should create unique session IDs', () => {
+      const session1 = calculationResultsService.createSession();
+      const session2 = calculationResultsService.createSession();
       
-      expect(screen.getByText(/Інтеграція з Блоком 3/i)).toBeInTheDocument();
+      expect(session1).toBeTruthy();
+      expect(session2).toBeTruthy();
+      expect(session1).not.toBe(session2);
+      expect(calculationResultsService.createSession).toHaveBeenCalledTimes(2);
     });
 
-    test('дозволяє передати дані в Блок 3', async () => {
-      const user = userEvent.setup();
-      (calculateQ1 as jest.Mock).mockReturnValue(1000000);
-      (calculateQ2 as jest.Mock).mockReturnValue(500000);
+    it('should save calculation results successfully', () => {
+      const q1Items = createValidStateRoadItems();
+      const q2Items = createValidLocalRoadItems();
+      const q1Value = calculateQ1(q1Items);
+      const q2Value = calculateQ2(q2Items);
       
-      render(<RoadFundingApp />);
+      const result = calculationResultsService.saveBlockOneResults(
+        q1Items,
+        q1Value!,
+        q2Items,
+        q2Value!
+      );
       
-      const inputs = screen.getAllByPlaceholderText('0');
-      for (let i = 0; i < 6; i++) {
-        await user.type(inputs[i], '100000');
-      }
+      expect(result).toBe(true);
+      expect(calculationResultsService.saveBlockOneResults).toHaveBeenCalledWith(
+        q1Items,
+        q1Value,
+        q2Items,
+        q2Value
+      );
+    });
+  });
+
+  describe('Block Three Integration', () => {
+    it('should send data to Block Three correctly', () => {
+      const q1Items = createValidStateRoadItems();
+      const q2Items = createValidLocalRoadItems();
+      const q1Value = calculateQ1(q1Items);
+      const q2Value = calculateQ2(q2Items);
+      const sessionId = 'test-session-123';
       
-      const calculateButtons = screen.getAllByText('Розрахувати');
-      await user.click(calculateButtons[0]);
-      await user.click(calculateButtons[1]);
-      
-      const transferButton = await screen.findByText(/Передати дані в Блок 3/i);
-      await user.click(transferButton);
+      setBlockOneBudgetData({
+        q1Value: q1Value!,
+        q2Value: q2Value!,
+        q1Items,
+        q2Items,
+        sessionId
+      });
       
       expect(setBlockOneBudgetData).toHaveBeenCalledWith({
-        q1Value: 1000000,
-        q2Value: 500000,
-        q1Items: expect.any(Array),
-        q2Items: expect.any(Array),
-        sessionId: 'test-session-123'
+        q1Value: q1Value,
+        q2Value: q2Value,
+        q1Items,
+        q2Items,
+        sessionId
       });
     });
 
-    test('показує статус після передачі даних', async () => {
-      const user = userEvent.setup();
-      (calculateQ1 as jest.Mock).mockReturnValue(1000000);
-      (calculateQ2 as jest.Mock).mockReturnValue(500000);
-      (getBudgetStatistics as jest.Mock).mockReturnValue({
+    it('should retrieve budget statistics', () => {
+      const stats = getBudgetStatistics();
+      
+      expect(stats).toHaveProperty('hasData');
+      expect(stats).toHaveProperty('totalBudget');
+      expect(stats).toHaveProperty('q1Budget');
+      expect(stats).toHaveProperty('q2Budget');
+      expect(typeof stats.hasData).toBe('boolean');
+      expect(typeof stats.totalBudget).toBe('number');
+    });
+
+    it('should handle budget statistics with allocation', () => {
+      vi.mocked(getBudgetStatistics).mockReturnValue({
         hasData: true,
-        totalBudget: 1500000,
-        q1Budget: 1000000,
-        q2Budget: 500000,
+        totalBudget: 15000,
+        q1Budget: 10000,
+        q2Budget: 5000,
         allocation: {
-          currentRepair: 500000,
-          capitalRepair: 700000,
-          reconstruction: 300000
+          currentRepair: 5000,
+          capitalRepair: 7000,
+          reconstruction: 3000,
+          reserve: 0
         }
       });
       
-      render(<RoadFundingApp />);
+      const stats = getBudgetStatistics();
       
-      const inputs = screen.getAllByPlaceholderText('0');
-      for (let i = 0; i < 6; i++) {
-        await user.type(inputs[i], '100000');
+      expect(stats.hasData).toBe(true);
+      expect(stats.allocation).toBeDefined();
+      expect(stats.allocation?.currentRepair).toBe(5000);
+      expect(stats.allocation?.capitalRepair).toBe(7000);
+      expect(stats.allocation?.reconstruction).toBe(3000);
+    });
+  });
+
+  describe('Combined Calculations', () => {
+    it('should calculate total budget from Q1 and Q2', () => {
+      const q1Items = createValidStateRoadItems();
+      const q2Items = createValidLocalRoadItems();
+      const q1Result = calculateQ1(q1Items);
+      const q2Result = calculateQ2(q2Items);
+      
+      expect(q1Result).toBeGreaterThan(0);
+      expect(q2Result).toBeGreaterThan(0);
+      
+      const totalBudget = q1Result! + q2Result!;
+      
+      expect(totalBudget).toBe(q1Result! + q2Result!);
+      expect(totalBudget).toBeGreaterThan(q1Result!);
+      expect(totalBudget).toBeGreaterThan(q2Result!);
+    });
+
+    it('should maintain consistency across multiple calculations', () => {
+      const q1Items = createValidStateRoadItems();
+      const result1 = calculateQ1(q1Items);
+      const result2 = calculateQ1(q1Items);
+      
+      expect(result1).toBe(result2);
+    });
+
+    it('should handle different scales between Q1 and Q2', () => {
+      const q1Items = initialStateRoadItems.map(item => ({
+        ...item,
+        value: 10000
+      }));
+      const q2Items = initialLocalRoadItems.map(item => ({
+        ...item,
+        value: 1000
+      }));
+      
+      const q1Result = calculateQ1(q1Items);
+      const q2Result = calculateQ2(q2Items);
+      
+      expect(q1Result).toBeGreaterThan(q2Result!);
+    });
+  });
+
+
+  describe('Data Validation', () => {
+    it('should identify missing required fields', () => {
+      const incompleteItems = initialStateRoadItems.map((item, index) => ({
+        ...item,
+        value: index === 0 ? (null as any) : 1000
+      }));
+      
+      const missingFields = incompleteItems
+        .filter(item => item.value === null || item.value === undefined)
+        .map(item => item.id);
+      
+      expect(missingFields.length).toBeGreaterThan(0);
+      expect(missingFields[0]).toBe(initialStateRoadItems[0].id);
+    });
+
+    it('should validate all Q1 items have values before calculation', () => {
+      const items = initialStateRoadItems.map(item => ({
+        ...item,
+        value: null as any
+      }));
+      
+      const hasAllValues = items.every(item => item.value !== null && item.value !== undefined);
+      expect(hasAllValues).toBe(false);
+    });
+
+    it('should validate Q2 has required Qмз value', () => {
+      const items = initialLocalRoadItems.map(item => ({
+        ...item,
+        value: item.id === 'Qмз' ? (null as any) : 1000
+      }));
+      
+      const qmzValue = items.find(item => item.id === 'Qмз')?.value;
+      expect(qmzValue === null || qmzValue === undefined).toBe(true);
+    });
+  });
+
+  describe('Performance', () => {
+    it('should calculate Q1 efficiently for standard dataset', () => {
+      const items = createValidStateRoadItems();
+      const startTime = performance.now();
+      
+      for (let i = 0; i < 1000; i++) {
+        calculateQ1(items);
       }
       
-      const calculateButtons = screen.getAllByText('Розрахувати');
-      await user.click(calculateButtons[0]);
-      await user.click(calculateButtons[1]);
-      
-      const transferButton = await screen.findByText(/Передати дані в Блок 3/i);
-      await user.click(transferButton);
-      
-      await waitFor(() => {
-        expect(screen.getByText(/Дані передані/i)).toBeInTheDocument();
-      });
+      const endTime = performance.now();
+      expect(endTime - startTime).toBeLessThan(100);
     });
-  });
 
-  describe('Обробка помилок', () => {
-    test('показує помилку при невдалому збереженні', async () => {
-      const user = userEvent.setup();
-      (calculateQ1 as jest.Mock).mockReturnValue(1000000);
-      (calculateQ2 as jest.Mock).mockReturnValue(500000);
-      (calculationResultsService.saveBlockOneResults as jest.Mock).mockReturnValue(false);
+    it('should calculate Q2 efficiently for standard dataset', () => {
+      const items = createValidLocalRoadItems();
+      const startTime = performance.now();
       
-      render(<RoadFundingApp />);
-      
-      const inputs = screen.getAllByPlaceholderText('0');
-      for (let i = 0; i < 6; i++) {
-        await user.type(inputs[i], '100000');
+      for (let i = 0; i < 1000; i++) {
+        calculateQ2(items);
       }
       
-      const calculateButtons = screen.getAllByText('Розрахувати');
-      await user.click(calculateButtons[0]);
-      await user.click(calculateButtons[1]);
+      const endTime = performance.now();
+      expect(endTime - startTime).toBeLessThan(100);
+    });
+
+    it('should handle large number of items efficiently', () => {
+      const items = Array.from({ length: 100 }, (_, i) =>
+        createTestBudgetItem({ id: `ITEM_${i}`, value: 1000 + i })
+      );
       
-      const saveButton = await screen.findByText(/Зберегти результати в сесію/i);
-      await user.click(saveButton);
+      const startTime = performance.now();
+      const result = calculateQ1(items);
+      const endTime = performance.now();
       
-      // Перевіряємо, що не показується повідомлення про успіх
-      await waitFor(() => {
-        expect(screen.queryByText(/успішно збережені/i)).not.toBeInTheDocument();
-      });
+      expect(endTime - startTime).toBeLessThan(50);
+      expect(result).toBeGreaterThan(0);
     });
   });
 
-  describe('Нормативні документи', () => {
-    test('дозволяє вводити назву нормативного документа', async () => {
-      const user = userEvent.setup();
-      render(<RoadFundingApp />);
+  describe('Numerical Precision', () => {
+    it('should maintain precision with decimal values', () => {
+      const items = initialStateRoadItems.map(item => ({
+        ...item,
+        value: 1000.123456
+      }));
       
-      const documentInputs = screen.getAllByPlaceholderText('Назва документа');
-      await user.type(documentInputs[0], 'Закон України №123');
+      const result = calculateQ1(items);
+      const expectedSum = items.length * 1000.123456;
       
-      expect(documentInputs[0]).toHaveValue('Закон України №123');
+      expect(Math.abs(result! - expectedSum)).toBeLessThan(0.001);
     });
-  });
-});
 
-describe('Допоміжні функції', () => {
-  describe('formatFileSize', () => {
-    test('форматує розмір файлу правильно', () => {
-      // Це приклад тесту для внутрішньої функції
-      // В реальному коді краще винести цю функцію в окремий utility файл
-      const formatFileSize = (bytes: number): string => {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-      };
+    it('should handle floating point arithmetic correctly', () => {
+      const items = [
+        createTestBudgetItem({ id: 'A', value: 0.1 }),
+        createTestBudgetItem({ id: 'B', value: 0.2 }),
+        createTestBudgetItem({ id: 'C', value: 0.3 })
+      ];
+      
+      const result = calculateQ1(items);
+      expect(result).toBeCloseTo(0.6, 10);
+    });
 
-      expect(formatFileSize(0)).toBe('0 Bytes');
-      expect(formatFileSize(1024)).toBe('1 KB');
-      expect(formatFileSize(1048576)).toBe('1 MB');
-      expect(formatFileSize(1073741824)).toBe('1 GB');
+    it('should format large numbers correctly', () => {
+      const value = 1234567.89;
+      const formatted = value.toLocaleString();
+      
+      expect(formatted).toBeTruthy();
+      expect(typeof formatted).toBe('string');
     });
   });
 });

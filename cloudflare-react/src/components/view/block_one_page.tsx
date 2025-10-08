@@ -17,6 +17,7 @@ import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { UploadIcon, FileIcon, XIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { setBlockOneBudgetData, getBudgetStatistics } from '../../modules/block_three';
+
 // Расширенный интерфейс для BudgetItem с файлами
 interface ExtendedBudgetItem extends BudgetItem {
   attachedFiles?: File[];

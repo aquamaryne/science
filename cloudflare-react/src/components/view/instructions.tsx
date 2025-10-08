@@ -22,7 +22,7 @@
 //   Info
 // } from 'lucide-react';
 
-// const InstructionsPage = () => {
+// const InstructionsPage: React.FC = () => {
 //   const [activeTab, setActiveTab] = useState('overview');
 //   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 

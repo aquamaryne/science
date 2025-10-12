@@ -13,6 +13,7 @@ const navItems: NavItem[] = [
     { to: "/block_one_page", label: "Розрахунок бюджетного фінансування доріг" },
     { to: "/block_two_page", label: "Експлуатаційне утримання доріг" },
     { to: "/block_three_page", label: "Планування ремонтів автомобільних доріг" },
+    { to: "/history_page", label: "Історія розрахунків" },
 ]
 
 export const Sidebar: React.FC = () => {

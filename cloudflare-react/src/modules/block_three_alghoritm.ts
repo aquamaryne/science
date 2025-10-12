@@ -970,80 +970,6 @@ export function generateSectionReport(assessment: ComprehensiveRoadAssessment, s
   return report;
 }
 
-// ==================== ДОПОМІЖНІ ФУНКЦІЇ СТВОРЕННЯ ТЕСТОВИХ ДАНИХ ====================
-
-/**
- * Створення тестової секції дороги з детальними параметрами
- */
-export function createTestRoadSection(
-  id: string,
-  name: string,
-  category: 1 | 2 | 3 | 4 | 5,
-  length: number,
-  trafficIntensity: number,
-  significance: 'state' | 'local' = 'state',
-  region: string = 'Київська'
-): RoadSection {
-  
-  const maxDesignIntensity = MAX_DESIGN_INTENSITY_BY_CATEGORY[category];
-  const intensityCoefficient = maxDesignIntensity / Math.max(trafficIntensity, 1);
-  
-  // Генеруємо реалістичні параметри
-  const detailedCondition: DetailedTechnicalCondition = {
-    intensityCoefficient,
-    maxDesignIntensity,
-    actualIntensity: trafficIntensity,
-    
-    strengthCoefficient: 0.8 + Math.random() * 0.4, // 0.8-1.2
-    isRigidPavement: Math.random() > 0.8, // 20% жорстких покриттів
-    
-    evennessCoefficient: 0.7 + Math.random() * 0.6, // 0.7-1.3
-    iriIndex: 2.5 + Math.random() * 2.0, // 2.5-4.5 м/км
-    maxAllowedEvenness: category <= 2 ? 3.1 : 4.1,
-    
-    rutCoefficient: 0.6 + Math.random() * 0.8, // 0.6-1.4
-    actualRutDepth: 15 + Math.random() * 25, // 15-40 мм
-    maxAllowedRutDepth: category <= 2 ? 20 : 30,
-    
-    frictionCoefficient: 0.8 + Math.random() * 0.4, // 0.8-1.2
-    actualFrictionValue: 0.25 + Math.random() * 0.2, // 0.25-0.45
-    requiredFrictionValue: REQUIRED_FRICTION_COEFFICIENT
-  };
-  
-  return {
-    id,
-    name,
-    category,
-    length,
-    significance,
-    region,
-    detailedCondition,
-    trafficIntensity,
-    isDefenseRoad: Math.random() > 0.9, // 10% оборонних доріг
-    isInternationalRoad: category <= 2 && Math.random() > 0.7, // 30% міжнародних серед 1-2 категорій
-    isEuropeanNetwork: category === 1 && Math.random() > 0.8, // 20% європейських серед 1 категорії
-    isAccessRoad: significance === 'local' && Math.random() > 0.6, // 40% під'їздів серед місцевих
-    hasLighting: trafficIntensity > 5000 && Math.random() > 0.5,
-    nearBorderCrossing: Math.random() > 0.95,
-    criticalInfrastructureCount: Math.floor(Math.random() * 3),
-  };
-}
-
-/**
- * Створення тестової експертної оцінки
- */
-export function createTestExpertAssessment(
-  operationalStateIndex: number,
-  trafficIntensity: number,
-  description?: string
-): ExpertAssessment {
-  return {
-    operationalStateIndex,
-    trafficIntensity,
-    detailedDescription: description || `Експертна оцінка: стан дороги оцінено як ${operationalStateIndex} балів з 10`
-  };
-}
-
 // ==================== ЕКСПОРТ ВСІХ ФУНКЦІЙ ====================
 
 export default {
@@ -1057,10 +983,6 @@ export default {
   // Допоміжні функції розрахунків
   calculateDetailedWorkCost,
   performDetailedCostBenefitAnalysis,
-  
-  // Тестові функції
-  createTestRoadSection,
-  createTestExpertAssessment,
   
   // Константи
   MAX_DESIGN_INTENSITY_BY_CATEGORY,

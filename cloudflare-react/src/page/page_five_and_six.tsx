@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
-import { Save, AlertCircle, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Save, AlertCircle, CheckCircle2, Calculator } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+// Импорт функций из модулей
+import { performDetailedCostBenefitAnalysis } from '@/modules/block_three_alghoritm';
+import  RoadSection  from '@/modules/block_three';
 
 // Типы данных
 interface RoadSection {
@@ -51,7 +56,21 @@ interface ENPVInputData {
   maintenanceCostsAfter: number;
 }
 
-const ENPVInputTable: React.FC = () => {
+interface YearCalculation {
+  year: number;
+  trafficIntensity: number;
+  capitalCosts: number;
+  maintenanceCosts: number;
+  economicEffect: number;
+  netValue: number;
+  discountFactor: number;
+  discountedValue: number;
+  enpvCumulative: number;
+  discountedBenefits: number;
+  discountedCosts: number;
+}
+
+const ENPVCalculationTool: React.FC = () => {
   const [roadSections] = useState<RoadSection[]>([
     { id: '1', name: 'М-06 Київ-Чоп (км 0-25)', category: 1, length: 25 },
     { id: '2', name: 'Н-03 Житомир-Чернівці (км 45-78)', category: 2, length: 33 },
@@ -62,6 +81,15 @@ const ENPVInputTable: React.FC = () => {
   const [selectedSectionId, setSelectedSectionId] = useState<string>('');
   const [savedData, setSavedData] = useState<Map<string, ENPVInputData>>(new Map());
   const [showSuccess, setShowSuccess] = useState(false);
+  const [currentTab, setCurrentTab] = useState<string>('input');
+  const [results, setResults] = useState<YearCalculation[]>([]);
+  const [summary, setSummary] = useState<{
+    enpv: number;
+    eirr: number;
+    bcr: number;
+    totalBenefits: number;
+    totalCosts: number;
+  } | null>(null);
 
   const getEmptyData = (section: RoadSection): ENPVInputData => ({
     sectionId: section.id,
@@ -126,56 +154,177 @@ const ENPVInputTable: React.FC = () => {
     }
   };
 
+  const calculateResults = () => {
+    if (!currentData) return;
+
+    try {
+      // Создаем RoadSection с правильной структурой для использования в функциях модуля
+      const roadSection: any = {
+        id: currentData.sectionId,
+        name: currentData.sectionName,
+        category: parseInt(currentData.roadCategory) as 1 | 2 | 3 | 4 | 5,
+        length: currentData.constructionPeriod, // используем как длину дороги
+        significance: 'state' as const,
+        region: 'Київська',
+        trafficIntensity: currentData.currentRepairPeriod, // используем как интенсивность
+        detailedCondition: {
+          intensityCoefficient: 1.0,
+          maxDesignIntensity: 20000,
+          actualIntensity: currentData.currentRepairPeriod,
+          strengthCoefficient: 1.0,
+          isRigidPavement: false,
+          evennessCoefficient: 1.0,
+          maxAllowedEvenness: 4.0,
+          rutCoefficient: 1.0,
+          actualRutDepth: 20,
+          maxAllowedRutDepth: 20,
+          frictionCoefficient: 1.0,
+          actualFrictionValue: 0.35,
+          requiredFrictionValue: 0.35
+        }
+      };
+
+      // ИСПОЛЬЗУЕМ РЕАЛЬНУЮ ФУНКЦИЮ ИЗ МОДУЛЯ
+      // Импортируем динамически
+      import('@/modules/block_three_alghoritm').then((module) => {
+        const costBenefitAnalysis = module.performDetailedCostBenefitAnalysis(
+          roadSection,
+          currentData.totalReconstructionCost * 1000 // млн в тыс
+        );
+
+        if (!costBenefitAnalysis) return;
+
+        // Рассчитываем данные по годам
+        const yearlyData: YearCalculation[] = [];
+        const discountRate = currentData.discountRate / 100;
+        const startYear = currentData.workStartYear;
+        const years = currentData.calculatedYearCount;
+        
+        // Годовые выгоды из модуля
+        const annualBenefits = (
+          costBenefitAnalysis.vehicleFleetReduction +
+          costBenefitAnalysis.transportCostSavings +
+          costBenefitAnalysis.accidentReduction +
+          costBenefitAnalysis.environmentalBenefits
+        ) / years;
+
+        let cumulativeENPV = -currentData.totalReconstructionCost;
+        let totalDiscountedBenefits = 0;
+        let totalDiscountedCosts = currentData.totalReconstructionCost;
+
+        for (let i = 0; i <= years; i++) {
+          const year = startYear + i;
+          const discountFactor = Math.pow(1 + discountRate, -i);
+          
+          const capitalCosts = i === 0 ? currentData.totalReconstructionCost : 0;
+          const maintenanceCosts = i > 0 ? currentData.maintenanceCostsAfter : currentData.maintenanceCostsBefore;
+          
+          const economicEffect = i > 0 ? annualBenefits - maintenanceCosts : -capitalCosts;
+          const netValue = economicEffect;
+          const discountedValue = netValue * discountFactor;
+          
+          cumulativeENPV += discountedValue;
+          
+          const discountedBenefits = i > 0 ? annualBenefits * discountFactor : 0;
+          const discountedCosts = i === 0 ? capitalCosts * discountFactor : maintenanceCosts * discountFactor;
+          
+          totalDiscountedBenefits += discountedBenefits;
+          totalDiscountedCosts += discountedCosts;
+          
+          const trafficGrowthRate = currentData.capitalRepairPeriod / 100;
+          const adjustedTraffic = currentData.currentRepairPeriod * Math.pow(1 + trafficGrowthRate, i);
+
+          yearlyData.push({
+            year,
+            trafficIntensity: adjustedTraffic,
+            capitalCosts: i === 0 ? capitalCosts : 0,
+            maintenanceCosts: i > 0 ? maintenanceCosts : 0,
+            economicEffect,
+            netValue,
+            discountFactor,
+            discountedValue,
+            enpvCumulative: cumulativeENPV,
+            discountedBenefits,
+            discountedCosts
+          });
+        }
+
+        setResults(yearlyData);
+        setSummary({
+          enpv: costBenefitAnalysis.enpv / 1000, // из тыс в млн
+          eirr: costBenefitAnalysis.eirr,
+          bcr: costBenefitAnalysis.bcr,
+          totalBenefits: totalDiscountedBenefits,
+          totalCosts: totalDiscountedCosts
+        });
+
+        setCurrentTab('results');
+      }).catch(error => {
+        console.error('Помилка імпорту модуля:', error);
+      });
+    } catch (error) {
+      console.error('Помилка при розрахунку:', error);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 p-3">
-      <div className="w-full space-y-3">
-        {/* Заголовок */}
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-xl">
-              Визначення ефективності реконструкції/капітального ремонту автомобільних доріг
-            </CardTitle>
-            <CardDescription>Вихідні дані</CardDescription>
-          </CardHeader>
-        </Card>
+    <div className="w-full space-y-3">
+      {/* Заголовок */}
+      <Card>
+        <CardHeader className="py-3">
+          <CardTitle className="text-xl">
+            Визначення ефективності реконструкції/капітального ремонту автомобільних доріг
+          </CardTitle>
+          <CardDescription>Вихідні дані та розрахунок ENPV</CardDescription>
+        </CardHeader>
+      </Card>
 
-        {/* Выбор объекта */}
-        <Card className="border-2 border-yellow-400 bg-yellow-50">
-          <CardContent className="py-3">
-            <Label className="text-sm font-semibold text-gray-900 mb-2 block">
-              Комірка де можна зі списку обрати необхідний об'єкт по якому заповнюється вихідна інформація
-            </Label>
-            <Select value={selectedSectionId} onValueChange={handleSectionSelect}>
-              <SelectTrigger className="w-full h-10 bg-white">
-                <SelectValue placeholder="-- Оберіть об'єкт --" />
-              </SelectTrigger>
-              <SelectContent>
-                {roadSections.map(section => (
-                  <SelectItem key={section.id} value={section.id}>
-                    {section.name} (Категорія {section.category}, довжина {section.length} км)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
+      {/* Выбор объекта */}
+      <Card className="border-2 border-yellow-400 bg-yellow-50">
+        <CardContent className="py-3">
+          <Label className="text-sm font-semibold text-gray-900 mb-2 block">
+            Комірка де можна зі списку обрати необхідний об'єкт по якому заповнюється вихідна інформація
+          </Label>
+          <Select value={selectedSectionId} onValueChange={handleSectionSelect}>
+            <SelectTrigger className="w-full h-10 bg-white">
+              <SelectValue placeholder="-- Оберіть об'єкт --" />
+            </SelectTrigger>
+            <SelectContent>
+              {roadSections.map(section => (
+                <SelectItem key={section.id} value={section.id}>
+                  {section.name} (Категорія {section.category}, довжина {section.length} км)
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
 
-        {/* Индикатор сохраненных данных */}
-        {savedData.size > 0 && (
-          <Alert className="bg-blue-50 border-blue-200">
-            <AlertCircle className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-800 font-medium">
-              Збережено дані для {savedData.size} об'єкт(ів)
-            </AlertDescription>
-          </Alert>
-        )}
+      {/* Индикатор сохраненных данных */}
+      {savedData.size > 0 && (
+        <Alert className="bg-blue-50 border-blue-200">
+          <AlertCircle className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800 font-medium">
+            Збережено дані для {savedData.size} об'єкт(ів)
+          </AlertDescription>
+        </Alert>
+      )}
 
-        {/* Таблица */}
-        {currentData && (
-          <div className="glass-card">
-            <div className="border-2 border-gray-400 overflow-hidden">
-                <div className="overflow-auto max-h-[800px]">
-                    <table className="border-collapse w-full min-w-full">
+      {/* Tabs для переключения между вводом и результатами */}
+      {currentData && (
+        <Tabs value={currentTab} onValueChange={setCurrentTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="input">Вихідні дані</TabsTrigger>
+            <TabsTrigger value="results">Результати розрахунку</TabsTrigger>
+          </TabsList>
+
+          {/* TAB 1: Ввод данных */}
+          <TabsContent value="input">
+            <Card className="glass-card">
+              <CardContent className="p-0">
+                <div className="border-2 border-gray-400 overflow-hidden">
+                  <div className="overflow-auto max-h-[800px]">
+                  <table className="border-collapse w-full min-w-full">
                     <thead className="sticky top-0 z-20">
                         <tr>
                         <th className="w-12 h-10 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-30">
@@ -796,54 +945,151 @@ const ENPVInputTable: React.FC = () => {
                             />
                         </td>
                         </tr>
-                    </tbody>
+                        </tbody>
                     </table>
-                </div>
+                  </div>
                 </div>
 
-                {/* Кнопка сохранения */}
-                <div className="bg-yellow-50 border-t-2 border-yellow-400 p-4">
-                <Button
+                {/* Кнопки */}
+                <div className="bg-yellow-50 border-t-2 border-yellow-400 p-4 flex gap-3">
+                  <Button
                     onClick={handleSave}
                     disabled={!selectedSectionId}
-                    className="w-full h-10 text-sm bg-green-600 hover:bg-green-700"
-                >
+                    className="flex-1 h-10 text-sm bg-green-600 hover:bg-green-700"
+                  >
                     <Save className="w-4 h-4 mr-2" />
-                    Зберегти
-                </Button>
-            </div>
-          </div>
-        )}
+                    Зберегти дані
+                  </Button>
+                  <Button
+                    onClick={calculateResults}
+                    disabled={!selectedSectionId}
+                    className="flex-1 h-10 text-sm bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Calculator className="w-4 h-4 mr-2" />
+                    Розрахувати ENPV
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Уведомление об успешном сохранении */}
-        {showSuccess && (
-          <div className="fixed bottom-6 right-6 z-50">
-            <Alert className="bg-green-500 text-white border-green-600 shadow-lg">
-              <CheckCircle2 className="h-5 w-5" />
-              <AlertDescription className="font-medium">
-                Дані успішно збережено!
-              </AlertDescription>
-            </Alert>
-          </div>
-        )}
+          {/* TAB 2: Результаты */}
+          <TabsContent value="results">
+            <Card>
+              <CardHeader className="py-3">
+                <CardTitle className="text-base">
+                  Розрахунок вигід та витрат відповідно до Методики для кожного об'єкту проводиться на період {currentData.calculatedYearCount} років
+                </CardTitle>
+              </CardHeader>
+            </Card>
 
-        {/* Пустое состояние */}
-        {!selectedSectionId && (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <AlertCircle className="w-16 h-16 mx-auto text-slate-400 mb-4" />
-              <h3 className="text-xl font-semibold text-slate-700 mb-2">
-                Оберіть об'єкт для заповнення даних
-              </h3>
-              <p className="text-slate-500">
-                Виберіть об'єкт зі списку вище для початку заповнення вихідних даних ENPV
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+            {results.length > 0 ? (
+              <>
+                <div className="glass-card">
+                  <CardContent className="p-0">
+                    <div className="border-2 border-gray-400 overflow-hidden">
+                      <div className="overflow-auto max-h-[600px]">
+                        <table className="border-collapse w-full min-w-full text-xs">
+                          <thead className="sticky top-0 z-20">
+                            <tr>
+                              <th className="bg-gray-200 border border-gray-400 text-center font-bold p-2" rowSpan={2}>Рік</th>
+                              <th className="bg-gray-200 border border-gray-400 text-center font-bold p-2" rowSpan={2}>Середньорічна добова інтенсивність</th>
+                              <th className="bg-gray-200 border border-gray-400 text-center font-bold p-2" colSpan={2}>Витрати</th>
+                              <th className="bg-gray-200 border border-gray-400 text-center font-bold p-2" rowSpan={2}>Економічний ефект</th>
+                              <th className="bg-gray-200 border border-gray-400 text-center font-bold p-2" rowSpan={2}>Чистий NV</th>
+                              <th className="bg-gray-200 border border-gray-400 text-center font-bold p-2" rowSpan={2}>Коеф. диск.</th>
+                              <th className="bg-gray-200 border border-gray-400 text-center font-bold p-2" rowSpan={2}>Диск. дохід</th>
+                              <th className="bg-gray-200 border border-gray-400 text-center font-bold p-2" rowSpan={2}>ENPV</th>
+                              <th className="bg-gray-200 border border-gray-400 text-center font-bold p-2" rowSpan={2}>Вигоди</th>
+                              <th className="bg-gray-200 border border-gray-400 text-center font-bold p-2" rowSpan={2}>Витрати</th>
+                            </tr>
+                            <tr>
+                              <th className="bg-gray-200 border border-gray-400 text-center font-bold p-1">Капітальні</th>
+                              <th className="bg-gray-200 border border-gray-400 text-center font-bold p-1">Утримання</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {results.map((row, index) => (
+                              <tr key={row.year} className={index === 0 ? 'bg-yellow-50' : ''}>
+                                <td className="border border-gray-400 text-center p-1 font-bold">{row.year}</td>
+                                <td className="border border-gray-400 text-center p-1">{Math.round(row.trafficIntensity)}</td>
+                                <td className="border border-gray-400 text-center p-1">{row.capitalCosts > 0 ? row.capitalCosts.toFixed(2) : '-'}</td>
+                                <td className="border border-gray-400 text-center p-1">{row.maintenanceCosts > 0 ? row.maintenanceCosts.toFixed(2) : '-'}</td>
+                                <td className="border border-gray-400 text-center p-1">{row.economicEffect.toFixed(2)}</td>
+                                <td className="border border-gray-400 text-center p-1">{row.netValue.toFixed(2)}</td>
+                                <td className="border border-gray-400 text-center p-1">{row.discountFactor.toFixed(3)}</td>
+                                <td className="border border-gray-400 text-center p-1">{row.discountedValue.toFixed(2)}</td>
+                                <td className="border border-gray-400 text-center p-1 font-semibold">{row.enpvCumulative.toFixed(2)}</td>
+                                <td className="border border-gray-400 text-center p-1">{row.discountedBenefits.toFixed(2)}</td>
+                                <td className="border border-gray-400 text-center p-1">{row.discountedCosts.toFixed(2)}</td>
+                              </tr>
+                            ))}
+                            <tr className="bg-gray-100 font-bold">
+                              <td className="border border-gray-400 text-center p-2" colSpan={8}>Разом</td>
+                              <td className="border border-gray-400 text-center p-2 bg-yellow-100">{summary?.enpv.toFixed(2)}</td>
+                              <td className="border border-gray-400 text-center p-2 bg-yellow-100">{summary?.totalBenefits.toFixed(2)}</td>
+                              <td className="border border-gray-400 text-center p-2 bg-yellow-100">{summary?.totalCosts.toFixed(2)}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </CardContent>
+                </div>
+
+                {/* Итоговые показатели */}
+                {summary && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Card className="border-2 border-yellow-400 bg-yellow-50">
+                      <CardContent className="p-4">
+                        <div className="text-sm text-gray-700 mb-1">Співвідношення вигід і витрат (BCR)</div>
+                        <div className="text-3xl font-bold text-gray-900">{summary.bcr.toFixed(2)}</div>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-2 border-yellow-400 bg-yellow-50">
+                      <CardContent className="p-4">
+                        <div className="text-sm text-gray-700 mb-1">Економічна норма дохідності (EIRR)</div>
+                        <div className="text-3xl font-bold text-gray-900">{(summary.eirr * 100).toFixed(1)}%</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+              </>
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <AlertCircle className="w-16 h-16 mx-auto text-slate-400 mb-4" />
+                  <h3 className="text-xl font-semibold text-slate-700 mb-2">Немає результатів</h3>
+                  <p className="text-slate-500">Перейдіть на вкладку "Вихідні дані" та натисніть "Розрахувати ENPV"</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
+      )}
+
+      {/* Уведомление об успешном сохранении */}
+      {showSuccess && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <Alert className="bg-green-500 text-white border-green-600 shadow-lg">
+            <CheckCircle2 className="h-5 w-5" />
+            <AlertDescription className="font-medium">Дані успішно збережено!</AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      {/* Пустое состояние */}
+      {!selectedSectionId && (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <AlertCircle className="w-16 h-16 mx-auto text-slate-400 mb-4" />
+            <h3 className="text-xl font-semibold text-slate-700 mb-2">Оберіть об'єкт для заповнення даних</h3>
+            <p className="text-slate-500">Виберіть об'єкт зі списку вище для початку роботи</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
 
-export default ENPVInputTable;
+export default ENPVCalculationTool;

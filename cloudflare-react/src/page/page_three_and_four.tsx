@@ -163,8 +163,7 @@ export const RoadCostIndicators: React.FC = () => {
     <div className="w-full space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Шаблон_2. Показники вартості дорожніх робіт</h1>
-          <p className="text-sm text-muted-foreground mt-1">Вкладка 3: Показники вартості → Вкладка 4: Орієнтовна вартість робіт</p>
+          <h1 className="text-2xl font-bold">Показники вартості дорожніх робіт</h1>
         </div>
       </div>
 
@@ -179,7 +178,7 @@ export const RoadCostIndicators: React.FC = () => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">📊 Вкладка 3: Усереднені орієнтовні показники вартості дорожніх робіт</CardTitle>
+            <CardTitle className="text-lg">📊 Усереднені орієнтовні показники вартості дорожніх робіт</CardTitle>
             <div className="flex gap-2">
               <Button onClick={resetToDefaults} variant="outline" size="sm">
                 <Save className="h-4 w-4 mr-2" />
@@ -196,8 +195,8 @@ export const RoadCostIndicators: React.FC = () => {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-purple-600 hover:bg-purple-600">
-                  <TableHead className="text-white text-center" colSpan={6}>
+                <TableRow className="bg-white border-purple-600 border-1">
+                  <TableHead className="text-black text-center" colSpan={6}>
                     Усереднені орієнтовні показники вартості дорожніх робіт за даними об'єктів-аналогів, млн.грн/1 км
                   </TableHead>
                 </TableRow>
@@ -258,12 +257,6 @@ export const RoadCostIndicators: React.FC = () => {
                 </TableRow>
               </TableBody>
             </Table>
-          </div>
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
-            <p className="text-blue-800">
-              ℹ️ <strong>Інформація:</strong> Показники завантажені з базових норм вартості робіт (2023 рік). 
-              Ви можете відредагувати значення вручну або скинути до базових за допомогою кнопки вище.
-            </p>
           </div>
         </CardContent>
       </Card>

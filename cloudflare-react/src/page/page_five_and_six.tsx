@@ -424,9 +424,6 @@ const ENPVCalculationTool: React.FC = () => {
           <CardTitle className="text-xl">
             Визначення ефективності реконструкції/капітального ремонту автомобільних доріг
           </CardTitle>
-          <CardDescription>
-            Розрахунок з використанням детальних алгоритмів Методики (Додаток 11)
-          </CardDescription>
         </CardHeader>
       </Card>
 
@@ -1119,7 +1116,7 @@ const ENPVCalculationTool: React.FC = () => {
                   <Button
                     onClick={handleSave}
                     disabled={!selectedSectionId}
-                    className="flex-1 h-10 text-sm bg-green-600 hover:bg-green-700"
+                    className="flex-1 h-10 text-sm bg-white border-1 border-green-700 text-black hover:bg-green-400"
                   >
                     <Save className="w-4 h-4 mr-2" />
                     Зберегти дані
@@ -1127,7 +1124,7 @@ const ENPVCalculationTool: React.FC = () => {
                   <Button
                     onClick={calculateResults}
                     disabled={!selectedSectionId || isCalculating}
-                    className="flex-1 h-10 text-sm bg-blue-600 hover:bg-blue-700"
+                    className="flex-1 h-10 text-sm bg-white border-1 border-blue-700 text-black hover:bg-blue-400"
                   >
                     {isCalculating ? (
                       <>

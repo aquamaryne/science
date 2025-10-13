@@ -245,7 +245,6 @@ export const RoadTechnicalAssessment: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Визначення показників транспортно-експлуатаційного стану доріг</h1>
-          <p className="text-sm text-gray-600 mt-1">Розділ IV: Алгоритм 4.2.2 - Розрахунок технічних коефіцієнтів</p>
         </div>
       </div>
 
@@ -266,7 +265,7 @@ export const RoadTechnicalAssessment: React.FC = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 Додати рядок
               </Button>
-              <Button onClick={calculateCoefficients} size="sm" className="bg-green-600 hover:bg-green-700">
+              <Button onClick={calculateCoefficients} size="sm" className="bg-white border-1 border-green-700 text-black hover:bg-green-400">
                 <Calculator className="h-4 w-4 mr-2" />
                 Розрахувати
               </Button>
@@ -277,8 +276,8 @@ export const RoadTechnicalAssessment: React.FC = () => {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-blue-600 hover:bg-blue-600">
-                  <TableHead className="text-white text-center" colSpan={10}>
+                <TableRow className="border-1 border-blue-600">
+                  <TableHead className="text-black text-center" colSpan={10}>
                     Визначення показників фактичного транспортно–експлуатаційного стану доріг державного значення
                   </TableHead>
                 </TableRow>

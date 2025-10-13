@@ -234,7 +234,7 @@ export const RoadCostIndicators: React.FC = () => {
     ];
 
     // Експорт розрахунків
-    const headers2 = ['Найменування', 'Протяжність (км)', 'Категорія', 'Регіон', 'Вид робіт', 'Орієнтовна вартість (тис. грн)'];
+    const headers2 = ['Найменування', 'Протяжність (км)', 'Категорія', 'Вид робіт', 'Орієнтовна вартість (тис. грн)'];
     const csvRows2 = calculated ? [
       '',
       'Орієнтовна вартість робіт',
@@ -265,7 +265,6 @@ export const RoadCostIndicators: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Показники вартості дорожніх робіт</h1>
-          <p className="text-sm text-gray-600 mt-1">Розділ IV: Визначення обсягу та механізм розподілу бюджетних коштів</p>
         </div>
       </div>
 
@@ -309,14 +308,15 @@ export const RoadCostIndicators: React.FC = () => {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Скинути до базових
               </Button>
-              <Button onClick={loadTestData} variant="outline" size="sm" className="bg-purple-600 hover:bg-purple-700 text-white">
+              <Button 
+                onClick={loadTestData} variant="outline" size="sm" className="bg-whirte border-1 border-purple-700 text-black hover:bg-purple-400">
                 <Upload className="h-4 w-4 mr-2" />
                 Тестові дані
               </Button>
               <Button 
                 onClick={calculateEstimatedCosts} 
                 size="sm" 
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-white border-1 border-green-700 text-black hover:bg-green-400"
                 disabled={roadSections.length === 0}
               >
                 <Calculator className="h-4 w-4 mr-2" />
@@ -329,8 +329,8 @@ export const RoadCostIndicators: React.FC = () => {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-purple-600 hover:bg-purple-600">
-                  <TableHead className="text-white text-center" colSpan={6}>
+                <TableRow className="bg-white border-1 border-purple-700">
+                  <TableHead className="text-black text-center" colSpan={6}>
                     Усереднені орієнтовні показники вартості дорожніх робіт (тис. грн/км)
                   </TableHead>
                 </TableRow>
@@ -429,7 +429,6 @@ export const RoadCostIndicators: React.FC = () => {
                       <TableHead className="text-xs">Найменування ділянки</TableHead>
                       <TableHead className="text-xs text-center">Протяжність (км)</TableHead>
                       <TableHead className="text-xs text-center">Категорія</TableHead>
-                      <TableHead className="text-xs text-center">Регіон</TableHead>
                       <TableHead className="text-xs text-center">Вид робіт</TableHead>
                       <TableHead className="text-xs text-right">Вартість (тис. грн)</TableHead>
                     </TableRow>
@@ -439,20 +438,11 @@ export const RoadCostIndicators: React.FC = () => {
                       <TableRow key={row.id}>
                         <TableCell className="text-sm">
                           {row.roadName}
-                          {row.isDefenseRoad && (
-                            <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
-                              🛡️ Оборонна
-                            </span>
-                          )}
-                          {row.isInternationalRoad && (
-                            <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                              🌍 Міжнародна
-                            </span>
-                          )}
+                          {row.isDefenseRoad}
+                          {row.isInternationalRoad}
                         </TableCell>
                         <TableCell className="text-sm text-center">{row.length}</TableCell>
                         <TableCell className="text-sm text-center">{row.category}</TableCell>
-                        <TableCell className="text-sm text-center">{row.region}</TableCell>
                         <TableCell className="text-center">
                           <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${WORK_TYPE_COLORS[row.workType]}`}>
                             {WORK_TYPE_NAMES[row.workType]}

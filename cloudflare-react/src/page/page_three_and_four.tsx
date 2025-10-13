@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Calculator, FileDown, Save, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calculator, FileDown, AlertCircle, ChevronDown, ChevronUp, Upload, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -7,7 +7,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   BASE_REPAIR_COSTS,
-} from '@/modules/block_three_alghoritm';
+  calculateDetailedWorkCost,
+  determineWorkTypeByTechnicalCondition,
+  hasBlockOneBudgetData,
+  getBudgetAllocation,
+  type RoadSection,
+  type BudgetAllocation
+} from '@/modules/block_three';
 
 interface CostIndicators {
   reconstruction: { [key in 1 | 2 | 3 | 4 | 5]: number };
@@ -20,8 +26,11 @@ interface CostCalculationRow {
   roadName: string;
   length: number;
   category: 1 | 2 | 3 | 4 | 5;
+  region: string;
   workType: 'reconstruction' | 'capital_repair' | 'current_repair' | '';
   estimatedCost: number;
+  isDefenseRoad?: boolean;
+  isInternationalRoad?: boolean;
 }
 
 const WORK_TYPE_NAMES = {
@@ -31,19 +40,36 @@ const WORK_TYPE_NAMES = {
   '': '-'
 };
 
+const WORK_TYPE_COLORS = {
+  reconstruction: 'bg-red-100 text-red-800',
+  capital_repair: 'bg-yellow-100 text-yellow-800',
+  current_repair: 'bg-blue-100 text-blue-800',
+  '': 'bg-gray-100 text-gray-800'
+};
+
 export const RoadCostIndicators: React.FC = () => {
-  // Вкладка 3: Показники вартості (завантажуємо з модуля)
+  // Показники вартості (з модуля)
   const [costIndicators, setCostIndicators] = useState<CostIndicators>({
     reconstruction: { ...BASE_REPAIR_COSTS.reconstruction },
     capitalRepair: { ...BASE_REPAIR_COSTS.capital_repair },
     currentRepair: { ...BASE_REPAIR_COSTS.current_repair }
   });
 
-  // Вкладка 4: Розрахунок вартості
+  // Дані для розрахунку
+  const [roadSections, setRoadSections] = useState<RoadSection[]>([]);
   const [costRows, setCostRows] = useState<CostCalculationRow[]>([]);
   const [calculated, setCalculated] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [error, setError] = useState<string>('');
+  const [budgetInfo, setBudgetInfo] = useState<BudgetAllocation | null>(null);
+
+  // Перевірка наявності даних з Блоку 1
+  useEffect(() => {
+    if (hasBlockOneBudgetData()) {
+      const allocation = getBudgetAllocation();
+      setBudgetInfo(allocation);
+    }
+  }, []);
 
   const updateCostIndicator = (
     workType: keyof CostIndicators,
@@ -67,85 +93,159 @@ export const RoadCostIndicators: React.FC = () => {
     });
   };
 
-  const calculateEstimatedCosts = () => {
-    setError('');
-
-    // TODO: Тут має бути логіка отримання даних з попередніх вкладок
-    // Для демонстрації створимо тестові дані
-    const testData: CostCalculationRow[] = [
+  // Завантаження тестових даних
+  const loadTestData = () => {
+    const testSections: RoadSection[] = [
       {
         id: '1',
-        roadName: 'М-06 Київ-Чоп',
+        name: 'М-06 Київ-Чоп',
         length: 25.5,
         category: 2,
-        workType: 'capital_repair',
-        estimatedCost: 0
+        region: 'Київська',
+        significance: 'state',
+        trafficIntensity: 15000,
+        isInternationalRoad: true,
+        isDefenseRoad: false,
+        hasLighting: true,
+        detailedCondition: {
+          intensityCoefficient: 0.85,
+          strengthCoefficient: 0.82,
+          evennessCoefficient: 0.75,
+          maxAllowedEvenness: 3.5,
+          rutCoefficient: 0.88,
+          frictionCoefficient: 0.92,
+          isRigidPavement: false,
+          maxAllowedRutDepth: 25,
+          actualRutDepth: 28,
+          actualFrictionValue: 0.32,
+          requiredFrictionValue: 0.35,
+          maxDesignIntensity: 12000,
+          actualIntensity: 15000
+        }
       },
       {
         id: '2',
-        roadName: 'Н-03 Житомир-Чернівці',
+        name: 'Н-03 Житомир-Чернівці',
         length: 15.3,
         category: 3,
-        workType: 'current_repair',
-        estimatedCost: 0
+        region: 'Житомирська',
+        significance: 'state',
+        trafficIntensity: 5500,
+        isDefenseRoad: false,
+        detailedCondition: {
+          intensityCoefficient: 1.09,
+          strengthCoefficient: 0.96,
+          evennessCoefficient: 0.88,
+          maxAllowedEvenness: 3.5,
+          rutCoefficient: 0.85,
+          frictionCoefficient: 0.87,
+          isRigidPavement: false,
+          maxAllowedRutDepth: 30,
+          actualRutDepth: 35,
+          actualFrictionValue: 0.30,
+          requiredFrictionValue: 0.35,
+          maxDesignIntensity: 6000,
+          actualIntensity: 5500
+        }
       },
       {
         id: '3',
-        roadName: 'Р-15 Львів-Тернопіль',
+        name: 'Р-15 Львів-Тернопіль',
         length: 42.8,
         category: 4,
-        workType: 'reconstruction',
-        estimatedCost: 0
+        region: 'Львівська',
+        significance: 'local',
+        trafficIntensity: 2500,
+        isDefenseRoad: true,
+        nearBorderCrossing: true,
+        detailedCondition: {
+          intensityCoefficient: 0.75,
+          strengthCoefficient: 0.70,
+          evennessCoefficient: 0.65,
+          maxAllowedEvenness: 3.5,
+          rutCoefficient: 0.72,
+          frictionCoefficient: 0.80,
+          isRigidPavement: false,
+          maxAllowedRutDepth: 40,
+          actualRutDepth: 55,
+          actualFrictionValue: 0.28,
+          requiredFrictionValue: 0.35,
+          maxDesignIntensity: 2000,
+          actualIntensity: 2500
+        }
       }
     ];
+    
+    setRoadSections(testSections);
+    setError('');
+  };
 
-    // Розраховуємо вартість для кожної дороги
-    const calculatedRows = testData.map(row => {
-      if (!row.workType) return row;
+  const calculateEstimatedCosts = () => {
+    setError('');
 
-      let costPerKm = 0;
-      if (row.workType === 'reconstruction') {
-        costPerKm = costIndicators.reconstruction[row.category];
-      } else if (row.workType === 'capital_repair') {
-        costPerKm = costIndicators.capitalRepair[row.category];
-      } else if (row.workType === 'current_repair') {
-        costPerKm = costIndicators.currentRepair[row.category];
-      }
+    if (roadSections.length === 0) {
+      setError('Немає даних про дороги. Завантажте тестові дані або імпортуйте власні.');
+      return;
+    }
 
-      const estimatedCost = costPerKm * row.length;
+    try {
+      // Розрахунок для кожної секції
+      const calculatedRows: CostCalculationRow[] = roadSections.map(section => {
+        // Визначення виду робіт через модуль
+        const workType = determineWorkTypeByTechnicalCondition(section);
+        
+        let estimatedCost = 0;
+        
+        if (workType !== 'no_work_needed') {
+          // Використовуємо функцію з модуля для розрахунку вартості
+          estimatedCost = calculateDetailedWorkCost(section, workType);
+        }
 
-      return {
-        ...row,
-        estimatedCost
-      };
-    });
+        return {
+          id: section.id,
+          roadName: section.name,
+          length: section.length,
+          category: section.category,
+          region: section.region,
+          workType: workType === 'no_work_needed' ? '' : workType,
+          estimatedCost,
+          isDefenseRoad: section.isDefenseRoad,
+          isInternationalRoad: section.isInternationalRoad
+        };
+      });
 
-    setCostRows(calculatedRows);
-    setCalculated(true);
-    setShowResults(true);
+      setCostRows(calculatedRows);
+      setCalculated(true);
+      setShowResults(true);
+    } catch (err) {
+      setError('Помилка при розрахунку вартості: ' + (err as Error).message);
+    }
   };
 
   const exportToCSV = () => {
     // Експорт показників вартості
     const headers1 = ['Вид робіт', 'I', 'II', 'III', 'IV', 'V'];
     const csvRows1 = [
+      'Усереднені орієнтовні показники вартості (тис. грн/км)',
       headers1.join(','),
       ['Реконструкція', ...Object.values(costIndicators.reconstruction)].join(','),
       ['Капітальний ремонт', ...Object.values(costIndicators.capitalRepair)].join(','),
       ['Поточний ремонт', ...Object.values(costIndicators.currentRepair)].join(',')
     ];
 
-    // Експорт розрахунків вартості
-    const headers2 = ['Найменування', 'Протяжність', 'Категорія', 'Вид робіт', 'Орієнтовна вартість'];
+    // Експорт розрахунків
+    const headers2 = ['Найменування', 'Протяжність (км)', 'Категорія', 'Регіон', 'Вид робіт', 'Орієнтовна вартість (тис. грн)'];
     const csvRows2 = calculated ? [
-      '\n\nОрієнтовна вартість робіт',
+      '',
+      'Орієнтовна вартість робіт',
       headers2.join(','),
       ...costRows.map(row => [
         `"${row.roadName}"`,
         row.length,
         row.category,
+        `"${row.region}"`,
         `"${WORK_TYPE_NAMES[row.workType]}"`,
-        row.estimatedCost.toFixed(2)
+        row.estimatedCost.toFixed(0)
       ].join(','))
     ] : [];
 
@@ -161,11 +261,36 @@ export const RoadCostIndicators: React.FC = () => {
 
   return (
     <div className="w-full space-y-6 p-6">
+      {/* Заголовок */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Показники вартості дорожніх робіт</h1>
+          <p className="text-sm text-gray-600 mt-1">Розділ IV: Визначення обсягу та механізм розподілу бюджетних коштів</p>
         </div>
       </div>
+
+      {/* Інформація про бюджет */}
+      {budgetInfo && (
+        <Alert className="bg-blue-50 border-blue-200">
+          <AlertDescription>
+            <h3 className="font-semibold text-blue-900 mb-2">📊 Інформація з Блоку 1</h3>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600">Поточний ремонт:</span>
+                <span className="ml-2 font-semibold">{budgetInfo.currentRepair.toLocaleString()} тис. грн</span>
+              </div>
+              <div>
+                <span className="text-gray-600">Капітальний ремонт:</span>
+                <span className="ml-2 font-semibold">{budgetInfo.capitalRepair.toLocaleString()} тис. грн</span>
+              </div>
+              <div>
+                <span className="text-gray-600">Реконструкція:</span>
+                <span className="ml-2 font-semibold">{budgetInfo.reconstruction.toLocaleString()} тис. грн</span>
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {error && (
         <Alert variant="destructive">
@@ -174,17 +299,26 @@ export const RoadCostIndicators: React.FC = () => {
         </Alert>
       )}
 
-      {/* ВКЛАДКА 3: УСЕРЕДНЕНІ ПОКАЗНИКИ ВАРТОСТІ */}
+      {/* ВКЛАДКА 3: Показники вартості */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">📊 Усереднені орієнтовні показники вартості дорожніх робіт</CardTitle>
+            <CardTitle className="text-lg">📊 Усереднені орієнтовні показники вартості</CardTitle>
             <div className="flex gap-2">
               <Button onClick={resetToDefaults} variant="outline" size="sm">
-                <Save className="h-4 w-4 mr-2" />
+                <RefreshCw className="h-4 w-4 mr-2" />
                 Скинути до базових
               </Button>
-              <Button onClick={calculateEstimatedCosts} size="sm" className="bg-green-600 hover:bg-green-700">
+              <Button onClick={loadTestData} variant="outline" size="sm" className="bg-purple-600 hover:bg-purple-700 text-white">
+                <Upload className="h-4 w-4 mr-2" />
+                Тестові дані
+              </Button>
+              <Button 
+                onClick={calculateEstimatedCosts} 
+                size="sm" 
+                className="bg-green-600 hover:bg-green-700"
+                disabled={roadSections.length === 0}
+              >
                 <Calculator className="h-4 w-4 mr-2" />
                 Розрахувати вартість
               </Button>
@@ -195,9 +329,9 @@ export const RoadCostIndicators: React.FC = () => {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-white border-purple-600 border-1">
-                  <TableHead className="text-black text-center" colSpan={6}>
-                    Усереднені орієнтовні показники вартості дорожніх робіт за даними об'єктів-аналогів, млн.грн/1 км
+                <TableRow className="bg-purple-600 hover:bg-purple-600">
+                  <TableHead className="text-white text-center" colSpan={6}>
+                    Усереднені орієнтовні показники вартості дорожніх робіт (тис. грн/км)
                   </TableHead>
                 </TableRow>
                 <TableRow>
@@ -222,7 +356,7 @@ export const RoadCostIndicators: React.FC = () => {
                         value={costIndicators.reconstruction[cat]}
                         onChange={(e) => updateCostIndicator('reconstruction', cat, parseFloat(e.target.value) || 0)}
                         className="h-8 text-center"
-                        step="100"
+                        step="1000"
                       />
                     </TableCell>
                   ))}
@@ -236,7 +370,7 @@ export const RoadCostIndicators: React.FC = () => {
                         value={costIndicators.capitalRepair[cat]}
                         onChange={(e) => updateCostIndicator('capitalRepair', cat, parseFloat(e.target.value) || 0)}
                         className="h-8 text-center"
-                        step="100"
+                        step="1000"
                       />
                     </TableCell>
                   ))}
@@ -250,7 +384,7 @@ export const RoadCostIndicators: React.FC = () => {
                         value={costIndicators.currentRepair[cat]}
                         onChange={(e) => updateCostIndicator('currentRepair', cat, parseFloat(e.target.value) || 0)}
                         className="h-8 text-center"
-                        step="10"
+                        step="100"
                       />
                     </TableCell>
                   ))}
@@ -261,7 +395,7 @@ export const RoadCostIndicators: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* ВКЛАДКА 4: ОРІЄНТОВНА ВАРТІСТЬ РОБІТ */}
+      {/* ВКЛАДКА 4: Орієнтовна вартість робіт */}
       {calculated && (
         <Card>
           <CardHeader>
@@ -271,7 +405,7 @@ export const RoadCostIndicators: React.FC = () => {
                 onClick={() => setShowResults(!showResults)}
                 className="text-lg font-semibold p-0 h-auto hover:bg-transparent"
               >
-                💰 Вкладка 4: Орієнтовна вартість робіт
+                💰 Орієнтовна вартість робіт
                 {showResults ? <ChevronUp className="ml-2 h-5 w-5" /> : <ChevronDown className="ml-2 h-5 w-5" />}
               </Button>
               <Button onClick={exportToCSV} size="sm" className="bg-purple-600 hover:bg-purple-700">
@@ -280,37 +414,47 @@ export const RoadCostIndicators: React.FC = () => {
               </Button>
             </div>
           </CardHeader>
+          
           {showResults && (
             <CardContent>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-green-600 hover:bg-green-600">
-                      <TableHead className="text-white text-center" colSpan={5}>
+                      <TableHead className="text-white text-center" colSpan={6}>
                         Орієнтовна вартість робіт
                       </TableHead>
                     </TableRow>
                     <TableRow>
-                      <TableHead className="text-xs">Найменування ділянки дороги</TableHead>
-                      <TableHead className="text-xs text-center">Протяжність дороги (км)</TableHead>
+                      <TableHead className="text-xs">Найменування ділянки</TableHead>
+                      <TableHead className="text-xs text-center">Протяжність (км)</TableHead>
                       <TableHead className="text-xs text-center">Категорія</TableHead>
+                      <TableHead className="text-xs text-center">Регіон</TableHead>
                       <TableHead className="text-xs text-center">Вид робіт</TableHead>
-                      <TableHead className="text-xs text-center">Орієнтовна вартість робіт (тис. грн)</TableHead>
+                      <TableHead className="text-xs text-right">Вартість (тис. грн)</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {costRows.map((row) => (
                       <TableRow key={row.id}>
-                        <TableCell className="text-sm">{row.roadName}</TableCell>
+                        <TableCell className="text-sm">
+                          {row.roadName}
+                          {row.isDefenseRoad && (
+                            <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                              🛡️ Оборонна
+                            </span>
+                          )}
+                          {row.isInternationalRoad && (
+                            <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                              🌍 Міжнародна
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-sm text-center">{row.length}</TableCell>
                         <TableCell className="text-sm text-center">{row.category}</TableCell>
+                        <TableCell className="text-sm text-center">{row.region}</TableCell>
                         <TableCell className="text-center">
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                            row.workType === 'current_repair' ? 'bg-blue-100 text-blue-800' :
-                            row.workType === 'capital_repair' ? 'bg-yellow-100 text-yellow-800' :
-                            row.workType === 'reconstruction' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${WORK_TYPE_COLORS[row.workType]}`}>
                             {WORK_TYPE_NAMES[row.workType]}
                           </span>
                         </TableCell>
@@ -320,7 +464,7 @@ export const RoadCostIndicators: React.FC = () => {
                       </TableRow>
                     ))}
                     <TableRow className="bg-gray-100 font-bold">
-                      <TableCell colSpan={4} className="text-right">РАЗОМ:</TableCell>
+                      <TableCell colSpan={5} className="text-right">РАЗОМ:</TableCell>
                       <TableCell className="text-right">
                         {totalEstimatedCost.toLocaleString('uk-UA', { maximumFractionDigits: 0 })}
                       </TableCell>
@@ -329,9 +473,10 @@ export const RoadCostIndicators: React.FC = () => {
                 </Table>
               </div>
 
+              {/* Статистика */}
               <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-green-800 font-medium mb-3">
-                  ✓ Розрахунок завершено! Орієнтовна вартість обчислена на основі показників з Вкладки 3
+                  ✓ Розрахунок завершено!
                 </p>
                 <div className="grid grid-cols-4 gap-4">
                   <div className="text-center">

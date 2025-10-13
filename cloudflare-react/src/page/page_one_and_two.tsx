@@ -4,18 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table,TableBody,TableCell,TableHead,TableHeader,TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   determineWorkTypeByTechnicalCondition,
-  type RoadSection
-} from '@/modules/block_three';
-import {
-  type DetailedTechnicalCondition,
   MAX_DESIGN_INTENSITY_BY_CATEGORY,
   MIN_STRENGTH_COEFFICIENT_BY_CATEGORY,
-  REQUIRED_FRICTION_COEFFICIENT
-} from '@/modules/block_three_alghoritm';
+  REQUIRED_FRICTION_COEFFICIENT,
+  type RoadSection,
+  type DetailedTechnicalCondition
+} from '@/modules/block_three';
 
 interface InputRow {
   id: string;
@@ -109,34 +107,40 @@ export const RoadTechnicalAssessment: React.FC = () => {
 
     try {
       const results: ResultRow[] = inputRows.map(input => {
+        // Коефіцієнт інтенсивності (4.2.2.1)
         const maxDesignIntensity = MAX_DESIGN_INTENSITY_BY_CATEGORY[input.category];
-        const minStrengthCoeff = MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[input.category];
-        
         const intensityCoefficient = input.actualIntensity > 0 
           ? maxDesignIntensity / input.actualIntensity 
           : 0;
         
+        // Коефіцієнт міцності для нежорсткого покриття (4.2.2.2)
         const requiredElasticModulus = 200;
         const strengthFlexibleCoefficient = input.actualElasticModulus > 0
           ? input.actualElasticModulus / requiredElasticModulus
           : 0;
         
+        // Коефіцієнт міцності для жорсткого покриття
+        const minStrengthCoeff = MIN_STRENGTH_COEFFICIENT_BY_CATEGORY[input.category];
         const strengthRigidCoefficient = strengthFlexibleCoefficient * 1.2 * minStrengthCoeff;
         
+        // Коефіцієнт рівності (4.2.2.3)
         const maxAllowedEvenness = input.category <= 2 ? 3.1 : 4.0;
         const evennessCoefficient = input.actualSurfaceEvenness > 0
           ? maxAllowedEvenness / input.actualSurfaceEvenness
           : 0;
         
+        // Коефіцієнт колійності (4.2.2.4)
         const maxAllowedRutDepth = input.category <= 2 ? 20 : 30;
         const rutCoefficient = input.actualRutDepth > 0
           ? maxAllowedRutDepth / input.actualRutDepth
           : 0;
         
+        // Коефіцієнт зчеплення (4.2.2.5)
         const frictionCoefficient = input.actualFrictionValue > 0
           ? input.actualFrictionValue / REQUIRED_FRICTION_COEFFICIENT
           : 0;
 
+        // Формування детального технічного стану
         const detailedCondition: DetailedTechnicalCondition = {
           intensityCoefficient,
           maxDesignIntensity,
@@ -155,6 +159,7 @@ export const RoadTechnicalAssessment: React.FC = () => {
           requiredFrictionValue: REQUIRED_FRICTION_COEFFICIENT
         };
 
+        // Створення об'єкта секції дороги
         const section: RoadSection = {
           id: input.id,
           name: input.roadName,
@@ -166,6 +171,7 @@ export const RoadTechnicalAssessment: React.FC = () => {
           trafficIntensity: input.actualIntensity
         };
 
+        // Визначення виду робіт через модуль (4.2.3)
         const workType = determineWorkTypeByTechnicalCondition(section);
 
         return {
@@ -235,10 +241,11 @@ export const RoadTechnicalAssessment: React.FC = () => {
   };
 
   return (
-    <div className="w-full space-y-6 p-6 ">
+    <div className="w-full space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold"> Визначення показників транспортно-експлуатаційного стану доріг</h1>
+          <h1 className="text-2xl font-bold">Визначення показників транспортно-експлуатаційного стану доріг</h1>
+          <p className="text-sm text-gray-600 mt-1">Розділ IV: Алгоритм 4.2.2 - Розрахунок технічних коефіцієнтів</p>
         </div>
       </div>
 
@@ -270,8 +277,8 @@ export const RoadTechnicalAssessment: React.FC = () => {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-white border-1 border-blue-600">
-                  <TableHead className="text-black text-center" colSpan={10}>
+                <TableRow className="bg-blue-600 hover:bg-blue-600">
+                  <TableHead className="text-white text-center" colSpan={10}>
                     Визначення показників фактичного транспортно–експлуатаційного стану доріг державного значення
                   </TableHead>
                 </TableRow>
@@ -384,6 +391,7 @@ export const RoadTechnicalAssessment: React.FC = () => {
                         size="sm"
                         onClick={() => deleteInputRow(row.id)}
                         className="h-8 w-8 p-0"
+                        disabled={inputRows.length === 1}
                       >
                         <Trash2 className="h-4 w-4 text-red-600" />
                       </Button>
@@ -420,8 +428,8 @@ export const RoadTechnicalAssessment: React.FC = () => {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-white border-1 border-green-600">
-                      <TableHead className="text-black text-center" colSpan={9}>
+                    <TableRow className="bg-green-600 hover:bg-green-600">
+                      <TableHead className="text-white text-center" colSpan={9}>
                         Визначення показників фактичного транспортно–експлуатаційного стану доріг
                       </TableHead>
                     </TableRow>

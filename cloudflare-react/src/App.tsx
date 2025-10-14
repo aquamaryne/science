@@ -4,10 +4,13 @@ import { Sidebar } from './components/sidebar';
 import Block2MaintenanceCalculator from './components/view/block_two_page';
 import { Block3MultiPageApp }  from './components/view/block_three_page';
 // import Instructions from '@/components/View/instructions';
+import { Provider } from 'react-redux';
+import { store } from '@/store/store';
 
 function App() {
 
   return (
+    <Provider store={store}>
       <Router>
         <div className="flex">
           <Sidebar />
@@ -21,6 +24,7 @@ function App() {
           </main>
         </div>
       </Router>
+    </Provider>
   )
 }
 

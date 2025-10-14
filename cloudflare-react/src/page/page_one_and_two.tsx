@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { 
   determineWorkTypeByTechnicalCondition,
   MAX_DESIGN_INTENSITY_BY_CATEGORY,
@@ -14,6 +15,9 @@ import {
   type RoadSection,
   type DetailedTechnicalCondition
 } from '@/modules/block_three';
+
+import { useAppDispatch } from '@/store/hooks';
+import { setCalculatedRoads } from '@/store/roadDataSlice';
 
 interface InputRow {
   id: string;
@@ -49,6 +53,7 @@ const WORK_TYPE_NAMES: Record<string, string> = {
 };
 
 export const RoadTechnicalAssessment: React.FC = () => {
+  const dispatch = useAppDispatch();
   const [inputRows, setInputRows] = useState<InputRow[]>([
     { 
       id: '1', 
@@ -67,6 +72,7 @@ export const RoadTechnicalAssessment: React.FC = () => {
   const [calculated, setCalculated] = useState(false);
   const [error, setError] = useState<string>('');
   const [showResults, setShowResults] = useState(false);
+  const [dataTransferred, setDataTransferred] = useState(false);
 
   const addInputRow = () => {
     const newRow: InputRow = {
@@ -87,6 +93,7 @@ export const RoadTechnicalAssessment: React.FC = () => {
     setInputRows(inputRows.filter(row => row.id !== id));
     setCalculated(false);
     setResultRows([]);
+    setDataTransferred(false); // ← ДОДАНО
   };
 
   const updateInputRow = (id: string, field: keyof InputRow, value: any) => {
@@ -94,6 +101,7 @@ export const RoadTechnicalAssessment: React.FC = () => {
       row.id === id ? { ...row, [field]: value } : row
     ));
     setCalculated(false);
+    setDataTransferred(false);
   };
 
   const calculateCoefficients = () => {
@@ -191,10 +199,60 @@ export const RoadTechnicalAssessment: React.FC = () => {
       setResultRows(results);
       setCalculated(true);
       setShowResults(true);
+      transferDataToRedux(results);
+
     } catch (err) {
       setError(`ПОМИЛКА розрахунку: ${err instanceof Error ? err.message : 'Невідома помилка'}`);
       console.error('Calculation error:', err);
     }
+  };
+
+  const transferDataToRedux = (results: ResultRow[]) => {
+    const dataToTransfer = results.map((result, index) => {
+      const input = inputRows[index];
+      const maxDesignIntensity = MAX_DESIGN_INTENSITY_BY_CATEGORY[input.category];
+      const requiredElasticModulus = 200;
+      const maxAllowedEvenness = input.category <= 2 ? 3.1 : 4.0;
+      const maxAllowedRutDepth = input.category <= 2 ? 20 : 30;
+      
+      return {
+        id: result.id,
+        roadName: result.roadName,         // ← НАЙМЕНУВАННЯ
+        category: input.category,          // ← КАТЕГОРІЯ
+        length: result.length,
+        region: 'Київська',
+        actualIntensity: input.actualIntensity,
+        actualElasticModulus: input.actualElasticModulus,
+        actualSurfaceEvenness: input.actualSurfaceEvenness,
+        actualRutDepth: input.actualRutDepth,
+        actualFrictionValue: input.actualFrictionValue,
+        workType: result.workType,
+        detailedCondition: {
+          intensityCoefficient: result.intensityCoefficient,
+          strengthCoefficient: result.strengthFlexibleCoefficient,
+          evennessCoefficient: result.evennessCoefficient,
+          rutCoefficient: result.rutCoefficient,
+          frictionCoefficient: result.frictionCoefficient,
+          isRigidPavement: false,
+          maxDesignIntensity,
+          actualIntensity: input.actualIntensity,
+          actualElasticModulus: input.actualElasticModulus,
+          requiredElasticModulus,
+          maxAllowedEvenness,
+          actualSurfaceEvenness: input.actualSurfaceEvenness,
+          maxAllowedRutDepth,
+          actualRutDepth: input.actualRutDepth,
+          actualFrictionValue: input.actualFrictionValue,
+          requiredFrictionValue: REQUIRED_FRICTION_COEFFICIENT
+        }
+      };
+    });
+
+    // ВІДПРАВКА В REDUX STORE
+    dispatch(setCalculatedRoads(dataToTransfer));
+    setDataTransferred(true);
+    
+    console.log('✅ Дані передані в Redux:', dataToTransfer);
   };
 
   const exportToCSV = () => {
@@ -255,6 +313,17 @@ export const RoadTechnicalAssessment: React.FC = () => {
         </Alert>
       )}
 
+ {/* ========== ПОВІДОМЛЕННЯ ПРО ПЕРЕДАЧУ ========== */}
+      {dataTransferred && (
+        <Alert className="bg-green-50 border-green-200">
+          <AlertDescription className="text-green-800">
+            <strong>✓ Дані успішно збережені</strong>
+            <div className="text-xs mt-1">
+              Передано {resultRows.length} доріг з повною інформацією (найменування, категорія, коефіцієнти).
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
       {/* ТАБЛИЦЯ 1: ВИХІДНІ ДАНІ */}
       <Card>
         <CardHeader>

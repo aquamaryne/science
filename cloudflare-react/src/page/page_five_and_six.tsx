@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-// ИМПОРТ РЕАЛЬНЫХ ФУНКЦИЙ ИЗ МОДУЛЯ
+// ИМПОРТ ФУНКЦИЙ ИЗ МОДУЛЯ
 import { 
   performDetailedCostBenefitAnalysis,
   type DetailedTechnicalCondition,
@@ -16,6 +16,7 @@ import {
 } from '@/modules/block_three';
 
 // Типы данных
+
 interface RoadSection {
   id: string;
   name: string;

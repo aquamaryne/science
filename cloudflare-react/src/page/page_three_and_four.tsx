@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { 
   BASE_REPAIR_COSTS,
   calculateDetailedWorkCost,
@@ -14,6 +15,13 @@ import {
   type RoadSection,
   type BudgetAllocation
 } from '@/modules/block_three';
+
+import { useAppSelector } from '@/store/hooks';
+import { 
+  selectCalculatedRoads, 
+  selectHasCalculatedData, 
+  selectLastCalculationTime 
+} from '@/store/roadDataSlice';
 
 interface CostIndicators {
   reconstruction: { [key in 1 | 2 | 3 | 4 | 5]: number };
@@ -48,6 +56,11 @@ const WORK_TYPE_COLORS = {
 };
 
 export const RoadCostIndicators: React.FC = () => {
+
+  const calculatedRoadsFromRedux = useAppSelector(selectCalculatedRoads);
+  const hasReduxData = useAppSelector(selectHasCalculatedData);
+  const lastCalculationTime = useAppSelector(selectLastCalculationTime);
+
   // Показники вартості (з модуля)
   const [costIndicators, setCostIndicators] = useState<CostIndicators>({
     reconstruction: { ...BASE_REPAIR_COSTS.reconstruction },
@@ -71,6 +84,13 @@ export const RoadCostIndicators: React.FC = () => {
     }
   }, []);
 
+  useEffect(() => {
+    if (hasReduxData && calculatedRoadsFromRedux.length > 0) {
+      console.log('✅ Автоматичне завантаження з Redux...');
+      loadDataFromRedux();
+    }
+  }, [hasReduxData, calculatedRoadsFromRedux]);
+
   const updateCostIndicator = (
     workType: keyof CostIndicators,
     category: 1 | 2 | 3 | 4 | 5,
@@ -91,6 +111,26 @@ export const RoadCostIndicators: React.FC = () => {
       capitalRepair: { ...BASE_REPAIR_COSTS.capital_repair },
       currentRepair: { ...BASE_REPAIR_COSTS.current_repair }
     });
+  };
+
+  const loadDataFromRedux = () => {
+    const sectionsFromRedux: RoadSection[] = calculatedRoadsFromRedux.map(road => ({
+      id: road.id,
+      name: road.roadName,           // ← НАЙМЕНУВАННЯ з Redux
+      length: road.length,
+      category: road.category,       // ← КАТЕГОРІЯ з Redux
+      region: road.region,
+      significance: 'state',
+      trafficIntensity: road.actualIntensity,
+      isInternationalRoad: road.isInternationalRoad,
+      isDefenseRoad: road.isDefenseRoad,
+      detailedCondition: road.detailedCondition
+    }));
+
+    setRoadSections(sectionsFromRedux);
+    setError('');
+    
+    console.log('✅ Завантажено з Redux:', sectionsFromRedux.length, 'доріг');
   };
 
   // Завантаження тестових даних
@@ -267,6 +307,33 @@ export const RoadCostIndicators: React.FC = () => {
           <h1 className="text-2xl font-bold">Показники вартості дорожніх робіт</h1>
         </div>
       </div>
+
+      {hasReduxData && (
+        <Alert className="bg-blue-50 border-blue-200">
+          <AlertDescription>
+            <h3 className="font-semibold text-blue-900 mb-2">
+              ✓ Дані автоматично завантажено з Redux Store
+            </h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600">Кількість доріг:</span>
+                <span className="ml-2 font-semibold text-blue-800">
+                  {calculatedRoadsFromRedux.length}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-600">Останній розрахунок:</span>
+                <span className="ml-2 font-semibold text-blue-800">
+                  {lastCalculationTime ? new Date(lastCalculationTime).toLocaleString('uk-UA') : '-'}
+                </span>
+              </div>
+            </div>
+            <div className="mt-2 text-xs text-blue-700">
+              📋 Передані дані: найменування, категорія, протяжність та всі коефіцієнти
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Інформація про бюджет */}
       {budgetInfo && (

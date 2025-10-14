@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Save, AlertCircle, CheckCircle2, Calculator, FileText, Download } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+// ✅ ІМПОРТ REDUX
+import { useAppSelector } from '@/store/hooks';
+
 // ИМПОРТ ФУНКЦИЙ ИЗ МОДУЛЯ
 import { 
   performDetailedCostBenefitAnalysis,
@@ -16,7 +19,6 @@ import {
 } from '@/modules/block_three';
 
 // Типы данных
-
 interface RoadSection {
   id: string;
   name: string;
@@ -58,7 +60,6 @@ interface ENPVInputData {
   vehicleCategoryAgeQ1: string;
   maintenanceCostsBefore: number;
   maintenanceCostsAfter: number;
-  // Дополнительные поля для детального расчета
   region: string;
   isDefenseRoad: boolean;
   isInternationalRoad: boolean;
@@ -93,16 +94,27 @@ interface DetailedResults {
     environmentalBenefits: number;
     paybackPeriod: number;
   };
-  moduleAnalysis: any; // Полные данные из модуля
+  moduleAnalysis: any;
 }
 
 const ENPVCalculationTool: React.FC = () => {
-  const [roadSections] = useState<RoadSection[]>([
-    { id: '1', name: 'М-06 Київ-Чоп (км 0-25)', category: 1, length: 25 },
-    { id: '2', name: 'Н-03 Житомир-Чернівці (км 45-78)', category: 2, length: 33 },
-    { id: '3', name: 'Р-15 Львів-Тернопіль (км 12-34)', category: 3, length: 22 },
-    { id: '4', name: 'Т-23-05 Місцева дорога (км 0-15)', category: 4, length: 15 },
-  ]);
+  // ✅ ЧИТАЄМО ДАНІ З REDUX
+  const calculatedRoadsFromRedux = useAppSelector(state => state.roadData.calculatedRoads);
+  const hasCalculatedData = calculatedRoadsFromRedux.length > 0;
+  const lastCalculationTime = useAppSelector(state => state.roadData.lastCalculationTime);
+
+  // ✅ ФОРМУЄМО СПИСОК ДОРІГ З REDUX
+  const roadSections = useMemo<RoadSection[]>(() => {
+    if (hasCalculatedData) {
+      return calculatedRoadsFromRedux.map(road => ({
+        id: road.id,
+        name: road.roadName,
+        category: road.category,
+        length: road.length,
+      }));
+    }
+    return [];
+  }, [calculatedRoadsFromRedux, hasCalculatedData]);
 
   const [selectedSectionId, setSelectedSectionId] = useState<string>('');
   const [savedData, setSavedData] = useState<Map<string, ENPVInputData>>(new Map());
@@ -112,45 +124,50 @@ const ENPVCalculationTool: React.FC = () => {
   const [isCalculating, setIsCalculating] = useState(false);
   const [calculationError, setCalculationError] = useState<string | null>(null);
 
-  const getEmptyData = (section: RoadSection): ENPVInputData => ({
-    sectionId: section.id,
-    sectionName: section.name,
-    workStartYear: new Date().getFullYear(),
-    roadCategory: section.category.toString(),
-    totalReconstructionCost: 0,
-    termOfServiceLife: 15,
-    capitalRepairPeriod: 3, // % росту інтенсивності
-    currentRepairPeriod: 5000, // інтенсивність руху
-    constructionPeriod: section.length, // довжина дороги
-    discountRate: 5,
-    averageAnnualCapitalInvestments: 0,
-    capitalInvestmentsDuringConstruction: 0,
-    capitalInvestmentsInGarage1: 0,
-    capitalInvestmentsInGarageAuto: 0,
-    averagePassengerCapacityBus: 40,
-    passengerUsageCoefficient: 0.7,
-    averageLightVehicleCapacity: 4,
-    lightVehicleUsageCoefficient: 0.6,
-    averageTravelTimeReduction: 42.21,
-    trafficFlowIntensityCoefficient: 1.0,
-    postReconstructionIntensityCoefficient: 0.8,
-    postReconstructionIntensityPISDCoefficient: 0.7,
-    trafficVolume1Percent: 1.00,
-    trafficVolume13Percent: 1.02,
-    toxicityReductionCoefficient: 0.17,
-    averageAccidentsBeforeRepair: 0.8,
-    averageAccidentsAfterRepair: 0.5,
-    calculatedYearCount: 15,
-    averageSchoolAge: 50,
-    averageDTIAge: 750,
-    vehicleCategoryAgeQ1: '',
-    maintenanceCostsBefore: 0,
-    maintenanceCostsAfter: 0,
-    region: 'Київська',
-    isDefenseRoad: false,
-    isInternationalRoad: false,
-    isEuropeanNetwork: false,
-  });
+  const getEmptyData = (section: RoadSection): ENPVInputData => {
+    // ✅ ЗНАХОДИМО ПОВНІ ДАНІ З REDUX
+    const fullRoadData = calculatedRoadsFromRedux.find(r => r.id === section.id);
+    
+    return {
+      sectionId: section.id,
+      sectionName: section.name,
+      workStartYear: new Date().getFullYear(),
+      roadCategory: section.category.toString(),
+      totalReconstructionCost: 0,
+      termOfServiceLife: 15,
+      capitalRepairPeriod: 3,
+      currentRepairPeriod: fullRoadData?.actualIntensity || 5000, // ✅ ПІДСТАВЛЯЄМО З REDUX
+      constructionPeriod: section.length,
+      discountRate: 5,
+      averageAnnualCapitalInvestments: 0,
+      capitalInvestmentsDuringConstruction: 0,
+      capitalInvestmentsInGarage1: 0,
+      capitalInvestmentsInGarageAuto: 0,
+      averagePassengerCapacityBus: 40,
+      passengerUsageCoefficient: 0.7,
+      averageLightVehicleCapacity: 4,
+      lightVehicleUsageCoefficient: 0.6,
+      averageTravelTimeReduction: 42.21,
+      trafficFlowIntensityCoefficient: fullRoadData?.detailedCondition?.intensityCoefficient || 1.0, // ✅ З REDUX
+      postReconstructionIntensityCoefficient: fullRoadData?.detailedCondition?.evennessCoefficient || 0.8, // ✅ З REDUX
+      postReconstructionIntensityPISDCoefficient: fullRoadData?.detailedCondition?.rutCoefficient || 0.7, // ✅ З REDUX
+      trafficVolume1Percent: 1.00,
+      trafficVolume13Percent: 1.02,
+      toxicityReductionCoefficient: 0.17,
+      averageAccidentsBeforeRepair: 0.8,
+      averageAccidentsAfterRepair: 0.5,
+      calculatedYearCount: 15,
+      averageSchoolAge: 50,
+      averageDTIAge: 750,
+      vehicleCategoryAgeQ1: '',
+      maintenanceCostsBefore: 0,
+      maintenanceCostsAfter: 0,
+      region: fullRoadData?.region || 'Київська', // ✅ З REDUX
+      isDefenseRoad: fullRoadData?.isDefenseRoad || false, // ✅ З REDUX
+      isInternationalRoad: fullRoadData?.isInternationalRoad || false, // ✅ З REDUX
+      isEuropeanNetwork: false,
+    };
+  };
 
   const [currentData, setCurrentData] = useState<ENPVInputData | null>(null);
 
@@ -161,7 +178,6 @@ const ENPVCalculationTool: React.FC = () => {
       const existingData = savedData.get(sectionId);
       setCurrentData(existingData || getEmptyData(section));
     }
-    // Сбрасываем результаты при выборе новой секции
     setDetailedResults(null);
     setCalculationError(null);
   };
@@ -182,9 +198,6 @@ const ENPVCalculationTool: React.FC = () => {
     }
   };
 
-  /**
-   * ГЛАВНАЯ ФУНКЦИЯ РАСЧЕТА - использует реальные алгоритмы из модуля
-   */
   const calculateResults = async () => {
     if (!currentData) return;
 
@@ -195,30 +208,20 @@ const ENPVCalculationTool: React.FC = () => {
       console.log('=== Початок розрахунку ENPV ===');
       console.log('Вихідні дані:', currentData);
 
-      // 1. Создаем правильный объект RoadSection для модуля
       const detailedCondition: DetailedTechnicalCondition = {
-        // Коефіцієнт інтенсивності
         intensityCoefficient: currentData.trafficFlowIntensityCoefficient,
         maxDesignIntensity: getMaxDesignIntensityByCategory(parseInt(currentData.roadCategory) as 1|2|3|4|5),
         actualIntensity: currentData.currentRepairPeriod,
-        
-        // Коефіцієнт міцності (приймаємо що після ремонту буде нормально)
         strengthCoefficient: 1.0,
         isRigidPavement: false,
         actualElasticModulus: 300,
         requiredElasticModulus: 280,
-        
-        // Коефіцієнт рівності (покращення після ремонту)
         evennessCoefficient: currentData.postReconstructionIntensityCoefficient,
         iriIndex: 2.5,
         maxAllowedEvenness: 3.5,
-        
-        // Коефіцієнт колійності
         rutCoefficient: currentData.postReconstructionIntensityPISDCoefficient,
         actualRutDepth: 15,
         maxAllowedRutDepth: 20,
-        
-        // Коефіцієнт зчеплення
         frictionCoefficient: 1.0,
         actualFrictionValue: 0.38,
         requiredFrictionValue: 0.35
@@ -228,7 +231,7 @@ const ENPVCalculationTool: React.FC = () => {
         id: currentData.sectionId,
         name: currentData.sectionName,
         category: parseInt(currentData.roadCategory) as 1 | 2 | 3 | 4 | 5,
-        length: currentData.constructionPeriod, // довжина дороги в км
+        length: currentData.constructionPeriod,
         significance: 'state',
         region: currentData.region,
         trafficIntensity: currentData.currentRepairPeriod,
@@ -238,8 +241,7 @@ const ENPVCalculationTool: React.FC = () => {
         isEuropeanNetwork: currentData.isEuropeanNetwork
       };
 
-      // 2. ИСПОЛЬЗУЕМ РЕАЛЬНУЮ ФУНКЦИЮ ИЗ МОДУЛЯ
-      const projectCostThousands = currentData.totalReconstructionCost * 1000; // млн -> тис грн
+      const projectCostThousands = currentData.totalReconstructionCost * 1000;
       
       console.log('Викликаємо performDetailedCostBenefitAnalysis...');
       const costBenefitAnalysis = performDetailedCostBenefitAnalysis(
@@ -253,67 +255,48 @@ const ENPVCalculationTool: React.FC = () => {
         throw new Error('Не вдалося виконати аналіз витрат та вигод');
       }
 
-      // 3. Рассчитываем данные по годам с использованием результатов модуля
       const yearlyData: YearCalculation[] = [];
-      const discountRate = costBenefitAnalysis.discountRate; // Используем ставку из модуля
+      const discountRate = costBenefitAnalysis.discountRate;
       const startYear = currentData.workStartYear;
       const years = currentData.calculatedYearCount;
       
-      // Годовые выгоды из модуля (распределяем на весь период)
       const totalBenefitsFromModule = 
         costBenefitAnalysis.vehicleFleetReduction +
         costBenefitAnalysis.transportCostSavings +
         costBenefitAnalysis.accidentReduction +
         costBenefitAnalysis.environmentalBenefits;
 
-      // Средние годовые выгоды
       const averageAnnualBenefits = totalBenefitsFromModule / years;
 
       console.log(`Загальні вигоди з модуля: ${totalBenefitsFromModule.toFixed(2)} тис. грн`);
       console.log(`Середні річні вигоди: ${averageAnnualBenefits.toFixed(2)} тис. грн`);
 
-      let cumulativeENPV = -currentData.totalReconstructionCost; // Начальная инвестиция
+      let cumulativeENPV = -currentData.totalReconstructionCost;
       let totalDiscountedBenefits = 0;
-      let totalDiscountedCosts = projectCostThousands / 1000; // в млн грн
+      let totalDiscountedCosts = projectCostThousands / 1000;
 
-      // Рост интенсивности движения
       const trafficGrowthRate = currentData.capitalRepairPeriod / 100;
 
       for (let i = 0; i <= years; i++) {
         const year = startYear + i;
         const discountFactor = Math.pow(1 + discountRate, -i);
         
-        // Капитальные затраты только в нулевом году
         const capitalCosts = i === 0 ? currentData.totalReconstructionCost : 0;
+        const maintenanceCosts = i > 0 ? currentData.maintenanceCostsAfter : currentData.maintenanceCostsBefore;
+        const yearlyBenefits = i > 0 ? averageAnnualBenefits / 1000 : 0;
         
-        // Затраты на содержание
-        const maintenanceCosts = i > 0 
-          ? currentData.maintenanceCostsAfter 
-          : currentData.maintenanceCostsBefore;
-        
-        // Выгоды начинаются с первого года после реконструкции
-        const yearlyBenefits = i > 0 ? averageAnnualBenefits / 1000 : 0; // в млн грн
-        
-        // Экономический эффект = Выгоды - Эксплуатационные затраты - Капитальные затраты
-        const economicEffect = i === 0 
-          ? -capitalCosts 
-          : (yearlyBenefits - maintenanceCosts);
-        
+        const economicEffect = i === 0 ? -capitalCosts : (yearlyBenefits - maintenanceCosts);
         const netValue = economicEffect;
         const discountedValue = netValue * discountFactor;
         
         cumulativeENPV += discountedValue;
         
-        // Дисконтированные выгоды и затраты
         const discountedBenefits = yearlyBenefits * discountFactor;
-        const discountedCosts = i === 0 
-          ? capitalCosts * discountFactor 
-          : maintenanceCosts * discountFactor;
+        const discountedCosts = i === 0 ? capitalCosts * discountFactor : maintenanceCosts * discountFactor;
         
         totalDiscountedBenefits += discountedBenefits;
         totalDiscountedCosts += discountedCosts;
         
-        // Рост интенсивности движения
         const adjustedTraffic = currentData.currentRepairPeriod * Math.pow(1 + trafficGrowthRate, i);
 
         yearlyData.push({
@@ -333,11 +316,10 @@ const ENPVCalculationTool: React.FC = () => {
 
       console.log('Розраховані дані по роках:', yearlyData);
 
-      // 4. Формируем итоговые результаты
       const results: DetailedResults = {
         yearlyData,
         summary: {
-          enpv: costBenefitAnalysis.enpv / 1000, // тыс грн -> млн грн
+          enpv: costBenefitAnalysis.enpv / 1000,
           eirr: costBenefitAnalysis.eirr,
           bcr: costBenefitAnalysis.bcr,
           totalBenefits: totalDiscountedBenefits,
@@ -368,13 +350,11 @@ const ENPVCalculationTool: React.FC = () => {
     }
   };
 
-  // Вспомогательная функция для получения максимальной проектной интенсивности
   const getMaxDesignIntensityByCategory = (category: 1 | 2 | 3 | 4 | 5): number => {
     const intensities = { 1: 20000, 2: 12000, 3: 6000, 4: 2000, 5: 500 };
     return intensities[category];
   };
 
-  // Функция для экспорта отчета
   const exportReport = () => {
     if (!detailedResults || !currentData) return;
 
@@ -405,7 +385,6 @@ const ENPVCalculationTool: React.FC = () => {
     
     report += `${conclusion}\n`;
 
-    // Создаем Blob и скачиваем
     const blob = new Blob([report], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -428,15 +407,52 @@ const ENPVCalculationTool: React.FC = () => {
         </CardHeader>
       </Card>
 
+      {/* ✅ ПОПЕРЕДЖЕННЯ ЯКЩО НЕМАЄ ДАНИХ */}
+      {!hasCalculatedData && (
+        <Alert className="bg-yellow-50 border-yellow-400">
+          <AlertCircle className="h-5 w-5 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            <strong>Немає розрахованих доріг!</strong>
+            <div className="text-sm mt-1">
+              Спочатку перейдіть на вкладку "Визначення показників транспортно-експлуатаційного стану" 
+              та виконайте розрахунок для доріг.
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* ✅ ПОКАЗУЄМО КІЛЬКІСТЬ ДОСТУПНИХ ДОРІГ */}
+      {hasCalculatedData && (
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            <strong>✓ Доступно {roadSections.length} розрахованих доріг</strong> для аналізу ENPV
+            {lastCalculationTime && (
+              <div className="text-xs mt-1">
+                Останній розрахунок: {new Date(lastCalculationTime).toLocaleString('uk-UA')}
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Выбор объекта */}
       <Card className="border-2 border-yellow-400 bg-yellow-50">
         <CardContent className="py-3">
           <Label className="text-sm font-semibold text-gray-900 mb-2 block">
             Оберіть об'єкт для розрахунку ENPV
           </Label>
-          <Select value={selectedSectionId} onValueChange={handleSectionSelect}>
+          <Select 
+            value={selectedSectionId} 
+            onValueChange={handleSectionSelect}
+            disabled={!hasCalculatedData} // ✅ ВИМИКАЄМО ЯКЩО НЕМАЄ ДАНИХ
+          >
             <SelectTrigger className="w-full h-10 bg-white">
-              <SelectValue placeholder="-- Оберіть об'єкт --" />
+              <SelectValue placeholder={
+                hasCalculatedData 
+                  ? "-- Оберіть об'єкт --" 
+                  : "-- Спочатку розрахуйте дороги --"
+              } />
             </SelectTrigger>
             <SelectContent>
               {roadSections.map(section => (
@@ -449,7 +465,7 @@ const ENPVCalculationTool: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Индикатор сохраненных данных */}
+      {/* Індикатор збережених даних */}
       {savedData.size > 0 && (
         <Alert className="bg-blue-50 border-blue-200">
           <AlertCircle className="h-4 w-4 text-blue-600" />
@@ -469,7 +485,8 @@ const ENPVCalculationTool: React.FC = () => {
         </Alert>
       )}
 
-      {/* Tabs */}
+      {/* Решта компонента залишається БЕЗ ЗМІН - вся велика таблиця та результати */}
+      {/* ... */}
       {currentData && (
         <Tabs value={currentTab} onValueChange={setCurrentTab}>
           <TabsList className="grid w-full grid-cols-2">
@@ -479,7 +496,6 @@ const ENPVCalculationTool: React.FC = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* TAB 1: Ввод данных - ОСТАВЛЯЕМ КАК БЫЛО */}
           <TabsContent value="input">
             <div className="glass-card">
               <CardContent className="p-0">
@@ -1144,7 +1160,6 @@ const ENPVCalculationTool: React.FC = () => {
             </div>
           </TabsContent>
 
-          {/* TAB 2: Результаты - ИСПОЛЬЗУЕМ ДАННЫЕ ИЗ МОДУЛЯ */}
           <TabsContent value="results">
             {detailedResults ? (
               <>
@@ -1440,7 +1455,7 @@ const ENPVCalculationTool: React.FC = () => {
       )}
 
       {/* Пустое состояние */}
-      {!selectedSectionId && (
+      {!selectedSectionId && hasCalculatedData && (
         <Card>
           <CardContent className="py-12 text-center">
             <FileText className="w-16 h-16 mx-auto text-gray-400 mb-4" />

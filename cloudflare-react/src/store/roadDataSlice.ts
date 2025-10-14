@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-// Інтерфейс для даних про дорогу
+// ✅ ОДИН ГОЛОВНИЙ ІНТЕРФЕЙС (об'єднаний)
 export interface TransferredRoadData {
   id: string;
   roadName: string;
@@ -15,6 +15,7 @@ export interface TransferredRoadData {
   workType: string;
   isInternationalRoad?: boolean;
   isDefenseRoad?: boolean;
+  isEuropeanNetwork?: boolean; // додав для повноти
   detailedCondition: {
     intensityCoefficient: number;
     strengthCoefficient: number;
@@ -35,8 +36,11 @@ export interface TransferredRoadData {
   };
 }
 
-// Інтерфейс для стану Redux
-interface RoadDataState {
+// Експорт alias для зручності (щоб не ламати існуючий код)
+export type CalculatedRoad = TransferredRoadData;
+
+// Інтерфейс стану Redux
+export interface RoadDataState {
   calculatedRoads: TransferredRoadData[];
   lastCalculationTime: string | null;
 }
@@ -47,7 +51,7 @@ const initialState: RoadDataState = {
   lastCalculationTime: null,
 };
 
-// Створення slice
+// ✅ ОБ'ЄДНАНИЙ SLICE
 const roadDataSlice = createSlice({
   name: 'roadData',
   initialState,
@@ -58,32 +62,70 @@ const roadDataSlice = createSlice({
       state.lastCalculationTime = new Date().toISOString();
     },
     
+    // Додати одну дорогу до списку
+    addCalculatedRoad: (state, action: PayloadAction<TransferredRoadData>) => {
+      const existingIndex = state.calculatedRoads.findIndex(
+        road => road.id === action.payload.id
+      );
+      
+      if (existingIndex !== -1) {
+        // Якщо вже є - оновлюємо
+        state.calculatedRoads[existingIndex] = action.payload;
+      } else {
+        // Якщо немає - додаємо
+        state.calculatedRoads.push(action.payload);
+      }
+      state.lastCalculationTime = new Date().toISOString();
+    },
+    
+    // Оновити окрему дорогу (частково)
+    updateRoadData: (state, action: PayloadAction<{ id: string; data: Partial<TransferredRoadData> }>) => {
+      const index = state.calculatedRoads.findIndex(
+        road => road.id === action.payload.id
+      );
+      
+      if (index !== -1) {
+        state.calculatedRoads[index] = {
+          ...state.calculatedRoads[index],
+          ...action.payload.data,
+        };
+        state.lastCalculationTime = new Date().toISOString();
+      }
+    },
+    
+    // Видалити одну дорогу
+    deleteCalculatedRoad: (state, action: PayloadAction<string>) => {
+      state.calculatedRoads = state.calculatedRoads.filter(
+        road => road.id !== action.payload
+      );
+      state.lastCalculationTime = new Date().toISOString();
+    },
+    
     // Очистити всі дані
     clearCalculatedRoads: (state) => {
       state.calculatedRoads = [];
       state.lastCalculationTime = null;
     },
     
-    // Оновити окрему дорогу
-    updateRoadData: (state, action: PayloadAction<{ id: string; data: Partial<TransferredRoadData> }>) => {
-      const index = state.calculatedRoads.findIndex(road => road.id === action.payload.id);
-      if (index !== -1) {
-        state.calculatedRoads[index] = {
-          ...state.calculatedRoads[index],
-          ...action.payload.data,
-        };
-      }
-    },
+    // Повний скид до початкового стану
+    resetRoadData: () => initialState,
   },
 });
 
-// Експорт actions
-export const { setCalculatedRoads, clearCalculatedRoads, updateRoadData } = roadDataSlice.actions;
+// ✅ ЕКСПОРТ ACTIONS
+export const {
+  setCalculatedRoads,
+  addCalculatedRoad,
+  updateRoadData,
+  deleteCalculatedRoad,
+  clearCalculatedRoads,
+  resetRoadData,
+} = roadDataSlice.actions;
 
-// Експорт reducer
+// ✅ ЕКСПОРТ REDUCER
 export default roadDataSlice.reducer;
 
-// Selectors
+// ✅ SELECTORS (для зручного доступу до даних)
 export const selectCalculatedRoads = (state: { roadData: RoadDataState }) => 
   state.roadData.calculatedRoads;
 
@@ -95,3 +137,12 @@ export const selectHasCalculatedData = (state: { roadData: RoadDataState }) =>
 
 export const selectRoadsCount = (state: { roadData: RoadDataState }) => 
   state.roadData.calculatedRoads.length;
+
+export const selectRoadById = (roadId: string) => (state: { roadData: RoadDataState }) =>
+  state.roadData.calculatedRoads.find(road => road.id === roadId);
+
+export const selectRoadsByCategory = (category: 1 | 2 | 3 | 4 | 5) => (state: { roadData: RoadDataState }) =>
+  state.roadData.calculatedRoads.filter(road => road.category === category);
+
+export const selectRoadsByWorkType = (workType: string) => (state: { roadData: RoadDataState }) =>
+  state.roadData.calculatedRoads.filter(road => road.workType === workType);

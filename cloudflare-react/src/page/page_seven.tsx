@@ -1,0 +1,479 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { Calculator, FileDown, AlertCircle, TrendingUp, Award } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+import { useAppSelector } from '@/store/hooks';
+import { selectCalculatedRoads, selectHasCalculatedData } from '@/store/roadDataSlice';
+
+import { 
+  performDetailedCostBenefitAnalysis,
+  calculateDetailedWorkCost,
+  determineWorkTypeByTechnicalCondition,
+  type RoadSection as ModuleRoadSection,
+  type DetailedTechnicalCondition
+} from '@/modules/block_three';
+
+interface RankingRow {
+  id: string;
+  roadName: string;
+  length: number;
+  category: 1 | 2 | 3 | 4 | 5;
+  workType: string;
+  estimatedCost: number;
+  enpv: number;
+  eirr: number;
+  bcr: number;
+  rank: number;
+}
+
+const WORK_TYPE_NAMES: Record<string, string> = {
+  current_repair: 'Поточний ремонт',
+  capital_repair: 'Капітальний ремонт',
+  reconstruction: 'Реконструкція',
+  no_work_needed: 'Не потрібно',
+  '': '-'
+};
+
+const WORK_TYPE_COLORS: Record<string, string> = {
+  current_repair: 'bg-blue-100 text-blue-800',
+  capital_repair: 'bg-yellow-100 text-yellow-800',
+  reconstruction: 'bg-red-100 text-red-800',
+  no_work_needed: 'bg-green-100 text-green-800',
+  '': 'bg-gray-100 text-gray-800'
+};
+
+export const RoadRankingTable: React.FC = () => {
+  const calculatedRoadsFromRedux = useAppSelector(selectCalculatedRoads);
+  const hasReduxData = useAppSelector(selectHasCalculatedData);
+
+  const [rankingData, setRankingData] = useState<RankingRow[]>([]);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [calculated, setCalculated] = useState(false);
+  const [error, setError] = useState<string>('');
+
+  // Автоматичний розрахунок при наявності даних
+  useEffect(() => {
+    if (hasReduxData && calculatedRoadsFromRedux.length > 0 && !calculated) {
+      console.log('✅ Автоматичний розрахунок рангування...');
+      calculateRanking();
+    }
+  }, [hasReduxData, calculatedRoadsFromRedux, calculated]);
+
+  const calculateRanking = async () => {
+    if (!hasReduxData || calculatedRoadsFromRedux.length === 0) {
+      setError('Немає даних для розрахунку. Спочатку розрахуйте дороги на Вкладці 1-2.');
+      return;
+    }
+
+    setIsCalculating(true);
+    setError('');
+
+    try {
+      const rankingResults: RankingRow[] = [];
+
+      // Розрахунок для кожної дороги
+      for (const road of calculatedRoadsFromRedux) {
+        console.log(`Розрахунок для: ${road.roadName}`);
+
+        // Створюємо ModuleRoadSection для передачі в функції
+        const moduleRoadSection: ModuleRoadSection = {
+          id: road.id,
+          name: road.roadName,
+          category: road.category,
+          length: road.length,
+          significance: 'state',
+          region: road.region,
+          trafficIntensity: road.actualIntensity,
+          detailedCondition: road.detailedCondition as DetailedTechnicalCondition,
+          isDefenseRoad: road.isDefenseRoad,
+          isInternationalRoad: road.isInternationalRoad
+        };
+
+        // Визначаємо вид робіт
+        const workType = determineWorkTypeByTechnicalCondition(moduleRoadSection);
+
+        // Пропускаємо якщо не потрібно робіт
+        if (workType === 'no_work_needed') {
+          console.log(`${road.roadName}: не потребує робіт, пропускаємо`);
+          continue;
+        }
+
+        // Розраховуємо вартість робіт
+        const estimatedCost = calculateDetailedWorkCost(moduleRoadSection, workType);
+
+        // Виконуємо детальний аналіз витрат та вигод
+        const costBenefitAnalysis = performDetailedCostBenefitAnalysis(
+          moduleRoadSection,
+          estimatedCost
+        );
+
+        if (!costBenefitAnalysis) {
+          console.error(`Не вдалося розрахувати ENPV для ${road.roadName}`);
+          continue;
+        }
+
+        // Зберігаємо результати
+        rankingResults.push({
+          id: road.id,
+          roadName: road.roadName,
+          length: road.length,
+          category: road.category,
+          workType: workType,
+          estimatedCost: estimatedCost / 1000, // тис. грн -> млн грн
+          enpv: costBenefitAnalysis.enpv / 1000, // тис. грн -> млн грн
+          eirr: costBenefitAnalysis.eirr,
+          bcr: costBenefitAnalysis.bcr,
+          rank: 0 // Буде встановлено при сортуванні
+        });
+
+        console.log(`✓ ${road.roadName}: ENPV=${costBenefitAnalysis.enpv.toFixed(0)} тис.грн, BCR=${costBenefitAnalysis.bcr.toFixed(2)}`);
+      }
+
+      // Ранжування за ENPV (від найбільшого до найменшого)
+      const sortedResults = rankingResults
+        .sort((a, b) => {
+          // Спочатку сортуємо за BCR > 1 (економічно доцільні)
+          const aViable = a.bcr > 1;
+          const bViable = b.bcr > 1;
+          
+          if (aViable && !bViable) return -1;
+          if (!aViable && bViable) return 1;
+          
+          // Потім за ENPV
+          return b.enpv - a.enpv;
+        })
+        .map((row, index) => ({
+          ...row,
+          rank: index + 1
+        }));
+
+      setRankingData(sortedResults);
+      setCalculated(true);
+
+      console.log('=== Рангування завершено ===');
+      console.log(`Всього об'єктів: ${sortedResults.length}`);
+      console.log(`Економічно доцільних (BCR > 1): ${sortedResults.filter(r => r.bcr > 1).length}`);
+
+    } catch (err) {
+      console.error('Помилка при розрахунку рангування:', err);
+      setError(`Помилка розрахунку: ${err instanceof Error ? err.message : 'Невідома помилка'}`);
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  const exportToCSV = () => {
+    const headers = [
+      'Ранг',
+      'Найменування',
+      'Протяжність (км)',
+      'Категорія',
+      'Вид робіт',
+      'Вартість (млн грн)',
+      'ENPV (млн грн)',
+      'EIRR (%)',
+      'BCR'
+    ];
+
+    const csvRows = [
+      'Рангування об\'єктів дорожніх робіт',
+      '',
+      headers.join(','),
+      ...rankingData.map(row => [
+        row.rank,
+        `"${row.roadName}"`,
+        row.length.toFixed(1),
+        row.category,
+        `"${WORK_TYPE_NAMES[row.workType]}"`,
+        row.estimatedCost.toFixed(2),
+        row.enpv.toFixed(2),
+        (row.eirr * 100).toFixed(2),
+        row.bcr.toFixed(2)
+      ].join(','))
+    ];
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `road_ranking_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  // Статистика
+  const statistics = useMemo(() => {
+    if (rankingData.length === 0) return null;
+
+    return {
+      totalProjects: rankingData.length,
+      totalCost: rankingData.reduce((sum, r) => sum + r.estimatedCost, 0),
+      viableProjects: rankingData.filter(r => r.bcr > 1).length,
+      avgENPV: rankingData.reduce((sum, r) => sum + r.enpv, 0) / rankingData.length,
+      avgBCR: rankingData.reduce((sum, r) => sum + r.bcr, 0) / rankingData.length,
+      avgEIRR: rankingData.reduce((sum, r) => sum + r.eirr, 0) / rankingData.length,
+      byWorkType: {
+        current_repair: rankingData.filter(r => r.workType === 'current_repair').length,
+        capital_repair: rankingData.filter(r => r.workType === 'capital_repair').length,
+        reconstruction: rankingData.filter(r => r.workType === 'reconstruction').length
+      }
+    };
+  }, [rankingData]);
+
+  return (
+    <div className="w-full space-y-6 p-6">
+      {/* Заголовок */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Рангування об'єктів дорожніх робіт</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Економічна оцінка та пріоритезація проектів за критеріями ENPV, EIRR, BCR
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            onClick={calculateRanking} 
+            disabled={!hasReduxData || isCalculating}
+            className="bg-white border-1 border-green-700 text-black hover:bg-green-400"
+          >
+            {isCalculating ? (
+              <>
+                <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Розрахунок...
+              </>
+            ) : (
+              <>
+                <Calculator className="h-4 w-4 mr-2" />
+                Розрахувати рангування
+              </>
+            )}
+          </Button>
+          {calculated && (
+            <Button 
+              onClick={exportToCSV}
+              variant="outline"
+              className="border-purple-600 text-purple-600 hover:bg-purple-50"
+            >
+              <FileDown className="h-4 w-4 mr-2" />
+              Експорт CSV
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Попередження */}
+      {!hasReduxData && (
+        <Alert className="bg-yellow-50 border-yellow-400">
+          <AlertCircle className="h-5 w-5 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            <strong>Немає даних для рангування!</strong>
+            <div className="text-sm mt-1">
+              Спочатку перейдіть на вкладку "Визначення показників транспортно-експлуатаційного стану" 
+              та виконайте розрахунок для доріг.
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Помилка */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Статистика */}
+      {statistics && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="border-2 border-blue-400 bg-blue-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Всього проектів</p>
+                  <p className="text-2xl font-bold text-blue-700">{statistics.totalProjects}</p>
+                </div>
+                <TrendingUp className="h-8 w-8 text-blue-400" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-green-400 bg-green-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Економічно доцільних</p>
+                  <p className="text-2xl font-bold text-green-700">
+                    {statistics.viableProjects}
+                    <span className="text-sm text-gray-600 ml-1">(BCR {'>'} 1)</span>
+                  </p>
+                </div>
+                <Award className="h-8 w-8 text-green-400" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-purple-400 bg-purple-50">
+            <CardContent className="p-4">
+              <div>
+                <p className="text-xs text-gray-600 mb-1">Загальна вартість</p>
+                <p className="text-xl font-bold text-purple-700">
+                  {statistics.totalCost.toFixed(1)} млн грн
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-orange-400 bg-orange-50">
+            <CardContent className="p-4">
+              <div>
+                <p className="text-xs text-gray-600 mb-1">Середній BCR</p>
+                <p className="text-xl font-bold text-orange-700">
+                  {statistics.avgBCR.toFixed(2)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Таблиця рангування */}
+      {calculated && rankingData.length > 0 && (
+        <Card>
+          <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600">
+            <CardTitle className="text-white text-lg">
+              📊 Рангування об'єктів
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-100">
+                    <TableHead className="text-center font-bold">Ранг</TableHead>
+                    <TableHead className="font-bold">Найменування ділянки дороги</TableHead>
+                    <TableHead className="text-center font-bold">Протяжність<br/>(км)</TableHead>
+                    <TableHead className="text-center font-bold">Категорія</TableHead>
+                    <TableHead className="text-center font-bold">Вид робіт</TableHead>
+                    <TableHead className="text-right font-bold">Орієнтовна<br/>вартість робіт<br/>(млн грн)</TableHead>
+                    <TableHead className="text-right font-bold">Економічна чиста<br/>приведена вартість<br/>(ENPV, млн грн)</TableHead>
+                    <TableHead className="text-right font-bold">Економічна<br/>норма дохідності<br/>(EIRR, %)</TableHead>
+                    <TableHead className="text-right font-bold">Співвідношення<br/>вигід до витрат<br/>(BCR)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rankingData.map((row, index) => (
+                    <TableRow 
+                      key={row.id}
+                      className={`
+                        ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                        ${row.rank <= 3 ? 'border-l-4 border-l-green-500' : ''}
+                        ${row.bcr < 1 ? 'opacity-60' : ''}
+                      `}
+                    >
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center">
+                          {row.rank <= 3 && (
+                            <Award className={`h-5 w-5 mr-1 ${
+                              row.rank === 1 ? 'text-yellow-500' :
+                              row.rank === 2 ? 'text-gray-400' :
+                              'text-orange-600'
+                            }`} />
+                          )}
+                          <span className={`font-bold ${row.rank <= 3 ? 'text-lg' : ''}`}>
+                            {row.rank}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">{row.roadName}</TableCell>
+                      <TableCell className="text-center">{row.length.toFixed(1)}</TableCell>
+                      <TableCell className="text-center">
+                        <span className="inline-block px-2 py-1 rounded bg-blue-100 text-blue-800 font-medium">
+                          {row.category}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${WORK_TYPE_COLORS[row.workType]}`}>
+                          {WORK_TYPE_NAMES[row.workType]}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {row.estimatedCost.toFixed(2)}
+                      </TableCell>
+                      <TableCell className={`text-right font-bold ${
+                        row.enpv > 0 ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'
+                      }`}>
+                        {row.enpv.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {(row.eirr * 100).toFixed(2)}%
+                      </TableCell>
+                      <TableCell className={`text-right font-bold ${
+                        row.bcr > 1 ? 'text-green-700 bg-green-50' : 'text-orange-700 bg-orange-50'
+                      }`}>
+                        {row.bcr.toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Розподіл за видами робіт */}
+      {statistics && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Розподіл проектів за видами робіт</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div className="text-sm text-gray-600 mb-1">Поточний ремонт</div>
+                <div className="text-2xl font-bold text-blue-700">
+                  {statistics.byWorkType.current_repair}
+                  <span className="text-sm text-gray-600 ml-2">проектів</span>
+                </div>
+              </div>
+              
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <div className="text-sm text-gray-600 mb-1">Капітальний ремонт</div>
+                <div className="text-2xl font-bold text-yellow-700">
+                  {statistics.byWorkType.capital_repair}
+                  <span className="text-sm text-gray-600 ml-2">проектів</span>
+                </div>
+              </div>
+              
+              <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                <div className="text-sm text-gray-600 mb-1">Реконструкція</div>
+                <div className="text-2xl font-bold text-red-700">
+                  {statistics.byWorkType.reconstruction}
+                  <span className="text-sm text-gray-600 ml-2">проектів</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Пусте повідомлення */}
+      {!calculated && hasReduxData && !isCalculating && (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Calculator className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              Готово до розрахунку
+            </h3>
+            <p className="text-gray-500 mb-4">
+              Натисніть "Розрахувати рангування" для створення таблиці з економічними показниками
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};

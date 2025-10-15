@@ -342,8 +342,8 @@ export const RoadRankingTable: React.FC = () => {
       {/* Таблиця рангування */}
       {calculated && rankingData.length > 0 && (
         <Card>
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600">
-            <CardTitle className="text-white text-lg">
+          <CardHeader className="border-b border-blue-600">
+            <CardTitle className="text-black text-lg">
               📊 Рангування об'єктів
             </CardTitle>
           </CardHeader>

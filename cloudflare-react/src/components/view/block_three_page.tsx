@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { ArrowRight } from "lucide-react";
 import { Progress } from '../ui/progress';
-import { RoadTechnicalAssessment } from '@/page/page_one_and_two';
-import { RoadCostIndicators } from '@/page/page_three_and_four';
-import  ENPVInputTable from '@/page/page_five_and_six';
+import { RoadTechnicalAssessment } from '@/page/block_three/page_one_and_two';
+import { RoadCostIndicators } from '@/page/block_three/page_three_and_four';
+import  ENPVInputTable from '@/page/block_three/page_five_and_six';
+import { RoadRankingTable } from '@/page/block_three/page_seven';
 export interface RoadSectionUI {
   id: string;
   name: string;
@@ -132,6 +133,12 @@ export const Block3MultiPageApp: React.FC = () => {
           {currentPage === 3 && (
             <div className="bg-white rounded-lg shadow-sm p-6">
               <ENPVInputTable />
+            </div>
+          )}
+
+          {currentPage === 4 && (
+            <div className='bg-white rounded-lg shadow-sm p-6'>
+              <RoadRankingTable />
             </div>
           )}
         </div>

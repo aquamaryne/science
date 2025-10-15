@@ -200,14 +200,19 @@ const ENPVCalculationTool: React.FC = () => {
 
   const calculateResults = async () => {
     if (!currentData) return;
-
+  
     setIsCalculating(true);
     setCalculationError(null);
-
+  
     try {
       console.log('=== Початок розрахунку ENPV ===');
       console.log('Вихідні дані:', currentData);
-
+  
+      // Перевірка критичних полів
+      if (currentData.totalReconstructionCost <= 0) {
+        throw new Error('Вартість реконструкції повинна бути більше 0');
+      }
+  
       const detailedCondition: DetailedTechnicalCondition = {
         intensityCoefficient: currentData.trafficFlowIntensityCoefficient,
         maxDesignIntensity: getMaxDesignIntensityByCategory(parseInt(currentData.roadCategory) as 1|2|3|4|5),
@@ -226,7 +231,7 @@ const ENPVCalculationTool: React.FC = () => {
         actualFrictionValue: 0.38,
         requiredFrictionValue: 0.35
       };
-
+  
       const moduleRoadSection: ModuleRoadSection = {
         id: currentData.sectionId,
         name: currentData.sectionName,
@@ -240,7 +245,7 @@ const ENPVCalculationTool: React.FC = () => {
         isInternationalRoad: currentData.isInternationalRoad,
         isEuropeanNetwork: currentData.isEuropeanNetwork
       };
-
+  
       const projectCostThousands = currentData.totalReconstructionCost * 1000;
       
       console.log('Викликаємо performDetailedCostBenefitAnalysis...');
@@ -248,62 +253,88 @@ const ENPVCalculationTool: React.FC = () => {
         moduleRoadSection,
         projectCostThousands
       );
-
-      console.log('Результат аналізу витрат та вигод:', costBenefitAnalysis);
-
+  
+      console.log('Результат аналізу:', costBenefitAnalysis);
+  
       if (!costBenefitAnalysis) {
         throw new Error('Не вдалося виконати аналіз витрат та вигод');
       }
-
+  
       const yearlyData: YearCalculation[] = [];
-      const discountRate = costBenefitAnalysis.discountRate;
+      const discountRate = currentData.discountRate / 100; // ✅ ВИПРАВЛЕНО: переводимо % в десяткове
       const startYear = currentData.workStartYear;
       const years = currentData.calculatedYearCount;
       
+      // ✅ Загальні вигоди з модуля (в тисячах грн)
       const totalBenefitsFromModule = 
         costBenefitAnalysis.vehicleFleetReduction +
         costBenefitAnalysis.transportCostSavings +
         costBenefitAnalysis.accidentReduction +
         costBenefitAnalysis.environmentalBenefits;
-
-      const averageAnnualBenefits = totalBenefitsFromModule / years;
-
-      console.log(`Загальні вигоди з модуля: ${totalBenefitsFromModule.toFixed(2)} тис. грн`);
-      console.log(`Середні річні вигоди: ${averageAnnualBenefits.toFixed(2)} тис. грн`);
-
-      let cumulativeENPV = -currentData.totalReconstructionCost;
+  
+      // Переводимо в мільйони грн
+      const totalBenefitsMillions = totalBenefitsFromModule / 1000;
+      
+      // Середні річні вигоди (розподіляємо рівномірно)
+      const averageAnnualBenefits = totalBenefitsMillions / years;
+  
+      console.log(`📊 Загальні вигоди: ${totalBenefitsMillions.toFixed(2)} млн грн`);
+      console.log(`📊 Середні річні вигоди: ${averageAnnualBenefits.toFixed(2)} млн грн/рік`);
+      console.log(`📊 Ставка дисконтування: ${(discountRate * 100).toFixed(1)}%`);
+  
+      let cumulativeENPV = 0;
       let totalDiscountedBenefits = 0;
-      let totalDiscountedCosts = projectCostThousands / 1000;
-
+      let totalDiscountedCosts = 0;
+  
       const trafficGrowthRate = currentData.capitalRepairPeriod / 100;
-
+  
+      // ✅ Розрахунок по роках
       for (let i = 0; i <= years; i++) {
         const year = startYear + i;
         const discountFactor = Math.pow(1 + discountRate, -i);
         
-        const capitalCosts = i === 0 ? currentData.totalReconstructionCost : 0;
-        const maintenanceCosts = i > 0 ? currentData.maintenanceCostsAfter : currentData.maintenanceCostsBefore;
-        const yearlyBenefits = i > 0 ? averageAnnualBenefits / 1000 : 0;
+        // ✅ КАПІТАЛЬНІ ВИТРАТИ - тільки в рік 0
+        const capitalCosts = (i === 0) ? currentData.totalReconstructionCost : 0;
         
-        const economicEffect = i === 0 ? -capitalCosts : (yearlyBenefits - maintenanceCosts);
+        // ✅ ВИТРАТИ НА УТРИМАННЯ
+        const maintenanceCosts = (i === 0) 
+          ? 0  // В рік будівництва немає утримання
+          : currentData.maintenanceCostsAfter;
+        
+        // ✅ РІЧНІ ВИГОДИ (починаючи з року 1)
+        const yearlyBenefits = (i === 0) ? 0 : averageAnnualBenefits;
+        
+        // ✅ ЕКОНОМІЧНИЙ ЕФЕКТ
+        const economicEffect = (i === 0)
+          ? -capitalCosts  // Рік 0: тільки витрати
+          : (yearlyBenefits - maintenanceCosts);  // Інші роки: вигоди - витрати
+        
+        // ✅ ЧИСТИЙ NV
         const netValue = economicEffect;
+        
+        // ✅ ДИСКОНТОВАНИЙ ДОХІД
         const discountedValue = netValue * discountFactor;
         
+        // ✅ КУМУЛЯТИВНА ENPV
         cumulativeENPV += discountedValue;
         
-        const discountedBenefits = yearlyBenefits * discountFactor;
-        const discountedCosts = i === 0 ? capitalCosts * discountFactor : maintenanceCosts * discountFactor;
+        // ✅ ДИСКОНТОВАНІ ВИГОДИ ТА ВИТРАТИ (для BCR)
+        const discountedBenefits = (i === 0) ? 0 : yearlyBenefits * discountFactor;
+        const discountedCosts = (i === 0)
+          ? capitalCosts * discountFactor
+          : maintenanceCosts * discountFactor;
         
         totalDiscountedBenefits += discountedBenefits;
         totalDiscountedCosts += discountedCosts;
         
+        // Інтенсивність руху з урахуванням зростання
         const adjustedTraffic = currentData.currentRepairPeriod * Math.pow(1 + trafficGrowthRate, i);
-
+  
         yearlyData.push({
           year,
           trafficIntensity: adjustedTraffic,
-          capitalCosts: capitalCosts,
-          maintenanceCosts: i > 0 ? maintenanceCosts : 0,
+          capitalCosts,
+          maintenanceCosts,
           economicEffect,
           netValue,
           discountFactor,
@@ -312,16 +343,32 @@ const ENPVCalculationTool: React.FC = () => {
           discountedBenefits,
           discountedCosts
         });
+  
+        // Логування для першого та другого року
+        if (i <= 1) {
+          console.log(`\n📅 Рік ${year} (i=${i}):`);
+          console.log(`  Капітальні витрати: ${capitalCosts.toFixed(2)} млн грн`);
+          console.log(`  Витрати на утримання: ${maintenanceCosts.toFixed(2)} млн грн`);
+          console.log(`  Річні вигоди: ${yearlyBenefits.toFixed(2)} млн грн`);
+          console.log(`  Економічний ефект: ${economicEffect.toFixed(2)} млн грн`);
+          console.log(`  Коеф. дисконтування: ${discountFactor.toFixed(4)}`);
+          console.log(`  Дисконт. дохід: ${discountedValue.toFixed(2)} млн грн`);
+          console.log(`  ENPV накопичена: ${cumulativeENPV.toFixed(2)} млн грн`);
+        }
       }
-
-      console.log('Розраховані дані по роках:', yearlyData);
-
+  
+      console.log('\n=== Підсумки ===');
+      console.log(`Загальні дисконтовані вигоди: ${totalDiscountedBenefits.toFixed(2)} млн грн`);
+      console.log(`Загальні дисконтовані витрати: ${totalDiscountedCosts.toFixed(2)} млн грн`);
+      console.log(`BCR: ${(totalDiscountedBenefits / totalDiscountedCosts).toFixed(2)}`);
+      console.log(`Фінальна ENPV: ${cumulativeENPV.toFixed(2)} млн грн`);
+  
       const results: DetailedResults = {
         yearlyData,
         summary: {
-          enpv: costBenefitAnalysis.enpv / 1000,
+          enpv: cumulativeENPV,
           eirr: costBenefitAnalysis.eirr,
-          bcr: costBenefitAnalysis.bcr,
+          bcr: totalDiscountedCosts > 0 ? totalDiscountedBenefits / totalDiscountedCosts : 0,
           totalBenefits: totalDiscountedBenefits,
           totalCosts: totalDiscountedCosts,
           vehicleFleetReduction: costBenefitAnalysis.vehicleFleetReduction / 1000,
@@ -332,18 +379,12 @@ const ENPVCalculationTool: React.FC = () => {
         },
         moduleAnalysis: costBenefitAnalysis
       };
-
-      console.log('=== Фінальні результати ===');
-      console.log('ENPV:', results.summary.enpv.toFixed(2), 'млн грн');
-      console.log('EIRR:', (results.summary.eirr * 100).toFixed(2), '%');
-      console.log('BCR:', results.summary.bcr.toFixed(2));
-      console.log('Термін окупності:', results.summary.paybackPeriod.toFixed(1), 'років');
-
+  
       setDetailedResults(results);
       setCurrentTab('results');
-
+  
     } catch (error) {
-      console.error('Помилка при розрахунку:', error);
+      console.error('❌ Помилка при розрахунку:', error);
       setCalculationError(error instanceof Error ? error.message : 'Невідома помилка розрахунку');
     } finally {
       setIsCalculating(false);
@@ -1402,7 +1443,7 @@ const ENPVCalculationTool: React.FC = () => {
                 <Card className="border border-gray-300">
                   <CardHeader className="py-2">
                     <CardTitle className="text-xs text-gray-600">
-                      Технічна інформація (з модуля block_three.ts)
+                      Технічна інформація
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-3">

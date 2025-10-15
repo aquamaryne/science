@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calculator, FileDown, AlertCircle, ChevronDown, ChevronUp, Upload, RefreshCw } from 'lucide-react';
+import { Calculator, FileDown, AlertCircle, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -131,93 +131,6 @@ export const RoadCostIndicators: React.FC = () => {
     setError('');
     
     console.log('✅ Завантажено з Redux:', sectionsFromRedux.length, 'доріг');
-  };
-
-  // Завантаження тестових даних
-  const loadTestData = () => {
-    const testSections: RoadSection[] = [
-      {
-        id: '1',
-        name: 'М-06 Київ-Чоп',
-        length: 25.5,
-        category: 2,
-        region: 'Київська',
-        significance: 'state',
-        trafficIntensity: 15000,
-        isInternationalRoad: true,
-        isDefenseRoad: false,
-        hasLighting: true,
-        detailedCondition: {
-          intensityCoefficient: 0.85,
-          strengthCoefficient: 0.82,
-          evennessCoefficient: 0.75,
-          maxAllowedEvenness: 3.5,
-          rutCoefficient: 0.88,
-          frictionCoefficient: 0.92,
-          isRigidPavement: false,
-          maxAllowedRutDepth: 25,
-          actualRutDepth: 28,
-          actualFrictionValue: 0.32,
-          requiredFrictionValue: 0.35,
-          maxDesignIntensity: 12000,
-          actualIntensity: 15000
-        }
-      },
-      {
-        id: '2',
-        name: 'Н-03 Житомир-Чернівці',
-        length: 15.3,
-        category: 3,
-        region: 'Житомирська',
-        significance: 'state',
-        trafficIntensity: 5500,
-        isDefenseRoad: false,
-        detailedCondition: {
-          intensityCoefficient: 1.09,
-          strengthCoefficient: 0.96,
-          evennessCoefficient: 0.88,
-          maxAllowedEvenness: 3.5,
-          rutCoefficient: 0.85,
-          frictionCoefficient: 0.87,
-          isRigidPavement: false,
-          maxAllowedRutDepth: 30,
-          actualRutDepth: 35,
-          actualFrictionValue: 0.30,
-          requiredFrictionValue: 0.35,
-          maxDesignIntensity: 6000,
-          actualIntensity: 5500
-        }
-      },
-      {
-        id: '3',
-        name: 'Р-15 Львів-Тернопіль',
-        length: 42.8,
-        category: 4,
-        region: 'Львівська',
-        significance: 'local',
-        trafficIntensity: 2500,
-        isDefenseRoad: true,
-        nearBorderCrossing: true,
-        detailedCondition: {
-          intensityCoefficient: 0.75,
-          strengthCoefficient: 0.70,
-          evennessCoefficient: 0.65,
-          maxAllowedEvenness: 3.5,
-          rutCoefficient: 0.72,
-          frictionCoefficient: 0.80,
-          isRigidPavement: false,
-          maxAllowedRutDepth: 40,
-          actualRutDepth: 55,
-          actualFrictionValue: 0.28,
-          requiredFrictionValue: 0.35,
-          maxDesignIntensity: 2000,
-          actualIntensity: 2500
-        }
-      }
-    ];
-    
-    setRoadSections(testSections);
-    setError('');
   };
 
   const calculateEstimatedCosts = () => {
@@ -374,11 +287,6 @@ export const RoadCostIndicators: React.FC = () => {
               <Button onClick={resetToDefaults} variant="outline" size="sm">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Скинути до базових
-              </Button>
-              <Button 
-                onClick={loadTestData} variant="outline" size="sm" className="bg-whirte border-1 border-purple-700 text-black hover:bg-purple-400">
-                <Upload className="h-4 w-4 mr-2" />
-                Тестові дані
               </Button>
               <Button 
                 onClick={calculateEstimatedCosts} 

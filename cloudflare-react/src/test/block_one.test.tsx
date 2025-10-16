@@ -366,6 +366,7 @@ describe('Block One - Budget Calculations', () => {
           currentRepair: 5000,
           capitalRepair: 7000,
           reconstruction: 3000,
+          newConstruction: 0,
           reserve: 0
         }
       });

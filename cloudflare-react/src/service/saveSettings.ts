@@ -5,7 +5,7 @@
  */
 
 import type { BudgetItem } from '../modules/block_one';
-import type { RoadSectionData } from '../components/view/block_three_page';
+import type { RoadSectionUI } from '../components/view/block_three_page';
 
 // ==================== ТИПЫ ДАННЫХ ====================
 
@@ -42,7 +42,7 @@ export interface AutosaveBlockTwoData {
 }
 
 export interface AutosaveBlockThreeData {
-  sections: RoadSectionData[];
+  sections: RoadSectionUI[];
   lastSaved: string;
 }
 

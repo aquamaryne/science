@@ -4,7 +4,7 @@
  */
 
 import type { BudgetItem } from '../modules/block_one';
-import type { RoadSectionData } from '../components/view/block_three_page';
+import type { RoadSectionUI } from '../components/view/block_three_page';
 
 // ==================== ТИПЫ РЕЗУЛЬТАТОВ ====================
 
@@ -27,7 +27,7 @@ export interface BlockOneResults {
 export interface BlockTwoResults {
   id: 'block_two';
   timestamp: Date;
-  sections: RoadSectionData[];
+  sections: RoadSectionUI[];
   summary: {
     totalSections: number;
     needRepair: number;
@@ -40,8 +40,8 @@ export interface BlockTwoResults {
     };
   };
   ranking: {
-    byEnpv: RoadSectionData[];
-    currentRepairPriority: RoadSectionData[];
+    byEnpv: RoadSectionUI[];
+    currentRepairPriority: RoadSectionUI[];
   };
 }
 
@@ -167,7 +167,7 @@ class CalculationResultsService {
   /**
    * Сохраняет результаты Блока 2
    */
-  saveBlockTwoResults(sections: RoadSectionData[]): boolean {
+  saveBlockTwoResults(sections: RoadSectionUI[]): boolean {
     const session = this.getCurrentSession();
     if (!session) {
       console.error('Нет активной сессии для сохранения результатов Блока 2');
@@ -212,7 +212,7 @@ class CalculationResultsService {
       },
       ranking: {
         byEnpv: [...sections].filter(s => s.workType !== 'Не потрібно')
-                           .sort((a, b) => (b.enpv || 0) - (a.enpv || 0)),
+                           .sort((a, b) => (b.estimatedCost || 0) - (a.estimatedCost || 0)),
         currentRepairPriority: [...sections].filter(s => s.workType === 'Поточний ремонт')
       }
     };

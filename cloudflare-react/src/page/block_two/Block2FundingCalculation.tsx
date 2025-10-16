@@ -369,11 +369,11 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
           <AlertDescription>
             <div className="flex items-center justify-between">
               <div>
-                <strong>Крок 1:</strong> Завантажте Excel шаблон з вихідними даними про дороги по областях
+                 Завантажте Excel шаблон з вихідними даними про дороги по областях
               </div>
               <Button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                className="flex items-center ml-10 gap-2 bg-blue-600 hover:bg-blue-700"
               >
                 <Upload className="h-4 w-4" />
                 Завантажити таблицю
@@ -651,7 +651,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-blue-800 text-base">
-                          📊 Етап 2.4: Середньозважені коригувальні коефіцієнти
+                          📊Середньозважені коригувальні коефіцієнти
                         </CardTitle>
                         {isEditing && (
                           <Button
@@ -759,7 +759,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-green-800">
-                          💰 Етап 2.5: Обсяг коштів на експлуатаційне утримання
+                          💰Обсяг коштів на експлуатаційне утримання
                         </CardTitle>
                         <Button
                           onClick={exportRegionalResults}

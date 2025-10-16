@@ -12,6 +12,7 @@ import type {
 
 import {
   calculateStateRoadMaintenanceRate,
+  calculateLocalRoadMaintenanceRate,
   calculateTrafficIntensityCoefficient,
   calculateEuropeanRoadCoefficient,
   calculateBorderCrossingCoefficient,
@@ -21,7 +22,7 @@ import {
   type RoadSection,
 } from '../../modules/block_two';
 
-// ==================== ТИПИ ДЛЯ ЕТАПІВ 2.4-2.5 ====================
+// ==================== ТИПИ ДЛЯ ЕТАПІВ 2.4-2.5 / 2.7-2.8 ====================
 
 interface RegionalRoadData {
   name: string;
@@ -37,7 +38,6 @@ interface RegionalRoadData {
   lightingLength: number;
   repairedLength: number;
   criticalInfraCount: number;
-  // ✅ Поля, що заповнюються після розрахунку
   fundingByCategory?: { [key in 1 | 2 | 3 | 4 | 5]: number };
   totalFunding?: number;
   fundingPercentage?: number;
@@ -49,11 +49,11 @@ interface RegionalCalculationResult {
     mountainous: number;
     operatingConditions: number;
     trafficIntensity: number;
-    europeanRoad: number;
-    borderCrossing: number;
-    lighting: number;
-    repair: number;
-    criticalInfra: number;
+    europeanRoad?: number;
+    borderCrossing?: number;
+    lighting?: number;
+    repair?: number;
+    criticalInfra?: number;
     totalProduct: number;
   };
   fundingByCategory: { [key in 1 | 2 | 3 | 4 | 5]: number };
@@ -65,12 +65,15 @@ interface Block2FundingCalculationProps {
   stateInflationIndexes: number[];
 }
 
+type RoadType = 'state' | 'local';
+
 // ==================== КОМПОНЕНТ ====================
 
 const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
   regionCoefficients,
   stateInflationIndexes
 }) => {
+  const [roadType, setRoadType] = React.useState<RoadType>('state');
   const [regionalData, setRegionalData] = React.useState<RegionalRoadData[]>([]);
   const [regionalResults, setRegionalResults] = React.useState<RegionalCalculationResult[]>([]);
   const [isCalculatingRegional, setIsCalculatingRegional] = React.useState(false);
@@ -99,7 +102,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
         
         roadSections.push({
           category,
-          stateImportance: true, // Державні дороги
+          stateImportance: roadType === 'state', // Залежить від обраного типу доріг
           length,
           trafficIntensity: avgIntensity,
           hasEuropeanStatus: region.europeanRoadsLength > 0,
@@ -199,32 +202,59 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
           
           // ✅ ВИКОРИСТОВУЄМО ФУНКЦІЇ З МОДУЛЯ
           const kIntensity = calculateTrafficIntensityCoefficient(roadSections, totalLength);
-          const kEuropean = calculateEuropeanRoadCoefficient(roadSections, totalLength);
-          const kBorder = calculateBorderCrossingCoefficient(roadSections, totalLength);
-          const kLighting = calculateLightingCoefficient(roadSections, totalLength);
-          const kRepair = calculateRepairCoefficient(roadSections, totalLength);
-          const kCriticalInfra = calculateCriticalInfrastructureCoefficient(region.criticalInfraCount);
           
-          console.log(`📊 Коефіцієнти для ${region.name}:`, {
-            kIntensity,
-            kEuropean,
-            kBorder,
-            kLighting,
-            kRepair,
-            kCriticalInfra
-          });
+          let totalProduct: number;
+          let coefficients: any;
           
-          // ✅ Добуток всіх коефіцієнтів (формула п.3.5 Методики)
-          const totalProduct = 
-            1.16 * // K_д - коефіцієнт обслуговування держ. доріг (сталий)
-            regionCoeff.mountainous * 
-            regionCoeff.operatingConditions * 
-            kIntensity * 
-            kEuropean * 
-            kBorder * 
-            kLighting * 
-            kRepair * 
-            kCriticalInfra;
+          if (roadType === 'state') {
+            // ДЛЯ ДЕРЖАВНИХ ДОРІГ - всі коефіцієнти
+            const kEuropean = calculateEuropeanRoadCoefficient(roadSections, totalLength);
+            const kBorder = calculateBorderCrossingCoefficient(roadSections, totalLength);
+            const kLighting = calculateLightingCoefficient(roadSections, totalLength);
+            const kRepair = calculateRepairCoefficient(roadSections, totalLength);
+            const kCriticalInfra = calculateCriticalInfrastructureCoefficient(region.criticalInfraCount);
+            
+            coefficients = {
+              mountainous: regionCoeff.mountainous,
+              operatingConditions: regionCoeff.operatingConditions,
+              trafficIntensity: kIntensity,
+              europeanRoad: kEuropean,
+              borderCrossing: kBorder,
+              lighting: kLighting,
+              repair: kRepair,
+              criticalInfra: kCriticalInfra,
+              totalProduct: 0
+            };
+            
+            // ✅ Добуток всіх коефіцієнтів для державних доріг (формула п.3.5 Методики)
+            totalProduct = 
+              1.16 * // K_д - коефіцієнт обслуговування держ. доріг (сталий)
+              regionCoeff.mountainous * 
+              regionCoeff.operatingConditions * 
+              kIntensity * 
+              kEuropean * 
+              kBorder * 
+              kLighting * 
+              kRepair * 
+              kCriticalInfra;
+          } else {
+            // ДЛЯ МІСЦЕВИХ ДОРІГ - тільки K_г × K_уе × K_інт.м (формула п.3.6)
+            coefficients = {
+              mountainous: regionCoeff.mountainous,
+              operatingConditions: regionCoeff.operatingConditions,
+              trafficIntensity: kIntensity,
+              totalProduct: 0
+            };
+            
+            totalProduct = 
+              regionCoeff.mountainous * 
+              regionCoeff.operatingConditions * 
+              kIntensity;
+          }
+          
+          coefficients.totalProduct = totalProduct;
+          
+          console.log(`📊 Коефіцієнти для ${region.name} (${roadType === 'state' ? 'державні' : 'місцеві'}):`, coefficients);
           
           // ✅ Розрахунок фінансування по категоріях
           const stateTotalInflationIndex = calculateCumulativeInflationIndex(stateInflationIndexes);
@@ -234,7 +264,9 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
           };
           
           ([1, 2, 3, 4, 5] as const).forEach(category => {
-            const rate = calculateStateRoadMaintenanceRate(category, stateTotalInflationIndex);
+            const rate = roadType === 'state' 
+              ? calculateStateRoadMaintenanceRate(category, stateTotalInflationIndex)
+              : calculateLocalRoadMaintenanceRate(category, stateTotalInflationIndex);
             const length = region.lengthByCategory[category];
             fundingByCategory[category] = rate * length * totalProduct;
           });
@@ -243,17 +275,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
           
           results.push({
             regionName: region.name,
-            coefficients: {
-              mountainous: regionCoeff.mountainous,
-              operatingConditions: regionCoeff.operatingConditions,
-              trafficIntensity: kIntensity,
-              europeanRoad: kEuropean,
-              borderCrossing: kBorder,
-              lighting: kLighting,
-              repair: kRepair,
-              criticalInfra: kCriticalInfra,
-              totalProduct
-            },
+            coefficients,
             fundingByCategory,
             totalFunding
           });
@@ -277,36 +299,55 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
     try {
       const wb = XLSX.utils.book_new();
       
-      // Аркуш 1: Коефіцієнти (Етап 2.4)
+      const roadTypeLabel = roadType === 'state' ? 'ДЕРЖАВНИХ' : 'МІСЦЕВИХ';
+      const stageNumber = roadType === 'state' ? '2.4' : '2.7';
+      const fundingStage = roadType === 'state' ? '2.5' : '2.8';
+      
+      // Аркуш 1: Коефіцієнти
       const coeffData: any[][] = [
-        ['ЕТАП 2.4: СЕРЕДНЬОЗВАЖЕНІ КОРИГУВАЛЬНІ КОЕФІЦІЄНТИ'],
+        [`ЕТАП ${stageNumber}: СЕРЕДНЬОЗВАЖЕНІ КОРИГУВАЛЬНІ КОЕФІЦІЄНТИ (${roadTypeLabel} ДОРОГИ)`],
         ['Розраховано з використанням функцій модуля block_two'],
         [],
-        ['Область', 'K_д', 'K_г', 'K_уе', 'K_інт.д', 'K_е.д', 'K_мпп.д', 'K_осв', 'K_рем', 'K_кр.і', 'Добуток коеф.']
       ];
       
+      if (roadType === 'state') {
+        coeffData.push(['Область', 'K_д', 'K_г', 'K_уе', 'K_інт.д', 'K_е.д', 'K_мпп.д', 'K_осв', 'K_рем', 'K_кр.і', 'Добуток коеф.']);
+      } else {
+        coeffData.push(['Область', 'K_г', 'K_уе', 'K_інт.м', 'Добуток коеф.']);
+      }
+      
       regionalResults.forEach(result => {
-        coeffData.push([
-          result.regionName,
-          1.16,
-          result.coefficients.mountainous,
-          result.coefficients.operatingConditions,
-          result.coefficients.trafficIntensity,
-          result.coefficients.europeanRoad,
-          result.coefficients.borderCrossing,
-          result.coefficients.lighting,
-          result.coefficients.repair,
-          result.coefficients.criticalInfra,
-          result.coefficients.totalProduct
-        ]);
+        if (roadType === 'state') {
+          coeffData.push([
+            result.regionName,
+            1.16,
+            result.coefficients.mountainous,
+            result.coefficients.operatingConditions,
+            result.coefficients.trafficIntensity,
+            result.coefficients.europeanRoad || 1,
+            result.coefficients.borderCrossing || 1,
+            result.coefficients.lighting || 1,
+            result.coefficients.repair || 1,
+            result.coefficients.criticalInfra || 1,
+            result.coefficients.totalProduct
+          ]);
+        } else {
+          coeffData.push([
+            result.regionName,
+            result.coefficients.mountainous,
+            result.coefficients.operatingConditions,
+            result.coefficients.trafficIntensity,
+            result.coefficients.totalProduct
+          ]);
+        }
       });
       
       const wsCoeff = XLSX.utils.aoa_to_sheet(coeffData);
-      XLSX.utils.book_append_sheet(wb, wsCoeff, 'Етап 2.4 - Коефіцієнти');
+      XLSX.utils.book_append_sheet(wb, wsCoeff, `Етап ${stageNumber} - Коефіцієнти`);
       
-      // Аркуш 2: Обсяг фінансування (Етап 2.5)
+      // Аркуш 2: Обсяг фінансування
       const fundingData: any[][] = [
-        ['ЕТАП 2.5: ОБСЯГ КОШТІВ НА ЕКСПЛУАТАЦІЙНЕ УТРИМАННЯ (тис. грн)'],
+        [`ЕТАП ${fundingStage}: ОБСЯГ КОШТІВ НА ЕКСПЛУАТАЦІЙНЕ УТРИМАННЯ ${roadTypeLabel} ДОРІГ (тис. грн)`],
         [],
         ['Область', 'Категорія I', 'Категорія II', 'Категорія III', 'Категорія IV', 'Категорія V', 'РАЗОМ (тис. грн)', 'РАЗОМ (млн. грн)']
       ];
@@ -337,9 +378,9 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
       fundingData.push(totals);
       
       const wsFunding = XLSX.utils.aoa_to_sheet(fundingData);
-      XLSX.utils.book_append_sheet(wb, wsFunding, 'Етап 2.5 - Фінансування');
+      XLSX.utils.book_append_sheet(wb, wsFunding, `Етап ${fundingStage} - Фінансування`);
       
-      const fileName = `Етапи_2.4-2.5_Розрахунок_${new Date().toLocaleDateString('uk-UA').replace(/\./g, '_')}.xlsx`;
+      const fileName = `Дороги_${roadTypeLabel}_Етапи_${stageNumber}-${fundingStage}_${new Date().toLocaleDateString('uk-UA').replace(/\./g, '_')}.xlsx`;
       XLSX.writeFile(wb, fileName);
       
     } catch (error) {
@@ -348,22 +389,51 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
     }
   };
 
+  // Очищаємо результати при зміні типу доріг
+  React.useEffect(() => {
+    setRegionalResults([]);
+  }, [roadType]);
+
   // ==================== RENDER ====================
-  // (Решта коду залишається БЕЗ ЗМІН - весь JSX код з попередньої версії)
 
   return (
     <Card className='w-full'>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Construction className="h-5 w-5" />
-          Розрахунок обсягу коштів на ЕУ доріг державного значення
+          Розрахунок обсягу коштів на ЕУ доріг
         </CardTitle>
         <CardDescription>
-          Завантажте Excel шаблон з даними про дороги по областях.
+          Оберіть тип доріг та завантажте Excel шаблон з даними про дороги по областях.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         
+        {/* ВИБІР ТИПУ ДОРІГ */}
+        <Alert className="bg-purple-50 border-purple-300">
+          <AlertDescription>
+            <div className="space-y-3">
+              <div className="font-semibold text-purple-900">Оберіть тип доріг для розрахунку:</div>
+              <div className="flex gap-4">
+                <Button
+                  onClick={() => setRoadType('state')}
+                  variant={roadType === 'state' ? 'default' : 'outline'}
+                  className={roadType === 'state' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                >
+                  🏛️ Державного значення
+                </Button>
+                <Button
+                  onClick={() => setRoadType('local')}
+                  variant={roadType === 'local' ? 'default' : 'outline'}
+                  className={roadType === 'local' ? 'bg-green-600 hover:bg-green-700' : ''}
+                >
+                  🏘️ Місцевого значення
+                </Button>
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+
         {/* Завантаження файлу */}
         <Alert className="bg-blue-50 border-blue-200">
           <AlertDescription>
@@ -410,7 +480,12 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-lg">Завантажені дані по областях України</CardTitle>
+                      <CardTitle className="text-lg">
+                        Завантажені дані по областях України 
+                        <span className={roadType === 'state' ? 'text-blue-600' : 'text-green-600'}>
+                          ({roadType === 'state' ? 'державні дороги' : 'місцеві дороги'})
+                        </span>
+                      </CardTitle>
                       {isEditing && (
                         <p className="text-xs text-blue-600 mt-1">✏️ Режим редагування активний</p>
                       )}
@@ -442,7 +517,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                         <tr>
                           <th className="border border-gray-400 p-2 text-left" rowSpan={2}>Найменування області</th>
                           <th className="border border-gray-400 p-2 text-center" colSpan={6}>
-                            Протяжність доріг державного значення (км)
+                            Протяжність доріг {roadType === 'state' ? 'державного' : 'місцевого'} значення (км)
                           </th>
                           <th className="border border-gray-400 p-2 text-center" colSpan={3}>
                             Протяжність доріг з інтенсивністю
@@ -473,7 +548,6 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                           <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                             <td className="border border-gray-300 p-2">{region.name}</td>
                             
-                            {/* Протяжність по категоріях - РЕДАГОВАНІ */}
                             {([1, 2, 3, 4, 5] as const).map(cat => (
                               <td key={`cat-${cat}`} className="border border-gray-300 p-1">
                                 {isEditing ? (
@@ -497,7 +571,6 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                             
                             <td className="border border-gray-300 p-2 text-right font-bold bg-yellow-50">{region.totalLength.toFixed(0)}</td>
                             
-                            {/* Інтенсивність - РЕДАГОВАНІ */}
                             <td className="border border-gray-300 p-1">
                               {isEditing ? (
                                 <input
@@ -550,7 +623,6 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                               )}
                             </td>
                             
-                            {/* Інші показники - РЕДАГОВАНІ */}
                             <td className="border border-gray-300 p-1">
                               {isEditing ? (
                                 <input
@@ -646,12 +718,12 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
 
               {regionalResults.length > 0 && (
                 <>
-                  {/* 2. ЕТАП 2.4: КОЕФІЦІЄНТИ - З РЕДАГУВАННЯМ */}
-                  <Card className="bg-blue-50 border-2 border-blue-300">
+                  {/* 2. КОЕФІЦІЄНТИ */}
+                  <Card className={roadType === 'state' ? 'bg-blue-50 border-2 border-blue-300' : 'bg-green-50 border-2 border-green-300'}>
                     <CardHeader>
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-blue-800 text-base">
-                          📊Середньозважені коригувальні коефіцієнти
+                        <CardTitle className={roadType === 'state' ? 'text-blue-800 text-base' : 'text-green-800 text-base'}>
+                          📊 Середньозважені коригувальні коефіцієнти
                         </CardTitle>
                         {isEditing && (
                           <Button
@@ -666,44 +738,60 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="overflow-auto border border-blue-300 rounded">
+                      <div className={`overflow-auto border rounded ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>
                         <table className="w-full text-xs border-collapse">
-                          <thead className="bg-blue-200">
+                          <thead className={roadType === 'state' ? 'bg-blue-200' : 'bg-green-200'}>
                             <tr>
-                              <th className="border border-blue-300 p-2">Область</th>
-                              <th className="border border-blue-300 p-2">K<sub>д</sub></th>
-                              <th className="border border-blue-300 p-2">K<sub>г</sub></th>
-                              <th className="border border-blue-300 p-2">K<sub>уе</sub></th>
-                              <th className="border border-blue-300 p-2">K<sub>інт.д</sub></th>
-                              <th className="border border-blue-300 p-2">K<sub>е.д</sub></th>
-                              <th className="border border-blue-300 p-2">K<sub>мпп.д</sub></th>
-                              <th className="border border-blue-300 p-2">K<sub>осв</sub></th>
-                              <th className="border border-blue-300 p-2">K<sub>рем</sub></th>
-                              <th className="border border-blue-300 p-2">K<sub>кр.і</sub></th>
-                              <th className="border border-blue-300 p-2 bg-yellow-100">Добуток</th>
+                              <th className={`border p-2 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>Область</th>
+                              {roadType === 'state' && <th className="border border-blue-300 p-2">K<sub>д</sub></th>}
+                              <th className={`border p-2 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>K<sub>г</sub></th>
+                              <th className={`border p-2 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>K<sub>уе</sub></th>
+                              <th className={`border p-2 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>
+                                K<sub>інт.{roadType === 'state' ? 'д' : 'м'}</sub>
+                              </th>
+                              {roadType === 'state' && (
+                                <>
+                                  <th className="border border-blue-300 p-2">K<sub>е.д</sub></th>
+                                  <th className="border border-blue-300 p-2">K<sub>мпп.д</sub></th>
+                                  <th className="border border-blue-300 p-2">K<sub>осв</sub></th>
+                                  <th className="border border-blue-300 p-2">K<sub>рем</sub></th>
+                                  <th className="border border-blue-300 p-2">K<sub>кр.і</sub></th>
+                                </>
+                              )}
+                              <th className={`border p-2 bg-yellow-100 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>Добуток</th>
                             </tr>
                           </thead>
                           <tbody>
                             {regionalResults.map((result, idx) => {
-                              const currentProduct = 
-                                1.16 * 
-                                result.coefficients.mountainous * 
-                                result.coefficients.operatingConditions * 
-                                result.coefficients.trafficIntensity * 
-                                result.coefficients.europeanRoad * 
-                                result.coefficients.borderCrossing * 
-                                result.coefficients.lighting * 
-                                result.coefficients.repair * 
-                                result.coefficients.criticalInfra;
+                              let currentProduct;
+                              if (roadType === 'state') {
+                                currentProduct = 
+                                  1.16 * 
+                                  result.coefficients.mountainous * 
+                                  result.coefficients.operatingConditions * 
+                                  result.coefficients.trafficIntensity * 
+                                  (result.coefficients.europeanRoad || 1) * 
+                                  (result.coefficients.borderCrossing || 1) * 
+                                  (result.coefficients.lighting || 1) * 
+                                  (result.coefficients.repair || 1) * 
+                                  (result.coefficients.criticalInfra || 1);
+                              } else {
+                                currentProduct = 
+                                  result.coefficients.mountainous * 
+                                  result.coefficients.operatingConditions * 
+                                  result.coefficients.trafficIntensity;
+                              }
 
                               return (
-                                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
-                                  <td className="border border-blue-300 p-2">{result.regionName}</td>
-                                  <td className="border border-blue-300 p-2 text-center bg-gray-100">1.1600</td>
+                                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : roadType === 'state' ? 'bg-blue-50' : 'bg-green-50'}>
+                                  <td className={`border p-2 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>{result.regionName}</td>
+                                  {roadType === 'state' && (
+                                    <td className="border border-blue-300 p-2 text-center bg-gray-100">1.1600</td>
+                                  )}
                                   
                                   {/* Редаговані коефіцієнти */}
-                                  {['mountainous', 'operatingConditions', 'trafficIntensity', 'europeanRoad', 'borderCrossing', 'lighting', 'repair', 'criticalInfra'].map((key) => (
-                                    <td key={key} className="border border-blue-300 p-1">
+                                  {['mountainous', 'operatingConditions', 'trafficIntensity'].map((key) => (
+                                    <td key={key} className={`border p-1 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>
                                       {isEditing ? (
                                         <input
                                           type="number"
@@ -714,7 +802,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                             (newResults[idx].coefficients as any)[key] = parseFloat(e.target.value) || 1;
                                             setRegionalResults(newResults);
                                           }}
-                                          className="w-full text-center p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded"
+                                          className={`w-full text-center p-1 border-0 rounded ${roadType === 'state' ? 'bg-blue-50 focus:bg-blue-100' : 'bg-green-50 focus:bg-green-100'}`}
                                           style={{ fontSize: '11px' }}
                                         />
                                       ) : (
@@ -725,7 +813,30 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     </td>
                                   ))}
                                   
-                                  <td className="border border-blue-300 p-2 text-center bg-yellow-50 font-bold">
+                                  {roadType === 'state' && ['europeanRoad', 'borderCrossing', 'lighting', 'repair', 'criticalInfra'].map((key) => (
+                                    <td key={key} className="border border-blue-300 p-1">
+                                      {isEditing ? (
+                                        <input
+                                          type="number"
+                                          step="0.0001"
+                                          value={result.coefficients[key as keyof typeof result.coefficients] || 1}
+                                          onChange={(e) => {
+                                            const newResults = [...regionalResults];
+                                            (newResults[idx].coefficients as any)[key] = parseFloat(e.target.value) || 1;
+                                            setRegionalResults(newResults);
+                                          }}
+                                          className="w-full text-center p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded"
+                                          style={{ fontSize: '11px' }}
+                                        />
+                                      ) : (
+                                        <div className="text-center">
+                                          {((result.coefficients[key as keyof typeof result.coefficients] as number) || 1).toFixed(4)}
+                                        </div>
+                                      )}
+                                    </td>
+                                  ))}
+                                  
+                                  <td className={`border p-2 text-center bg-yellow-50 font-bold ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>
                                     {isEditing ? currentProduct.toFixed(4) : result.coefficients.totalProduct.toFixed(4)}
                                   </td>
                                 </tr>
@@ -736,34 +847,38 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                       </div>
                       
                       {/* Пояснення */}
-                      <Alert className="mt-4 bg-white border-blue-300">
+                      <Alert className={`mt-4 bg-white ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>
                         <AlertDescription className="text-xs">
                           <div className="grid grid-cols-2 gap-2">
-                            <div><strong>K<sub>д</sub></strong> - обслуговування держ. доріг (1.16)</div>
+                            {roadType === 'state' && <div><strong>K<sub>д</sub></strong> - обслуговування держ. доріг (1.16)</div>}
                             <div><strong>K<sub>г</sub></strong> - гірська місцевість</div>
                             <div><strong>K<sub>уе</sub></strong> - умови експлуатації</div>
-                            <div><strong>K<sub>інт.д</sub></strong> - інтенсівність руху</div>
-                            <div><strong>K<sub>е.д</sub></strong> - європейська мережа</div>
-                            <div><strong>K<sub>мпп.д</sub></strong> - міжнародні пункти пропуску</div>
-                            <div><strong>K<sub>осв</sub></strong> - освітлення доріг</div>
-                            <div><strong>K<sub>рем</sub></strong> - нещодавно відремонтовані</div>
-                            <div><strong>K<sub>кр.і</sub></strong> - критична інфраструктура</div>
+                            <div><strong>K<sub>інт.{roadType === 'state' ? 'д' : 'м'}</sub></strong> - інтенсівність руху</div>
+                            {roadType === 'state' && (
+                              <>
+                                <div><strong>K<sub>е.д</sub></strong> - європейська мережа</div>
+                                <div><strong>K<sub>мпп.д</sub></strong> - міжнародні пункти пропуску</div>
+                                <div><strong>K<sub>осв</sub></strong> - освітлення доріг</div>
+                                <div><strong>K<sub>рем</sub></strong> - нещодавно відремонтовані</div>
+                                <div><strong>K<sub>кр.і</sub></strong> - критична інфраструктура</div>
+                              </>
+                            )}
                           </div>
                         </AlertDescription>
                       </Alert>
                     </CardContent>
                   </Card>
 
-                  {/* 3. ЕТАП 2.5: ТАБЛИЦЯ РЕЗУЛЬТАТІВ */}
-                  <Card className="bg-green-50 border-2 border-green-300">
+                  {/* 3. ТАБЛИЦЯ РЕЗУЛЬТАТІВ */}
+                  <Card className={roadType === 'state' ? 'bg-green-50 border-2 border-green-300' : 'bg-blue-50 border-2 border-blue-300'}>
                     <CardHeader>
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-green-800">
-                          💰Обсяг коштів на експлуатаційне утримання
+                        <CardTitle className={roadType === 'state' ? 'text-green-800' : 'text-blue-800'}>
+                          💰 Обсяг коштів на експлуатаційне утримання
                         </CardTitle>
                         <Button
                           onClick={exportRegionalResults}
-                          className="bg-green-600 hover:bg-green-700"
+                          className={roadType === 'state' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}
                         >
                           <Download className="h-4 w-4 mr-2" />
                           Завантажити результати
@@ -771,14 +886,13 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {/* ТАБЛИЦЯ РЕЗУЛЬТАТІВ */}
                       <div className="bg-white border-2 border-gray-400 rounded-lg overflow-hidden">
                         <div className="overflow-auto max-h-[600px]">
                           <table className="w-full text-xs border-collapse">
                             <thead className="sticky top-0 z-20 bg-gray-200">
                               <tr>
                                 <th className="border-2 border-gray-400 p-3 text-center font-bold" colSpan={14}>
-                                  Розподіл витрат на експлуатаційне утримання (ЕУ) доріг державного значення
+                                  Розподіл витрат на експлуатаційне утримання (ЕУ) доріг {roadType === 'state' ? 'державного' : 'місцевого'} значення
                                 </th>
                               </tr>
                               <tr>
@@ -786,7 +900,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                   Найменування<br/>області
                                 </th>
                                 <th className="border border-gray-400 p-2 bg-blue-100 font-bold text-center" colSpan={6}>
-                                  Протяжність доріг державного значення (км)
+                                  Протяжність доріг {roadType === 'state' ? 'державного' : 'місцевого'} значення (км)
                                 </th>
                                 <th className="border border-gray-400 p-2 bg-green-100 font-bold text-center" colSpan={7}>
                                   Мінімальна потреба в фінансових ресурсах на 20ХХ рік, тис.грн
@@ -809,38 +923,44 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                               </tr>
                             </thead>
                             <tbody>
-                              {regionalData.map((region, idx) => (
-                                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                  <td className="border border-gray-400 p-2 font-medium sticky left-0 bg-inherit z-10">
-                                    {region.name}
-                                  </td>
-                                  {([1, 2, 3, 4, 5] as const).map(cat => (
-                                    <td key={`length-${cat}`} className="border border-gray-400 p-2 text-right">
-                                      {region.lengthByCategory[cat] || '-'}
+                              {regionalData.map((region, idx) => {
+                                const totalFunding = regionalResults.reduce((sum, r) => sum + r.totalFunding, 0);
+                                const regionResult = regionalResults.find(r => r.regionName === region.name);
+                                const percentage = regionResult ? (regionResult.totalFunding / totalFunding * 100) : 0;
+                                
+                                return (
+                                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                    <td className="border border-gray-400 p-2 font-medium sticky left-0 bg-inherit z-10">
+                                      {region.name}
                                     </td>
-                                  ))}
-                                  <td className="border border-gray-400 p-2 text-right font-bold bg-blue-50">
-                                    {region.totalLength.toFixed(0)}
-                                  </td>
-                                  {([1, 2, 3, 4, 5] as const).map(cat => (
-                                    <td key={`funding-${cat}`} className="border border-gray-400 p-2 text-right">
-                                      {region.fundingByCategory?.[cat] 
-                                        ? region.fundingByCategory[cat].toLocaleString('uk-UA', {maximumFractionDigits: 0})
+                                    {([1, 2, 3, 4, 5] as const).map(cat => (
+                                      <td key={`length-${cat}`} className="border border-gray-400 p-2 text-right">
+                                        {region.lengthByCategory[cat] || '-'}
+                                      </td>
+                                    ))}
+                                    <td className="border border-gray-400 p-2 text-right font-bold bg-blue-50">
+                                      {region.totalLength.toFixed(0)}
+                                    </td>
+                                    {([1, 2, 3, 4, 5] as const).map(cat => (
+                                      <td key={`funding-${cat}`} className="border border-gray-400 p-2 text-right">
+                                        {regionResult?.fundingByCategory?.[cat] 
+                                          ? regionResult.fundingByCategory[cat].toLocaleString('uk-UA', {maximumFractionDigits: 0})
+                                          : '-'
+                                        }
+                                      </td>
+                                    ))}
+                                    <td className="border border-gray-400 p-2 text-right font-bold bg-green-50">
+                                      {regionResult?.totalFunding 
+                                        ? regionResult.totalFunding.toLocaleString('uk-UA', {maximumFractionDigits: 0})
                                         : '-'
                                       }
                                     </td>
-                                  ))}
-                                  <td className="border border-gray-400 p-2 text-right font-bold bg-green-50">
-                                    {region.totalFunding 
-                                      ? region.totalFunding.toLocaleString('uk-UA', {maximumFractionDigits: 0})
-                                      : '-'
-                                    }
-                                  </td>
-                                  <td className="border border-gray-400 p-2 text-right font-bold bg-yellow-50">
-                                    {region.fundingPercentage ? region.fundingPercentage.toFixed(2) : '-'}
-                                  </td>
-                                </tr>
-                              ))}
+                                    <td className="border border-gray-400 p-2 text-right font-bold bg-yellow-50">
+                                      {percentage.toFixed(2)}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                               <tr className="bg-gray-300 font-bold">
                                 <td className="border-2 border-gray-400 p-3">ВСЬОГО ПО УКРАЇНІ</td>
                                 {([1, 2, 3, 4, 5] as const).map(cat => (
@@ -853,12 +973,12 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                 </td>
                                 {([1, 2, 3, 4, 5] as const).map(cat => (
                                   <td key={`total-funding-${cat}`} className="border-2 border-gray-400 p-2 text-right">
-                                    {regionalData.reduce((sum, r) => sum + (r.fundingByCategory?.[cat] || 0), 0)
+                                    {regionalResults.reduce((sum, r) => sum + (r.fundingByCategory?.[cat] || 0), 0)
                                       .toLocaleString('uk-UA', {maximumFractionDigits: 0})}
                                   </td>
                                 ))}
                                 <td className="border-2 border-gray-400 p-2 text-right bg-green-100 text-lg">
-                                  {regionalData.reduce((sum, r) => sum + (r.totalFunding || 0), 0)
+                                  {regionalResults.reduce((sum, r) => sum + r.totalFunding, 0)
                                     .toLocaleString('uk-UA', {maximumFractionDigits: 0})}
                                 </td>
                                 <td className="border-2 border-gray-400 p-2 text-right bg-yellow-100 text-base">
@@ -901,6 +1021,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                     <AlertDescription className="text-green-700">
                       <div className="space-y-1">
                         <div>Розраховано обсяг фінансування для <strong>{regionalResults.length} областей</strong> України.</div>
+                        <div>Тип доріг: <strong>{roadType === 'state' ? 'Державного значення' : 'Місцевого значення'}</strong></div>
                         <div>Загальна сума: <strong className="text-lg">{(regionalResults.reduce((sum, r) => sum + r.totalFunding, 0) / 1000000).toFixed(2)} млрд. грн</strong></div>
                       </div>
                     </AlertDescription>
@@ -909,23 +1030,6 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
               )}
             </>
           )}
-        {/* Інструкція - БЕЗ ЗМІН */}
-        {regionalData.length === 0 && (
-          <Alert className="bg-gray-50">
-            <AlertDescription>
-              <div className="space-y-3">
-                <p className="font-semibold">Як користуватися цією вкладкою:</p>
-                <ol className="list-decimal list-inside space-y-2 text-sm">
-                  <li>Підготуйте Excel файл з даними про дороги по областях України</li>
-                  <li>Структура файлу має містити колонки згідно з шаблоном</li>
-                  <li>Натисніть кнопку "Завантажити таблицю" та оберіть файл</li>
-                  <li>Натисніть "Розрахувати обсяг коштів"</li>
-                  <li>Завантажте результати у форматі Excel</li>
-                </ol>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
       </CardContent>
     </Card>
   );

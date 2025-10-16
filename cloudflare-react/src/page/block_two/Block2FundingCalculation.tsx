@@ -1,802 +1,930 @@
 import React, { useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle, Download, Calculator, AlertTriangle, MapPin, Construction, Upload } from "lucide-react";
+import { CheckCircle, Download, Calculator, AlertTriangle, Construction, Upload, Edit } from "lucide-react";
 import * as XLSX from 'xlsx';
 
+// ✅ ІМПОРТИ З МОДУЛЯ
 import type { 
   RegionCoefficients,
-  RegionRoads,
-  PriceIndexes
 } from '../../modules/block_two';
 
 import {
-  calculateTotalFunding,
-  generateSampleRegionData,
+  calculateStateRoadMaintenanceRate,
+  calculateTrafficIntensityCoefficient,
+  calculateEuropeanRoadCoefficient,
+  calculateBorderCrossingCoefficient,
+  calculateLightingCoefficient,
+  calculateRepairCoefficient,
+  calculateCriticalInfrastructureCoefficient,
   type RoadSection,
 } from '../../modules/block_two';
 
-interface ExcelCell {
-  address: string;
-  value: any;
-  formula?: string;
-  type: 'number' | 'string' | 'formula' | 'empty';
-  editable: boolean;
-}
+// ==================== ТИПИ ДЛЯ ЕТАПІВ 2.4-2.5 ====================
 
-interface ExcelWorksheet {
+interface RegionalRoadData {
   name: string;
-  cells: ExcelCell[];
-  range: string;
+  lengthByCategory: { [key in 1 | 2 | 3 | 4 | 5]: number };
+  totalLength: number;
+  lengthByIntensity: {
+    medium: number;
+    high: number;
+    veryHigh: number;
+  };
+  europeanRoadsLength: number;
+  borderCrossingLength: number;
+  lightingLength: number;
+  repairedLength: number;
+  criticalInfraCount: number;
+  // ✅ Поля, що заповнюються після розрахунку
+  fundingByCategory?: { [key in 1 | 2 | 3 | 4 | 5]: number };
+  totalFunding?: number;
+  fundingPercentage?: number;
 }
 
-interface RoadCalculationResult {
-  worksheet: string;
-  totalCells: number;
-  editableCells: number;
-  formulaCells: number;
-  calculatedValues: Record<string, any>;
-  roadFinancing: {
-    stateFunding: number;
-    localFunding: number;
-    totalFunding: number;
-    details: any;
-  } | null;
-  regionData: RegionRoads | null;
+interface RegionalCalculationResult {
+  regionName: string;
+  coefficients: {
+    mountainous: number;
+    operatingConditions: number;
+    trafficIntensity: number;
+    europeanRoad: number;
+    borderCrossing: number;
+    lighting: number;
+    repair: number;
+    criticalInfra: number;
+    totalProduct: number;
+  };
+  fundingByCategory: { [key in 1 | 2 | 3 | 4 | 5]: number };
+  totalFunding: number;
 }
 
 interface Block2FundingCalculationProps {
   regionCoefficients: RegionCoefficients[];
-  selectedRegion: string;
-  setSelectedRegion: (value: string) => void;
+  stateInflationIndexes: number[];
 }
+
+// ==================== КОМПОНЕНТ ====================
 
 const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
   regionCoefficients,
-  selectedRegion,
-  setSelectedRegion
+  stateInflationIndexes
 }) => {
-  const [worksheets, setWorksheets] = React.useState<ExcelWorksheet[]>([]);
-  const [selectedWorksheet, setSelectedWorksheet] = React.useState<string>('');
-  const [inflationIndex, setInflationIndex] = React.useState<number>(1.25);
-  const [isCalculating, setIsCalculating] = React.useState(false);
-  const [results, setResults] = React.useState<RoadCalculationResult | null>(null);
+  const [regionalData, setRegionalData] = React.useState<RegionalRoadData[]>([]);
+  const [regionalResults, setRegionalResults] = React.useState<RegionalCalculationResult[]>([]);
+  const [isCalculatingRegional, setIsCalculatingRegional] = React.useState(false);
   const [uploadStatus, setUploadStatus] = React.useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isEditing, setIsEditing] = React.useState(false);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  // ==================== ДОПОМІЖНІ ФУНКЦІЇ ====================
+  
+  const calculateCumulativeInflationIndex = (indexes: number[]): number => {
+    return indexes.reduce((acc, curr) => acc * (1 + curr / 100), 1);
+  };
+
+  // ✅ КОНВЕРТУЄМО RegionalRoadData В RoadSection[] ДЛЯ ВИКОРИСТАННЯ ФУНКЦІЙ МОДУЛЯ
+  const convertToRoadSections = (region: RegionalRoadData): RoadSection[] => {
+    const roadSections: RoadSection[] = [];
+    
+    // Створюємо секції для кожної категорії
+    ([1, 2, 3, 4, 5] as const).forEach(category => {
+      const length = region.lengthByCategory[category];
+      if (length > 0) {
+        // Розраховуємо середню інтенсивність для категорії
+        const avgIntensity = region.totalLength > 0 
+          ? (region.lengthByIntensity.medium + region.lengthByIntensity.high + region.lengthByIntensity.veryHigh) / region.totalLength * 10000
+          : 5000;
+        
+        roadSections.push({
+          category,
+          stateImportance: true, // Державні дороги
+          length,
+          trafficIntensity: avgIntensity,
+          hasEuropeanStatus: region.europeanRoadsLength > 0,
+          isBorderCrossing: region.borderCrossingLength > 0,
+          hasLighting: region.lightingLength > 0,
+          recentlyRepaired: region.repairedLength > 0
+        });
+      }
+    });
+    
+    return roadSections;
+  };
+
+  // ==================== ЗАВАНТАЖЕННЯ EXCEL ====================
+  
+  const handleTemplateUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target?.files?.[0];
     if (!file) return;
 
-    setUploadStatus('Завантажуємо файл...');
+    setUploadStatus('Завантажуємо шаблон...');
     
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = e.target?.result;
-        const workbook = XLSX.read(data, { 
-          type: 'binary',
-          cellStyles: true,
-          cellFormula: true,
-          cellDates: true,
-          cellNF: true,
-          sheetStubs: true
-        });
-
-        const parsedWorksheets: ExcelWorksheet[] = [];
-
-        workbook.SheetNames.forEach(sheetName => {
-          const worksheet = workbook.Sheets[sheetName];
-          const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
-          
-          const cells: ExcelCell[] = [];
-          
-          for (let row = range.s.r; row <= range.e.r; row++) {
-            for (let col = range.s.c; col <= range.e.c; col++) {
-              const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-              const cell = worksheet[cellAddress];
-              
-              if (cell || row <= 30) {
-                const cellData: ExcelCell = {
-                  address: cellAddress,
-                  value: cell?.v || '',
-                  formula: cell?.f || undefined,
-                  type: cell?.f ? 'formula' : 
-                        typeof cell?.v === 'number' ? 'number' : 
-                        cell?.v ? 'string' : 'empty',
-                  editable: !cell?.f
-                };
-                cells.push(cellData);
-              }
-            }
-          }
-
-          parsedWorksheets.push({
-            name: sheetName,
-            cells,
-            range: worksheet['!ref'] || 'A1:A1'
-          });
-        });
-
-        setWorksheets(parsedWorksheets);
-        setSelectedWorksheet(parsedWorksheets[0]?.name || '');
-        setUploadStatus(`Успішно завантажено ${parsedWorksheets.length} аркуш(ів)`);
+        const workbook = XLSX.read(data, { type: 'binary' });
         
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+        
+        const parsedData: RegionalRoadData[] = [];
+        
+        for (let i = 2; i < jsonData.length; i++) {
+          const row = jsonData[i];
+          if (!row[0]) continue;
+          
+          const regionData: RegionalRoadData = {
+            name: String(row[0]),
+            lengthByCategory: {
+              1: Number(row[1]) || 0,
+              2: Number(row[2]) || 0,
+              3: Number(row[3]) || 0,
+              4: Number(row[4]) || 0,
+              5: Number(row[5]) || 0,
+            },
+            totalLength: Number(row[6]) || 0,
+            lengthByIntensity: {
+              medium: Number(row[7]) || 0,
+              high: Number(row[8]) || 0,
+              veryHigh: Number(row[9]) || 0,
+            },
+            europeanRoadsLength: Number(row[10]) || 0,
+            borderCrossingLength: Number(row[11]) || 0,
+            lightingLength: Number(row[12]) || 0,
+            repairedLength: Number(row[13]) || 0,
+            criticalInfraCount: Number(row[14]) || 0,
+          };
+          
+          parsedData.push(regionData);
+        }
+        
+        setRegionalData(parsedData);
+        setUploadStatus(`✓ Успішно завантажено дані для ${parsedData.length} областей`);
         setTimeout(() => setUploadStatus(''), 3000);
+        
       } catch (error) {
-        setUploadStatus('Помилка при завантаженні файлу');
         console.error('Помилка парсингу Excel:', error);
-        setTimeout(() => setUploadStatus(''), 3000);
+        setUploadStatus('❌ Помилка при завантаженні файлу. Перевірте формат.');
+        setTimeout(() => setUploadStatus(''), 5000);
       }
     };
-
+    
     reader.readAsBinaryString(file);
   };
 
-  const updateCellValue = (worksheetName: string, cellAddress: string, newValue: any) => {
-    setWorksheets(prev => 
-      prev.map(ws => {
-        if (ws.name === worksheetName) {
-          return {
-            ...ws,
-            cells: ws.cells.map(cell => {
-              if (cell.address === cellAddress && cell.editable) {
-                return {
-                  ...cell,
-                  value: newValue,
-                  type: typeof newValue === 'number' ? 'number' : 
-                        newValue ? 'string' : 'empty'
-                };
-              }
-              return cell;
-            })
-          };
-        }
-        return ws;
-      })
-    );
-  };
-
-  const parseRoadDataFromExcel = (worksheet: ExcelWorksheet): RegionRoads | null => {
-    try {
-      const roadSections: RoadSection[] = [];
-      
-      const dataRows = worksheet.cells.filter(cell => {
-        const decoded = XLSX.utils.decode_cell(cell.address);
-        return decoded.r > 0;
-      });
-
-      const rowGroups: Record<number, ExcelCell[]> = {};
-      dataRows.forEach(cell => {
-        const decoded = XLSX.utils.decode_cell(cell.address);
-        if (!rowGroups[decoded.r]) rowGroups[decoded.r] = [];
-        rowGroups[decoded.r].push(cell);
-      });
-
-      Object.values(rowGroups).forEach(rowCells => {
-        rowCells.sort((a, b) => {
-          const aCol = XLSX.utils.decode_cell(a.address).c;
-          const bCol = XLSX.utils.decode_cell(b.address).c;
-          return aCol - bCol;
-        });
-
-        if (rowCells.length >= 8) {
-          const roadSection: RoadSection = {
-            category: Math.min(5, Math.max(1, Number(rowCells[0]?.value) || 3)) as 1 | 2 | 3 | 4 | 5,
-            stateImportance: Boolean(rowCells[1]?.value),
-            length: Number(rowCells[2]?.value) || 0,
-            trafficIntensity: Number(rowCells[3]?.value) || 0,
-            hasEuropeanStatus: Boolean(rowCells[4]?.value),
-            isBorderCrossing: Boolean(rowCells[5]?.value),
-            hasLighting: Boolean(rowCells[6]?.value),
-            recentlyRepaired: Boolean(rowCells[7]?.value)
-          };
-
-          if (roadSection.length > 0) {
-            roadSections.push(roadSection);
+  // ==================== РОЗРАХУНОК З ВИКОРИСТАННЯМ ФУНКЦІЙ МОДУЛЯ ====================
+  
+  const calculateRegionalFinancing = () => {
+    setIsCalculatingRegional(true);
+    
+    setTimeout(() => {
+      try {
+        const results: RegionalCalculationResult[] = [];
+        
+        regionalData.forEach(region => {
+          const regionCoeff = regionCoefficients.find(r => r.regionalName === region.name);
+          if (!regionCoeff) {
+            console.warn(`Коефіцієнти для області ${region.name} не знайдено`);
+            return;
           }
-        }
-      });
-
-      return {
-        regionalName: selectedRegion || 'Невизначена область',
-        roadSections,
-        criticalInfrastructureCount: 5
-      };
-
-    } catch (error) {
-      console.error('Ошибка парсинга данных дорог:', error);
-      return null;
-    }
-  };
-
-  const handleCalculate = () => {
-    if (!selectedWorksheet) {
-      alert('Оберіть аркуш для розрахунку');
-      return;
-    }
-
-    if (!selectedRegion) {
-      alert('Оберіть регіон для розрахунку');
-      return;
-    }
-
-    setIsCalculating(true);
-
-    try {
-      const worksheet = worksheets.find(ws => ws.name === selectedWorksheet);
-      if (!worksheet) {
-        throw new Error('Аркуш не знайдено');
+          
+          // ✅ КОНВЕРТУЄМО ДАНІ В RoadSection[]
+          const roadSections = convertToRoadSections(region);
+          const totalLength = region.totalLength;
+          
+          // ✅ ВИКОРИСТОВУЄМО ФУНКЦІЇ З МОДУЛЯ
+          const kIntensity = calculateTrafficIntensityCoefficient(roadSections, totalLength);
+          const kEuropean = calculateEuropeanRoadCoefficient(roadSections, totalLength);
+          const kBorder = calculateBorderCrossingCoefficient(roadSections, totalLength);
+          const kLighting = calculateLightingCoefficient(roadSections, totalLength);
+          const kRepair = calculateRepairCoefficient(roadSections, totalLength);
+          const kCriticalInfra = calculateCriticalInfrastructureCoefficient(region.criticalInfraCount);
+          
+          console.log(`📊 Коефіцієнти для ${region.name}:`, {
+            kIntensity,
+            kEuropean,
+            kBorder,
+            kLighting,
+            kRepair,
+            kCriticalInfra
+          });
+          
+          // ✅ Добуток всіх коефіцієнтів (формула п.3.5 Методики)
+          const totalProduct = 
+            1.16 * // K_д - коефіцієнт обслуговування держ. доріг (сталий)
+            regionCoeff.mountainous * 
+            regionCoeff.operatingConditions * 
+            kIntensity * 
+            kEuropean * 
+            kBorder * 
+            kLighting * 
+            kRepair * 
+            kCriticalInfra;
+          
+          // ✅ Розрахунок фінансування по категоріях
+          const stateTotalInflationIndex = calculateCumulativeInflationIndex(stateInflationIndexes);
+          
+          const fundingByCategory: { [key in 1 | 2 | 3 | 4 | 5]: number } = {
+            1: 0, 2: 0, 3: 0, 4: 0, 5: 0
+          };
+          
+          ([1, 2, 3, 4, 5] as const).forEach(category => {
+            const rate = calculateStateRoadMaintenanceRate(category, stateTotalInflationIndex);
+            const length = region.lengthByCategory[category];
+            fundingByCategory[category] = rate * length * totalProduct;
+          });
+          
+          const totalFunding = Object.values(fundingByCategory).reduce((sum, val) => sum + val, 0);
+          
+          results.push({
+            regionName: region.name,
+            coefficients: {
+              mountainous: regionCoeff.mountainous,
+              operatingConditions: regionCoeff.operatingConditions,
+              trafficIntensity: kIntensity,
+              europeanRoad: kEuropean,
+              borderCrossing: kBorder,
+              lighting: kLighting,
+              repair: kRepair,
+              criticalInfra: kCriticalInfra,
+              totalProduct
+            },
+            fundingByCategory,
+            totalFunding
+          });
+        });
+        
+        console.log('✅ Розрахунок завершено:', results);
+        setRegionalResults(results);
+        setIsCalculatingRegional(false);
+        
+      } catch (error) {
+        console.error('Помилка розрахунку:', error);
+        alert('Помилка при виконанні розрахунків');
+        setIsCalculatingRegional(false);
       }
-
-      setTimeout(() => {
-        const calculatedValues: Record<string, any> = {};
-        let totalSum = 0;
-        let numberCount = 0;
-
-        worksheet.cells.forEach(cell => {
-          if (cell.type === 'number' && typeof cell.value === 'number') {
-            totalSum += cell.value;
-            numberCount++;
-          }
-          calculatedValues[cell.address] = cell.value;
-        });
-
-        calculatedValues['TOTAL_SUM'] = totalSum;
-        calculatedValues['AVERAGE'] = numberCount > 0 ? totalSum / numberCount : 0;
-        calculatedValues['COUNT_NUMBERS'] = numberCount;
-        calculatedValues['COUNT_FILLED'] = worksheet.cells.filter(c => c.value !== '').length;
-
-        let regionData = parseRoadDataFromExcel(worksheet);
-        if (!regionData || regionData.roadSections.length === 0) {
-          regionData = generateSampleRegionData(selectedRegion);
-        }
-
-        const regionCoeff = regionCoefficients.find(r => r.regionalName === selectedRegion);
-        if (!regionCoeff) {
-          throw new Error('Коефіцієнти регіону не знайдено');
-        }
-
-        const priceIndexes: PriceIndexes = { inflationIndex };
-        const roadFinancing = calculateTotalFunding(regionData, regionCoeff, priceIndexes);
-
-        const result: RoadCalculationResult = {
-          worksheet: selectedWorksheet,
-          totalCells: worksheet.cells.length,
-          editableCells: worksheet.cells.filter(c => c.editable).length,
-          formulaCells: worksheet.cells.filter(c => c.type === 'formula').length,
-          calculatedValues,
-          roadFinancing,
-          regionData
-        };
-
-        setResults(result);
-        setIsCalculating(false);
-      }, 2000);
-
-    } catch (error) {
-      console.error('Помилка розрахунку:', error);
-      alert('Помилка при виконанні розрахунків');
-      setIsCalculating(false);
-    }
+    }, 1000);
   };
 
-  const handleExportResults = () => {
-    if (!results || !selectedWorksheet) return;
-
+  // ==================== ЕКСПОРТ РЕЗУЛЬТАТІВ ====================
+  
+  const exportRegionalResults = () => {
     try {
-      const worksheet = worksheets.find(ws => ws.name === selectedWorksheet);
-      if (!worksheet) return;
-
-      const exportData: any[][] = [];
+      const wb = XLSX.utils.book_new();
       
-      exportData.push(['ЗАГАЛЬНІ РЕЗУЛЬТАТИ РОЗРАХУНКІВ']);
-      exportData.push([]);
-      exportData.push(['Адреса клітинки', 'Значення', 'Тип', 'Формула']);
+      // Аркуш 1: Коефіцієнти (Етап 2.4)
+      const coeffData: any[][] = [
+        ['ЕТАП 2.4: СЕРЕДНЬОЗВАЖЕНІ КОРИГУВАЛЬНІ КОЕФІЦІЄНТИ'],
+        ['Розраховано з використанням функцій модуля block_two'],
+        [],
+        ['Область', 'K_д', 'K_г', 'K_уе', 'K_інт.д', 'K_е.д', 'K_мпп.д', 'K_осв', 'K_рем', 'K_кр.і', 'Добуток коеф.']
+      ];
       
-      worksheet.cells.slice(0, 20).forEach(cell => {
-        exportData.push([
-          cell.address,
-          cell.value,
-          cell.type,
-          cell.formula || ''
+      regionalResults.forEach(result => {
+        coeffData.push([
+          result.regionName,
+          1.16,
+          result.coefficients.mountainous,
+          result.coefficients.operatingConditions,
+          result.coefficients.trafficIntensity,
+          result.coefficients.europeanRoad,
+          result.coefficients.borderCrossing,
+          result.coefficients.lighting,
+          result.coefficients.repair,
+          result.coefficients.criticalInfra,
+          result.coefficients.totalProduct
         ]);
       });
-
-      exportData.push([]);
-      exportData.push(['ПІДСУМКОВІ РЕЗУЛЬТАТИ EXCEL']);
-      exportData.push(['Загальна сума:', results.calculatedValues.TOTAL_SUM]);
-      exportData.push(['Середнє значення:', results.calculatedValues.AVERAGE]);
-      exportData.push(['Кількість чисел:', results.calculatedValues.COUNT_NUMBERS]);
-      exportData.push(['Кількість заповнених клітинок:', results.calculatedValues.COUNT_FILLED]);
-
-      if (results.roadFinancing) {
-        exportData.push([]);
-        exportData.push(['РОЗРАХУНОК ФІНАНСУВАННЯ ДОРІГ']);
-        exportData.push(['Регіон:', selectedRegion]);
-        exportData.push(['Індекс інфляції:', inflationIndex]);
-        exportData.push([]);
-        exportData.push(['Фінансування доріг державного значення (тис. грн):', Math.round(results.roadFinancing.stateFunding)]);
-        exportData.push(['Фінансування доріг місцевого значення (тис. грн):', Math.round(results.roadFinancing.localFunding)]);
-        exportData.push(['ЗАГАЛЬНЕ ФІНАНСУВАННЯ (тис. грн):', Math.round(results.roadFinancing.totalFunding)]);
-        exportData.push([]);
-        exportData.push(['ДЕТАЛІ РОЗРАХУНКУ']);
-        exportData.push(['Довжина доріг державного значення (км):', results.roadFinancing.details.stateRoadLength]);
-        exportData.push(['Довжина доріг місцевого значення (км):', results.roadFinancing.details.localRoadLength]);
-        exportData.push(['Базовий норматив держ. доріг (тис. грн/км):', Math.round(results.roadFinancing.details.stateRoadBaseRate)]);
-        exportData.push(['Базовий норматив місц. доріг (тис. грн/км):', Math.round(results.roadFinancing.details.localRoadBaseRate)]);
-
-        exportData.push([]);
-        exportData.push(['ЗАСТОСОВАНІ КОЕФІЦІЄНТИ']);
-        Object.entries(results.roadFinancing.details.appliedCoefficients).forEach(([key, value]) => {
-          exportData.push([key, Number(value).toFixed(3)]);
-        });
-      }
-
-      const ws = XLSX.utils.aoa_to_sheet(exportData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Результати');
-
-      if (results.regionData) {
-        const roadData: any[][] = [];
-        roadData.push(['ДАНІ ПРО ДОРОГИ РЕГІОНУ']);
-        roadData.push([]);
-        roadData.push(['Категорія', 'Держ. значення', 'Довжина (км)', 'Інтенсивність', 'Європейський статус', 'Прикордонний перехід', 'Освітлення', 'Нещодавно відремонтований']);
-        
-        results.regionData.roadSections.forEach(section => {
-          roadData.push([
-            section.category,
-            section.stateImportance ? 'Так' : 'Ні',
-            section.length,
-            section.trafficIntensity,
-            section.hasEuropeanStatus ? 'Так' : 'Ні',
-            section.isBorderCrossing ? 'Так' : 'Ні',
-            section.hasLighting ? 'Так' : 'Ні',
-            section.recentlyRepaired ? 'Так' : 'Ні'
-          ]);
-        });
-
-        const roadWs = XLSX.utils.aoa_to_sheet(roadData);
-        XLSX.utils.book_append_sheet(wb, roadWs, 'Дані доріг');
-      }
-
-      const fileName = `Розрахунок_доріг_${selectedRegion}_${selectedWorksheet}_${new Date().toLocaleDateString('uk-UA').replace(/\./g, '_')}.xlsx`;
+      
+      const wsCoeff = XLSX.utils.aoa_to_sheet(coeffData);
+      XLSX.utils.book_append_sheet(wb, wsCoeff, 'Етап 2.4 - Коефіцієнти');
+      
+      // Аркуш 2: Обсяг фінансування (Етап 2.5)
+      const fundingData: any[][] = [
+        ['ЕТАП 2.5: ОБСЯГ КОШТІВ НА ЕКСПЛУАТАЦІЙНЕ УТРИМАННЯ (тис. грн)'],
+        [],
+        ['Область', 'Категорія I', 'Категорія II', 'Категорія III', 'Категорія IV', 'Категорія V', 'РАЗОМ (тис. грн)', 'РАЗОМ (млн. грн)']
+      ];
+      
+      regionalResults.forEach(result => {
+        fundingData.push([
+          result.regionName,
+          Math.round(result.fundingByCategory[1]),
+          Math.round(result.fundingByCategory[2]),
+          Math.round(result.fundingByCategory[3]),
+          Math.round(result.fundingByCategory[4]),
+          Math.round(result.fundingByCategory[5]),
+          Math.round(result.totalFunding),
+          (result.totalFunding / 1000).toFixed(2)
+        ]);
+      });
+      
+      const totals = [
+        'ВСЬОГО ПО УКРАЇНІ',
+        Math.round(regionalResults.reduce((sum, r) => sum + r.fundingByCategory[1], 0)),
+        Math.round(regionalResults.reduce((sum, r) => sum + r.fundingByCategory[2], 0)),
+        Math.round(regionalResults.reduce((sum, r) => sum + r.fundingByCategory[3], 0)),
+        Math.round(regionalResults.reduce((sum, r) => sum + r.fundingByCategory[4], 0)),
+        Math.round(regionalResults.reduce((sum, r) => sum + r.fundingByCategory[5], 0)),
+        Math.round(regionalResults.reduce((sum, r) => sum + r.totalFunding, 0)),
+        (regionalResults.reduce((sum, r) => sum + r.totalFunding, 0) / 1000).toFixed(2)
+      ];
+      fundingData.push(totals);
+      
+      const wsFunding = XLSX.utils.aoa_to_sheet(fundingData);
+      XLSX.utils.book_append_sheet(wb, wsFunding, 'Етап 2.5 - Фінансування');
+      
+      const fileName = `Етапи_2.4-2.5_Розрахунок_${new Date().toLocaleDateString('uk-UA').replace(/\./g, '_')}.xlsx`;
       XLSX.writeFile(wb, fileName);
-
+      
     } catch (error) {
       console.error('Помилка експорту:', error);
       alert('Помилка при експорті результатів');
     }
   };
 
-  const currentWorksheet = worksheets.find(ws => ws.name === selectedWorksheet);
-
-  const getTableData = (): { rows: Record<number, Record<string, ExcelCell>>; columns: string[]; } => {
-    if (!currentWorksheet) return { rows: {}, columns: [] };
-    
-    const rows: Record<number, Record<string, ExcelCell>> = {};
-    const cols = new Set<string>();
-    
-    currentWorksheet.cells.forEach(cell => {
-      const decoded = XLSX.utils.decode_cell(cell.address);
-      const rowNum = decoded.r;
-      const colLetter = XLSX.utils.encode_col(decoded.c);
-      
-      if (!rows[rowNum]) rows[rowNum] = {};
-      rows[rowNum][colLetter] = cell;
-      cols.add(colLetter);
-    });
-
-    return { rows, columns: Array.from(cols).sort() };
-  };
-
-  const tableData = getTableData();
+  // ==================== RENDER ====================
+  // (Решта коду залишається БЕЗ ЗМІН - весь JSX код з попередньої версії)
 
   return (
     <Card className='w-full'>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Construction className="h-5 w-5" />
-          Калькулятор фінансування доріг на основі Excel шаблону
+          Розрахунок обсягу коштів на ЕУ доріг державного значення
         </CardTitle>
+        <CardDescription>
+          Завантажте Excel шаблон з даними про дороги по областях.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-4">
-          <Label htmlFor="excel-upload">Завантажити Excel шаблон:</Label>
-          <div className="flex items-center gap-4">
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <Upload className="h-4 w-4" />
-              Обрати файл
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleFileUpload}
-              className="hidden"
-              id="excel-upload"
-            />
-            {uploadStatus && (
-              <div className="flex items-center gap-2 text-sm">
-                {uploadStatus.includes('Успішно') ? (
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                ) : uploadStatus.includes('Помилка') ? (
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
-                ) : null}
-                <span className={
-                  uploadStatus.includes('Успішно') ? 'text-green-600' :
-                  uploadStatus.includes('Помилка') ? 'text-red-600' : 'text-blue-600'
-                }>
-                  {uploadStatus}
-                </span>
+        
+        {/* Завантаження файлу */}
+        <Alert className="bg-blue-50 border-blue-200">
+          <AlertDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <strong>Крок 1:</strong> Завантажте Excel шаблон з вихідними даними про дороги по областях
               </div>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {worksheets.length > 0 && (
-            <div className="space-y-2">
-              <Label>Оберіть аркуш:</Label>
-              <select
-                value={selectedWorksheet}
-                onChange={(e) => setSelectedWorksheet(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md"
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
               >
-                {worksheets.map(ws => (
-                  <option key={ws.name} value={ws.name}>
-                    {ws.name} ({ws.cells.length} клітинок)
-                  </option>
-                ))}
-              </select>
+                <Upload className="h-4 w-4" />
+                Завантажити таблицю
+              </Button>
             </div>
-          )}
+          </AlertDescription>
+        </Alert>
 
-          <div className="space-y-2">
-            <Label>Оберіть регіон:</Label>
-            <select
-              value={selectedRegion}
-              onChange={(e) => setSelectedRegion(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md"
-            >
-              <option value="">Оберіть регіон</option>
-              {regionCoefficients.map(region => (
-                <option key={region.regionalName} value={region.regionalName}>
-                  {region.regionalName}
-                </option>
-              ))}
-            </select>
-          </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          onChange={handleTemplateUpload}
+          className="hidden"
+        />
 
-          <div className="space-y-2">
-            <Label>Індекс інфляції:</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={inflationIndex}
-              onChange={(e) => setInflationIndex(Number(e.target.value))}
-              placeholder="1.25"
-            />
-          </div>
-        </div>
-
-        {currentWorksheet && tableData.columns.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <h3 className="text-lg font-semibold">
-                Дані аркушу: {selectedWorksheet}
-              </h3>
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleCalculate}
-                  disabled={isCalculating || !selectedRegion}
-                  className="flex items-center gap-2"
-                >
-                  <Calculator className="h-4 w-4" />
-                  {isCalculating ? 'Розраховуємо...' : 'Розрахувати'}
-                </Button>
-                {results && (
-                  <Button
-                    onClick={handleExportResults}
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Експорт
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            <div className="border-2 border-gray-400 rounded-lg overflow-hidden shadow-sm">
-              <div className="overflow-auto max-h-[500px]">
-                <table className="border-collapse w-full min-w-full">
-                  <thead className="sticky top-0 z-20">
-                    <tr>
-                      <th className="w-12 h-8 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold sticky left-0 z-30"></th>
-                      {tableData.columns.map((col) => (
-                        <th 
-                          key={col} 
-                          className="w-32 h-8 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold px-1"
-                        >
-                          {col}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  
-                  <tbody>
-                    {Object.entries(tableData.rows)
-                      .sort(([a], [b]) => parseInt(a) - parseInt(b))
-                      .slice(0, Math.min(100, Object.keys(tableData.rows).length))
-                      .map(([rowNum, rowCells]) => {
-                        const rowIndex = parseInt(rowNum);
-                        const isHeaderRow = rowIndex === 0;
-                        
-                        return (
-                          <tr key={rowNum}>
-                            <td className="w-12 h-8 bg-gray-200 border-2 border-gray-400 text-center text-xs font-bold sticky left-0 z-10">
-                              {rowIndex + 1}
-                            </td>
-                            
-                            {tableData.columns.map(col => {
-                              const cell = rowCells[col];
-                              
-                              return (
-                                <td 
-                                  key={`${rowNum}-${col}`} 
-                                  className="w-32 h-8 border border-gray-300 p-0 relative"
-                                >
-                                  {cell ? (
-                                    cell.editable && !isHeaderRow ? (
-                                      <input
-                                        type="text"
-                                        value={cell.value || ''}
-                                        onChange={(e) => updateCellValue(
-                                          selectedWorksheet,
-                                          cell.address,
-                                          e.target.value
-                                        )}
-                                        className="w-full h-full px-1 text-xs text-center border-0 outline-0 focus:bg-blue-50 focus:ring-2 focus:ring-blue-400"
-                                        style={{ 
-                                          fontSize: '11px',
-                                          lineHeight: '1.2'
-                                        }}
-                                      />
-                                    ) : (
-                                      <div 
-                                        className={`w-full h-full px-1 text-xs flex items-center justify-center text-center ${
-                                          isHeaderRow ? 'bg-blue-100 text-blue-800 font-semibold' :
-                                          cell.type === 'formula' ? 'bg-yellow-50 text-yellow-800' :
-                                          cell.type === 'number' ? 'bg-green-50 text-green-800' :
-                                          'bg-white text-gray-800'
-                                        }`}
-                                        style={{ 
-                                          fontSize: '11px',
-                                          lineHeight: '1.2',
-                                          wordBreak: 'break-word'
-                                        }}
-                                        title={cell.formula ? `=${cell.formula}` : String(cell.value)}
-                                      >
-                                        <span className="break-all">
-                                          {cell.formula ? `=${cell.formula}` : String(cell.value || '')}
-                                        </span>
-                                      </div>
-                                    )
-                                  ) : (
-                                    <div className="w-full h-full bg-white"></div>
-                                  )}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-between text-xs text-gray-600 gap-2">
-              <div className="flex flex-wrap gap-4">
-                <span>Загалом клітинок: <strong>{currentWorksheet.cells.length}</strong></span>
-                <span>Редагованих: <strong>{currentWorksheet.cells.filter(c => c.editable).length}</strong></span>
-              </div>
-            </div>
-          </div>
+        {uploadStatus && (
+          <Alert className={uploadStatus.includes('✓') ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}>
+            <AlertDescription className="flex items-center gap-2">
+              {uploadStatus.includes('✓') ? 
+                <CheckCircle className="h-4 w-4 text-green-600" /> : 
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+              }
+              {uploadStatus}
+            </AlertDescription>
+          </Alert>
         )}
 
-        {results && (
-          <>
-            <Separator />
-            
-            <Card className="bg-green-50">
-              <CardHeader>
-                <CardTitle className="text-green-800">Результати обробки Excel</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-3 bg-white rounded-lg">
-                    <div className="text-2xl font-bold text-green-700">
-                      {results.calculatedValues.TOTAL_SUM?.toFixed(2) || '0'}
-                    </div>
-                    <div className="text-sm text-green-600">Загальна сума</div>
-                  </div>
-                  <div className="text-center p-3 bg-white rounded-lg">
-                    <div className="text-2xl font-bold text-blue-700">
-                      {results.calculatedValues.AVERAGE?.toFixed(2) || '0'}
-                    </div>
-                    <div className="text-sm text-blue-600">Середнє значення</div>
-                  </div>
-                  <div className="text-center p-3 bg-white rounded-lg">
-                    <div className="text-2xl font-bold text-purple-700">
-                      {results.calculatedValues.COUNT_NUMBERS || '0'}
-                    </div>
-                    <div className="text-sm text-purple-600">Кількість чисел</div>
-                  </div>
-                  <div className="text-center p-3 bg-white rounded-lg">
-                    <div className="text-2xl font-bold text-orange-700">
-                      {results.calculatedValues.COUNT_FILLED || '0'}
-                    </div>
-                    <div className="text-sm text-orange-600">Заповнених клітинок</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {results.roadFinancing && (
-              <Card className="bg-blue-50">
+        {/* Таблиця завантажених даних */}
+        {regionalData.length > 0 && (
+            <>
+              {/* 1. ЗАВАНТАЖЕНІ ДАНІ ПО ОБЛАСТЯХ - З РЕДАГУВАННЯМ */}
+              <Card className="bg-white">
                 <CardHeader>
-                  <CardTitle className="text-blue-800 flex items-center gap-2">
-                    <MapPin className="h-5 w-5" />
-                    Розрахунок фінансування доріг для регіону: {selectedRegion}
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">Завантажені дані по областях України</CardTitle>
+                      {isEditing && (
+                        <p className="text-xs text-blue-600 mt-1">✏️ Режим редагування активний</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => setIsEditing(!isEditing)}
+                        variant="outline"
+                        className="flex items-center gap-2"
+                      >
+                        <Edit className="h-4 w-4" />
+                        {isEditing ? 'Завершити редагування' : 'Редагувати дані'}
+                      </Button>
+                      <Button
+                        onClick={calculateRegionalFinancing}
+                        disabled={isCalculatingRegional}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <Calculator className="h-4 w-4 mr-2" />
+                        {isCalculatingRegional ? 'Розраховуємо...' : 'Розрахувати обсяг коштів'}
+                      </Button>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                      <div className="text-3xl font-bold text-blue-700">
-                        {(results.roadFinancing.stateFunding / 1000).toFixed(1)}
-                      </div>
-                      <div className="text-sm text-blue-600">Державні дороги (млн. грн)</div>
-                    </div>
-                    <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                      <div className="text-3xl font-bold text-green-700">
-                        {(results.roadFinancing.localFunding / 1000).toFixed(1)}
-                      </div>
-                      <div className="text-sm text-green-600">Місцеві дороги (млн. грн)</div>
-                    </div>
-                    <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                      <div className="text-3xl font-bold text-purple-700">
-                        {(results.roadFinancing.totalFunding / 1000).toFixed(1)}
-                      </div>
-                      <div className="text-sm text-purple-600">ЗАГАЛЬНЕ ФІНАНСУВАННЯ (млн. грн)</div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card className="bg-white">
-                      <CardHeader>
-                        <CardTitle className="text-sm text-gray-800">Характеристики мережі доріг</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span>Довжина доріг державного значення:</span>
-                          <span className="font-medium">{results.roadFinancing.details.stateRoadLength.toFixed(1)} км</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Довжина доріг місцевого значення:</span>
-                          <span className="font-medium">{results.roadFinancing.details.localRoadLength.toFixed(1)} км</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Базовий норматив держ. доріг:</span>
-                          <span className="font-medium">{results.roadFinancing.details.stateRoadBaseRate.toFixed(0)} тис. грн/км</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Базовий норматив місц. доріг:</span>
-                          <span className="font-medium">{results.roadFinancing.details.localRoadBaseRate.toFixed(0)} тис. грн/км</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-white">
-                      <CardHeader>
-                        <CardTitle className="text-sm text-gray-800">Застосовані коефіцієнти</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span>Гірська місцевість (Кг):</span>
-                          <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.mountainous.toFixed(3)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Умови експлуатації (Куе):</span>
-                          <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.operatingConditions.toFixed(3)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Обслуговування держ. доріг (Кд):</span>
-                          <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.stateServiceCoefficient.toFixed(3)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Інтенсивність руху (держ.):</span>
-                          <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.trafficIntensityState.toFixed(3)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Інтенсивність руху (місц.):</span>
-                          <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.trafficIntensityLocal.toFixed(3)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Європейська мережа (Ке.д):</span>
-                          <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.europeanRoad.toFixed(3)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Прикордонні переходи (Кмпп.д):</span>
-                          <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.borderCrossing.toFixed(3)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Освітлення (Косв):</span>
-                          <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.lighting.toFixed(3)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Після ремонту (Крем):</span>
-                          <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.repair.toFixed(3)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Критична інфраструктура (Ккр.і):</span>
-                          <span className="font-medium">{results.roadFinancing.details.appliedCoefficients.criticalInfrastructure.toFixed(3)}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {results.regionData && (
-                    <Card className="bg-white">
-                      <CardHeader>
-                        <CardTitle className="text-sm text-gray-800">Дані про дороги в розрахунку</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                          {[1, 2, 3, 4, 5].map(category => {
-                            const categoryRoads = results.regionData!.roadSections.filter(r => r.category === category);
-                            const stateRoads = categoryRoads.filter(r => r.stateImportance);
-                            const localRoads = categoryRoads.filter(r => !r.stateImportance);
-                            const totalLength = categoryRoads.reduce((sum, r) => sum + r.length, 0);
+                <CardContent>
+                  <div className="overflow-auto max-h-[400px] border-2 border-gray-300 rounded">
+                    <table className="w-full text-xs border-collapse">
+                      <thead className="sticky top-0 bg-gray-200 z-10">
+                        <tr>
+                          <th className="border border-gray-400 p-2 text-left" rowSpan={2}>Найменування області</th>
+                          <th className="border border-gray-400 p-2 text-center" colSpan={6}>
+                            Протяжність доріг державного значення (км)
+                          </th>
+                          <th className="border border-gray-400 p-2 text-center" colSpan={3}>
+                            Протяжність доріг з інтенсивністю
+                          </th>
+                          <th className="border border-gray-400 p-2 text-center" colSpan={5}>
+                            Інші показники
+                          </th>
+                        </tr>
+                        <tr>
+                          <th className="border border-gray-400 p-1 text-center">I</th>
+                          <th className="border border-gray-400 p-1 text-center">II</th>
+                          <th className="border border-gray-400 p-1 text-center">III</th>
+                          <th className="border border-gray-400 p-1 text-center">IV</th>
+                          <th className="border border-gray-400 p-1 text-center">V</th>
+                          <th className="border border-gray-400 p-1 text-center bg-yellow-50">Разом</th>
+                          <th className="border border-gray-400 p-1 text-center text-[10px]">15-20 тис</th>
+                          <th className="border border-gray-400 p-1 text-center text-[10px]">20-30 тис</th>
+                          <th className="border border-gray-400 p-1 text-center text-[10px]">30+ тис</th>
+                          <th className="border border-gray-400 p-1 text-center text-[10px]">Євро</th>
+                          <th className="border border-gray-400 p-1 text-center text-[10px]">МПП</th>
+                          <th className="border border-gray-400 p-1 text-center text-[10px]">Освітл.</th>
+                          <th className="border border-gray-400 p-1 text-center text-[10px]">Ремонт</th>
+                          <th className="border border-gray-400 p-1 text-center text-[10px]">Кр.інф.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {regionalData.map((region, idx) => (
+                          <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                            <td className="border border-gray-300 p-2">{region.name}</td>
                             
-                            return (
-                              <div key={category} className="p-3 bg-gray-50 rounded border text-center">
-                                <div className="font-medium mb-2">{category} категорія</div>
-                                <div className="space-y-1 text-xs">
-                                  <div>Держ.: {stateRoads.length} ділянок</div>
-                                  <div>Місц.: {localRoads.length} ділянок</div>
-                                  <div>Всього: {totalLength.toFixed(1)} км</div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  <Alert>
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertTitle>Розрахунок фінансування завершено успішно!</AlertTitle>
-                    <AlertDescription>
-                      Розрахунок виконано для регіону "{selectedRegion}" з урахуванням індексу інфляції {inflationIndex}.
-                      {results.regionData && ` Проаналізовано ${results.regionData.roadSections.length} ділянок доріг.`}
-                    </AlertDescription>
-                  </Alert>
+                            {/* Протяжність по категоріях - РЕДАГОВАНІ */}
+                            {([1, 2, 3, 4, 5] as const).map(cat => (
+                              <td key={`cat-${cat}`} className="border border-gray-300 p-1">
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    value={region.lengthByCategory[cat]}
+                                    onChange={(e) => {
+                                      const newData = [...regionalData];
+                                      newData[idx].lengthByCategory[cat] = parseFloat(e.target.value) || 0;
+                                      newData[idx].totalLength = Object.values(newData[idx].lengthByCategory).reduce((sum, val) => sum + val, 0);
+                                      setRegionalData(newData);
+                                    }}
+                                    className="w-full text-right p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded"
+                                    style={{ fontSize: '11px' }}
+                                  />
+                                ) : (
+                                  <div className="text-right">{region.lengthByCategory[cat]}</div>
+                                )}
+                              </td>
+                            ))}
+                            
+                            <td className="border border-gray-300 p-2 text-right font-bold bg-yellow-50">{region.totalLength.toFixed(0)}</td>
+                            
+                            {/* Інтенсивність - РЕДАГОВАНІ */}
+                            <td className="border border-gray-300 p-1">
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  value={region.lengthByIntensity.medium}
+                                  onChange={(e) => {
+                                    const newData = [...regionalData];
+                                    newData[idx].lengthByIntensity.medium = parseFloat(e.target.value) || 0;
+                                    setRegionalData(newData);
+                                  }}
+                                  className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded"
+                                  style={{ fontSize: '11px' }}
+                                />
+                              ) : (
+                                <div className="text-right">{region.lengthByIntensity.medium}</div>
+                              )}
+                            </td>
+                            <td className="border border-gray-300 p-1">
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  value={region.lengthByIntensity.high}
+                                  onChange={(e) => {
+                                    const newData = [...regionalData];
+                                    newData[idx].lengthByIntensity.high = parseFloat(e.target.value) || 0;
+                                    setRegionalData(newData);
+                                  }}
+                                  className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded"
+                                  style={{ fontSize: '11px' }}
+                                />
+                              ) : (
+                                <div className="text-right">{region.lengthByIntensity.high}</div>
+                              )}
+                            </td>
+                            <td className="border border-gray-300 p-1">
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  value={region.lengthByIntensity.veryHigh}
+                                  onChange={(e) => {
+                                    const newData = [...regionalData];
+                                    newData[idx].lengthByIntensity.veryHigh = parseFloat(e.target.value) || 0;
+                                    setRegionalData(newData);
+                                  }}
+                                  className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded"
+                                  style={{ fontSize: '11px' }}
+                                />
+                              ) : (
+                                <div className="text-right">{region.lengthByIntensity.veryHigh}</div>
+                              )}
+                            </td>
+                            
+                            {/* Інші показники - РЕДАГОВАНІ */}
+                            <td className="border border-gray-300 p-1">
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  value={region.europeanRoadsLength}
+                                  onChange={(e) => {
+                                    const newData = [...regionalData];
+                                    newData[idx].europeanRoadsLength = parseFloat(e.target.value) || 0;
+                                    setRegionalData(newData);
+                                  }}
+                                  className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
+                                  style={{ fontSize: '11px' }}
+                                />
+                              ) : (
+                                <div className="text-right">{region.europeanRoadsLength}</div>
+                              )}
+                            </td>
+                            <td className="border border-gray-300 p-1">
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  value={region.borderCrossingLength}
+                                  onChange={(e) => {
+                                    const newData = [...regionalData];
+                                    newData[idx].borderCrossingLength = parseFloat(e.target.value) || 0;
+                                    setRegionalData(newData);
+                                  }}
+                                  className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
+                                  style={{ fontSize: '11px' }}
+                                />
+                              ) : (
+                                <div className="text-right">{region.borderCrossingLength}</div>
+                              )}
+                            </td>
+                            <td className="border border-gray-300 p-1">
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  value={region.lightingLength}
+                                  onChange={(e) => {
+                                    const newData = [...regionalData];
+                                    newData[idx].lightingLength = parseFloat(e.target.value) || 0;
+                                    setRegionalData(newData);
+                                  }}
+                                  className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
+                                  style={{ fontSize: '11px' }}
+                                />
+                              ) : (
+                                <div className="text-right">{region.lightingLength}</div>
+                              )}
+                            </td>
+                            <td className="border border-gray-300 p-1">
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  value={region.repairedLength}
+                                  onChange={(e) => {
+                                    const newData = [...regionalData];
+                                    newData[idx].repairedLength = parseFloat(e.target.value) || 0;
+                                    setRegionalData(newData);
+                                  }}
+                                  className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
+                                  style={{ fontSize: '11px' }}
+                                />
+                              ) : (
+                                <div className="text-right">{region.repairedLength}</div>
+                              )}
+                            </td>
+                            <td className="border border-gray-300 p-1">
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  value={region.criticalInfraCount}
+                                  onChange={(e) => {
+                                    const newData = [...regionalData];
+                                    newData[idx].criticalInfraCount = parseFloat(e.target.value) || 0;
+                                    setRegionalData(newData);
+                                  }}
+                                  className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
+                                  style={{ fontSize: '11px' }}
+                                />
+                              ) : (
+                                <div className="text-right">{region.criticalInfraCount}</div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </CardContent>
               </Card>
-            )}
-          </>
+
+              {regionalResults.length > 0 && (
+                <>
+                  {/* 2. ЕТАП 2.4: КОЕФІЦІЄНТИ - З РЕДАГУВАННЯМ */}
+                  <Card className="bg-blue-50 border-2 border-blue-300">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-blue-800 text-base">
+                          📊 Етап 2.4: Середньозважені коригувальні коефіцієнти
+                        </CardTitle>
+                        {isEditing && (
+                          <Button
+                            onClick={calculateRegionalFinancing}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <Calculator className="h-3 w-3 mr-1" />
+                            Перерахувати з новими коефіцієнтами
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="overflow-auto border border-blue-300 rounded">
+                        <table className="w-full text-xs border-collapse">
+                          <thead className="bg-blue-200">
+                            <tr>
+                              <th className="border border-blue-300 p-2">Область</th>
+                              <th className="border border-blue-300 p-2">K<sub>д</sub></th>
+                              <th className="border border-blue-300 p-2">K<sub>г</sub></th>
+                              <th className="border border-blue-300 p-2">K<sub>уе</sub></th>
+                              <th className="border border-blue-300 p-2">K<sub>інт.д</sub></th>
+                              <th className="border border-blue-300 p-2">K<sub>е.д</sub></th>
+                              <th className="border border-blue-300 p-2">K<sub>мпп.д</sub></th>
+                              <th className="border border-blue-300 p-2">K<sub>осв</sub></th>
+                              <th className="border border-blue-300 p-2">K<sub>рем</sub></th>
+                              <th className="border border-blue-300 p-2">K<sub>кр.і</sub></th>
+                              <th className="border border-blue-300 p-2 bg-yellow-100">Добуток</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {regionalResults.map((result, idx) => {
+                              const currentProduct = 
+                                1.16 * 
+                                result.coefficients.mountainous * 
+                                result.coefficients.operatingConditions * 
+                                result.coefficients.trafficIntensity * 
+                                result.coefficients.europeanRoad * 
+                                result.coefficients.borderCrossing * 
+                                result.coefficients.lighting * 
+                                result.coefficients.repair * 
+                                result.coefficients.criticalInfra;
+
+                              return (
+                                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
+                                  <td className="border border-blue-300 p-2">{result.regionName}</td>
+                                  <td className="border border-blue-300 p-2 text-center bg-gray-100">1.1600</td>
+                                  
+                                  {/* Редаговані коефіцієнти */}
+                                  {['mountainous', 'operatingConditions', 'trafficIntensity', 'europeanRoad', 'borderCrossing', 'lighting', 'repair', 'criticalInfra'].map((key) => (
+                                    <td key={key} className="border border-blue-300 p-1">
+                                      {isEditing ? (
+                                        <input
+                                          type="number"
+                                          step="0.0001"
+                                          value={result.coefficients[key as keyof typeof result.coefficients]}
+                                          onChange={(e) => {
+                                            const newResults = [...regionalResults];
+                                            (newResults[idx].coefficients as any)[key] = parseFloat(e.target.value) || 1;
+                                            setRegionalResults(newResults);
+                                          }}
+                                          className="w-full text-center p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded"
+                                          style={{ fontSize: '11px' }}
+                                        />
+                                      ) : (
+                                        <div className="text-center">
+                                          {(result.coefficients[key as keyof typeof result.coefficients] as number).toFixed(4)}
+                                        </div>
+                                      )}
+                                    </td>
+                                  ))}
+                                  
+                                  <td className="border border-blue-300 p-2 text-center bg-yellow-50 font-bold">
+                                    {isEditing ? currentProduct.toFixed(4) : result.coefficients.totalProduct.toFixed(4)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      {/* Пояснення */}
+                      <Alert className="mt-4 bg-white border-blue-300">
+                        <AlertDescription className="text-xs">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div><strong>K<sub>д</sub></strong> - обслуговування держ. доріг (1.16)</div>
+                            <div><strong>K<sub>г</sub></strong> - гірська місцевість</div>
+                            <div><strong>K<sub>уе</sub></strong> - умови експлуатації</div>
+                            <div><strong>K<sub>інт.д</sub></strong> - інтенсівність руху</div>
+                            <div><strong>K<sub>е.д</sub></strong> - європейська мережа</div>
+                            <div><strong>K<sub>мпп.д</sub></strong> - міжнародні пункти пропуску</div>
+                            <div><strong>K<sub>осв</sub></strong> - освітлення доріг</div>
+                            <div><strong>K<sub>рем</sub></strong> - нещодавно відремонтовані</div>
+                            <div><strong>K<sub>кр.і</sub></strong> - критична інфраструктура</div>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    </CardContent>
+                  </Card>
+
+                  {/* 3. ЕТАП 2.5: ТАБЛИЦЯ РЕЗУЛЬТАТІВ */}
+                  <Card className="bg-green-50 border-2 border-green-300">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-green-800">
+                          💰 Етап 2.5: Обсяг коштів на експлуатаційне утримання
+                        </CardTitle>
+                        <Button
+                          onClick={exportRegionalResults}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Завантажити результати
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* ТАБЛИЦЯ РЕЗУЛЬТАТІВ */}
+                      <div className="bg-white border-2 border-gray-400 rounded-lg overflow-hidden">
+                        <div className="overflow-auto max-h-[600px]">
+                          <table className="w-full text-xs border-collapse">
+                            <thead className="sticky top-0 z-20 bg-gray-200">
+                              <tr>
+                                <th className="border-2 border-gray-400 p-3 text-center font-bold" colSpan={14}>
+                                  Розподіл витрат на експлуатаційне утримання (ЕУ) доріг державного значення
+                                </th>
+                              </tr>
+                              <tr>
+                                <th className="border border-gray-400 p-2 font-bold" rowSpan={2}>
+                                  Найменування<br/>області
+                                </th>
+                                <th className="border border-gray-400 p-2 bg-blue-100 font-bold text-center" colSpan={6}>
+                                  Протяжність доріг державного значення (км)
+                                </th>
+                                <th className="border border-gray-400 p-2 bg-green-100 font-bold text-center" colSpan={7}>
+                                  Мінімальна потреба в фінансових ресурсах на 20ХХ рік, тис.грн
+                                </th>
+                              </tr>
+                              <tr>
+                                <th className="border border-gray-400 p-1 text-center bg-blue-50">I</th>
+                                <th className="border border-gray-400 p-1 text-center bg-blue-50">II</th>
+                                <th className="border border-gray-400 p-1 text-center bg-blue-50">III</th>
+                                <th className="border border-gray-400 p-1 text-center bg-blue-50">IV</th>
+                                <th className="border border-gray-400 p-1 text-center bg-blue-50">V</th>
+                                <th className="border border-gray-400 p-1 text-center bg-blue-100 font-bold">Разом</th>
+                                <th className="border border-gray-400 p-1 text-center bg-green-50">I</th>
+                                <th className="border border-gray-400 p-1 text-center bg-green-50">II</th>
+                                <th className="border border-gray-400 p-1 text-center bg-green-50">III</th>
+                                <th className="border border-gray-400 p-1 text-center bg-green-50">IV</th>
+                                <th className="border border-gray-400 p-1 text-center bg-green-50">V</th>
+                                <th className="border border-gray-400 p-1 text-center bg-green-100 font-bold">Разом<br/>потреб</th>
+                                <th className="border border-gray-400 p-1 text-center bg-yellow-100 font-bold">%</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {regionalData.map((region, idx) => (
+                                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                  <td className="border border-gray-400 p-2 font-medium sticky left-0 bg-inherit z-10">
+                                    {region.name}
+                                  </td>
+                                  {([1, 2, 3, 4, 5] as const).map(cat => (
+                                    <td key={`length-${cat}`} className="border border-gray-400 p-2 text-right">
+                                      {region.lengthByCategory[cat] || '-'}
+                                    </td>
+                                  ))}
+                                  <td className="border border-gray-400 p-2 text-right font-bold bg-blue-50">
+                                    {region.totalLength.toFixed(0)}
+                                  </td>
+                                  {([1, 2, 3, 4, 5] as const).map(cat => (
+                                    <td key={`funding-${cat}`} className="border border-gray-400 p-2 text-right">
+                                      {region.fundingByCategory?.[cat] 
+                                        ? region.fundingByCategory[cat].toLocaleString('uk-UA', {maximumFractionDigits: 0})
+                                        : '-'
+                                      }
+                                    </td>
+                                  ))}
+                                  <td className="border border-gray-400 p-2 text-right font-bold bg-green-50">
+                                    {region.totalFunding 
+                                      ? region.totalFunding.toLocaleString('uk-UA', {maximumFractionDigits: 0})
+                                      : '-'
+                                    }
+                                  </td>
+                                  <td className="border border-gray-400 p-2 text-right font-bold bg-yellow-50">
+                                    {region.fundingPercentage ? region.fundingPercentage.toFixed(2) : '-'}
+                                  </td>
+                                </tr>
+                              ))}
+                              <tr className="bg-gray-300 font-bold">
+                                <td className="border-2 border-gray-400 p-3">ВСЬОГО ПО УКРАЇНІ</td>
+                                {([1, 2, 3, 4, 5] as const).map(cat => (
+                                  <td key={`total-length-${cat}`} className="border-2 border-gray-400 p-2 text-right">
+                                    {regionalData.reduce((sum, r) => sum + r.lengthByCategory[cat], 0).toFixed(0)}
+                                  </td>
+                                ))}
+                                <td className="border-2 border-gray-400 p-2 text-right bg-blue-100 text-base">
+                                  {regionalData.reduce((sum, r) => sum + r.totalLength, 0).toFixed(0)}
+                                </td>
+                                {([1, 2, 3, 4, 5] as const).map(cat => (
+                                  <td key={`total-funding-${cat}`} className="border-2 border-gray-400 p-2 text-right">
+                                    {regionalData.reduce((sum, r) => sum + (r.fundingByCategory?.[cat] || 0), 0)
+                                      .toLocaleString('uk-UA', {maximumFractionDigits: 0})}
+                                  </td>
+                                ))}
+                                <td className="border-2 border-gray-400 p-2 text-right bg-green-100 text-lg">
+                                  {regionalData.reduce((sum, r) => sum + (r.totalFunding || 0), 0)
+                                    .toLocaleString('uk-UA', {maximumFractionDigits: 0})}
+                                </td>
+                                <td className="border-2 border-gray-400 p-2 text-right bg-yellow-100 text-base">
+                                  100.00
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* СТАТИСТИКА */}
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center p-4 bg-white rounded-lg shadow">
+                          <div className="text-3xl font-bold text-green-700">
+                            {regionalResults.length}
+                          </div>
+                          <div className="text-sm text-gray-600">Областей проаналізовано</div>
+                        </div>
+                        <div className="text-center p-4 bg-white rounded-lg shadow">
+                          <div className="text-3xl font-bold text-blue-700">
+                            {regionalData.reduce((sum, r) => sum + r.totalLength, 0).toFixed(0)}
+                          </div>
+                          <div className="text-sm text-gray-600">Загальна довжина (км)</div>
+                        </div>
+                        <div className="text-center p-4 bg-white rounded-lg shadow">
+                          <div className="text-3xl font-bold text-purple-700">
+                            {(regionalResults.reduce((sum, r) => sum + r.totalFunding, 0) / 1000000).toFixed(2)}
+                          </div>
+                          <div className="text-sm text-gray-600">Млрд. грн (загалом)</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* 4. ALERT ПРО УСПІШНЕ ЗАВЕРШЕННЯ */}
+                  <Alert className="bg-green-100 border-green-400">
+                    <CheckCircle className="h-5 w-5 text-green-700" />
+                    <AlertTitle className="text-green-800 font-bold">✅ Розрахунок завершено успішно!</AlertTitle>
+                    <AlertDescription className="text-green-700">
+                      <div className="space-y-1">
+                        <div>Розраховано обсяг фінансування для <strong>{regionalResults.length} областей</strong> України.</div>
+                        <div>Загальна сума: <strong className="text-lg">{(regionalResults.reduce((sum, r) => sum + r.totalFunding, 0) / 1000000).toFixed(2)} млрд. грн</strong></div>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                </>
+              )}
+            </>
+          )}
+        {/* Інструкція - БЕЗ ЗМІН */}
+        {regionalData.length === 0 && (
+          <Alert className="bg-gray-50">
+            <AlertDescription>
+              <div className="space-y-3">
+                <p className="font-semibold">Як користуватися цією вкладкою:</p>
+                <ol className="list-decimal list-inside space-y-2 text-sm">
+                  <li>Підготуйте Excel файл з даними про дороги по областях України</li>
+                  <li>Структура файлу має містити колонки згідно з шаблоном</li>
+                  <li>Натисніть кнопку "Завантажити таблицю" та оберіть файл</li>
+                  <li>Натисніть "Розрахувати обсяг коштів"</li>
+                  <li>Завантажте результати у форматі Excel</li>
+                </ol>
+              </div>
+            </AlertDescription>
+          </Alert>
         )}
       </CardContent>
     </Card>

@@ -667,7 +667,7 @@ const RoadFundingApp: React.FC = () => {
 
     try {
       console.log('🟢 Блок 1: Начинаем сохранение...', {
-        sessionId: currentSession.id,
+        sessionId: sessionId,
         q1Result: q1Results.value,
         q2Result: q2Results.value
       });

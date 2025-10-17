@@ -1,36 +1,33 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
-import storage from 'redux-persist/lib/storage'; // localStorage
+import storage from 'redux-persist/lib/storage';
 import { combineReducers } from 'redux';
 
 import blockOneReducer from './slices/blockOneSlice';
 import blockTwoReducer from './slices/blockTwoSlice';
 import blockThreeReducer from './slices/blockThreeSlice';
+import roadDataReducer from '../store/roadDataSlice'; // ← ДОДАЙ ЦЕ!
 
-// Конфигурация persist
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['blockOne', 'blockTwo', 'blockThree'], // какие редьюсеры сохранять
+  whitelist: ['blockOne', 'blockTwo', 'blockThree', 'roadData'], // ← І ЦЕ!
 };
 
-// Комбинируем редьюсеры
 const rootReducer = combineReducers({
   blockOne: blockOneReducer,
   blockTwo: blockTwoReducer,
   blockThree: blockThreeReducer,
+  roadData: roadDataReducer, // ← І ЦЕ!
 });
 
-// Создаем persisted reducer
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
-// Создаем store
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        // Игнорируем redux-persist actions
         ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
       },
     }),
@@ -38,6 +35,5 @@ export const store = configureStore({
 
 export const persistor = persistStore(store);
 
-// Типы для TypeScript
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

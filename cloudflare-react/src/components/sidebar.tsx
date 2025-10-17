@@ -18,7 +18,7 @@ const navItems: NavItem[] = [
 
 export const Sidebar: React.FC = () => {
     return (
-        <aside className="w-80 h-screen relative overflow-hidden">
+        <aside className="w-80 h-screen fixed left-0 top-0 z-50">
             {/* Background with animated blobs */}
             <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-gray-100">
                 {/* Morphing blob 1 */}

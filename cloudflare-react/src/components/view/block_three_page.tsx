@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Save } from "lucide-react";
 import { Progress } from '../ui/progress';
+import { Button } from '../ui/button';
 import { RoadTechnicalAssessment } from '@/page/block_three/page_one_and_two';
 import { RoadCostIndicators } from '@/page/block_three/page_three_and_four';
 import  ENPVInputTable from '@/page/block_three/page_five_and_six';
 import { RoadRankingTable } from '@/page/block_three/page_seven';
+import { useHistory, useCurrentSession } from '../../redux/hooks';
+import { saveBlockThreeData } from '../../redux/slices/historySlice';
 
 export interface RoadSectionUI {
   id: string;
@@ -45,11 +48,16 @@ export interface RoadSectionUI {
 
 export const Block3MultiPageApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [sections, _setSections] = useState<RoadSectionUI[]>([]);
+  const [sections, setSections] = useState<RoadSectionUI[]>([]);
+  const [saveStatus, setSaveStatus] = useState<string>("");
+
+  // Redux hooks
+  const { createSession, dispatch } = useHistory();
+  const { currentSession } = useCurrentSession();
 
   React.useEffect(() => {
-    console.log('Главное состояние sections обновлено:', sections.length, 'секций');
-    console.log('Секции с рассчитанными данными:', sections.filter(s => s.workType).length);
+    console.log('Головний стан sections оновлено:', sections.length, 'секцій');
+    console.log('Секції з розрахованими даними:', sections.filter(s => s.workType).length);
   }, [sections]);
 
   const pages = [
@@ -63,13 +71,135 @@ export const Block3MultiPageApp: React.FC = () => {
     setCurrentPage(page);
   };
 
+  const handleSave = async () => {
+    // Создаем фиктивные данные для демонстрации
+    const mockSections: RoadSectionUI[] = [
+      {
+        id: '1',
+        name: 'Ділянка 1',
+        length: 5.2,
+        category: 1,
+        trafficIntensity: 1500,
+        strengthModulus: 120,
+        roughnessProfile: 2.1,
+        roughnessBump: 1.8,
+        rutDepth: 8.5,
+        frictionCoeff: 0.45,
+        significance: 'state',
+        estimatedCost: 2500000,
+        workType: 'Поточний ремонт',
+        categoryCompliant: true,
+        strengthCompliant: false,
+        evennessCompliant: true,
+        rutCompliant: false,
+        frictionCompliant: true
+      },
+      {
+        id: '2',
+        name: 'Ділянка 2',
+        length: 3.8,
+        category: 2,
+        trafficIntensity: 800,
+        strengthModulus: 95,
+        roughnessProfile: 3.2,
+        roughnessBump: 2.5,
+        rutDepth: 12.1,
+        frictionCoeff: 0.38,
+        significance: 'local',
+        estimatedCost: 1800000,
+        workType: 'Капітальний ремонт',
+        categoryCompliant: false,
+        strengthCompliant: false,
+        evennessCompliant: false,
+        rutCompliant: false,
+        frictionCompliant: false
+      }
+    ];
+
+    setSections(mockSections);
+
+    try {
+      setSaveStatus("Збереження...");
+      
+      // Створюємо сесію, якщо її немає
+      let sessionId = currentSession?.id;
+      if (!sessionId) {
+        await createSession(
+          `Планування ремонтів - ${new Date().toLocaleString('uk-UA')}`,
+          'Сесія розрахунків планування ремонтних робіт'
+        );
+        // После создания сессии, получаем её ID из currentSession
+        sessionId = currentSession?.id;
+      }
+
+      if (!sessionId) {
+        setSaveStatus("Помилка створення сесії");
+        setTimeout(() => setSaveStatus(""), 3000);
+        return;
+      }
+
+      // Створюємо фіктивні дані для демонстрації
+      const planningData = {
+        budget: 1000000, // Прикладний бюджет
+        utilizationPercent: 85.5,
+        selectedProjects: {
+          currentRepair: mockSections.filter(s => s.workType === 'Поточний ремонт').length,
+          capitalRepair: mockSections.filter(s => s.workType === 'Капітальний ремонт').length,
+          reconstruction: mockSections.filter(s => s.workType === 'Реконструкція').length
+        }
+      };
+
+      const complianceAnalysis = {
+        compliantSections: mockSections.filter(s => s.categoryCompliant).length,
+        nonCompliantSections: mockSections.filter(s => !s.categoryCompliant).length,
+        categoryIssues: mockSections.filter(s => !s.categoryCompliant).length,
+        frictionIssues: mockSections.filter(s => !s.frictionCompliant).length
+      };
+
+      const reportText = `Звіт з планування ремонтних робіт\n\n` +
+        `Оброблено секцій: ${mockSections.length}\n` +
+        `Потребують ремонту: ${mockSections.filter(s => s.workType && s.workType !== 'Не потрібно').length}\n` +
+        `Загальна вартість: ${mockSections.reduce((sum, s) => sum + (s.estimatedCost || 0), 0).toFixed(1)} млн грн\n` +
+        `Використання бюджету: ${planningData.utilizationPercent}%`;
+
+      await dispatch(saveBlockThreeData({
+        sessionId,
+        sections: mockSections,
+        planningData,
+        complianceAnalysis,
+        reportText
+      }));
+
+      setSaveStatus("✅ Збережено в історію!");
+      console.log('Результати планування ремонтів збережено в Redux історію');
+    } catch (error) {
+      console.error('Помилка при збереженні результатів:', error);
+      setSaveStatus("❌ Помилка збереження");
+    }
+    
+    setTimeout(() => setSaveStatus(""), 3000);
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Заголовок */}
-      <div className="mb-8">
+      <div className="mb-8 flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Планування ремонтів автомобільних доріг
         </h1>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleSave}
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+            disabled={false}
+          >
+            <Save className="h-4 w-4" />
+            Зберегти
+          </Button>
+          {saveStatus && (
+            <span className="text-sm text-green-600">{saveStatus}</span>
+          )}
+        </div>
       </div>
 
       {/* Навігація по сторінках */}

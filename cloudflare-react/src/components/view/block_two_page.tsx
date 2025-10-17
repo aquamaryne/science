@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { useHistory, useCurrentSession } from '../../redux/hooks';
+import { saveBlockTwoData } from '../../redux/slices/historySlice';
 
 // Импорт компонентов
 import Block2StateRoads from '../../page/block_two/Block2StateRoads';
@@ -59,6 +61,10 @@ const Block2MaintenanceCalculator: React.FC = () => {
   const [regionCoefficients] = useState<RegionCoefficients[]>(getRegionCoefficients());
   const [_regionData] = useState<RegionRoads>(generateSampleRegionData("Оберіть регіон"));
   const [saveStatus, setSaveStatus] = useState<string>("");
+  
+  // Redux hooks
+  const { createSession, dispatch } = useHistory();
+  const { currentSession } = useCurrentSession();
 
   // Инициализация расчетов при монтировании компонента
   useEffect(() => {
@@ -69,6 +75,8 @@ const Block2MaintenanceCalculator: React.FC = () => {
   useEffect(() => {
     calculateLocalRoadRates();
   }, [localRoadBaseRate, localInflationIndexes]);
+
+  // Инициализация (убираем автоматическое создание сессии)
 
   // Расчет кумулятивного индекса инфляции
   const calculateCumulativeInflationIndex = (indexes: number[]): number => {
@@ -165,9 +173,49 @@ const Block2MaintenanceCalculator: React.FC = () => {
       {/* Кнопка сохранения проекта */}
       <div className="flex items-center gap-3">
         <Button
-          onClick={() => {
+          onClick={async () => {
             setSaveStatus("Збереження...");
-            setTimeout(() => setSaveStatus("Збережено!"), 1000);
+                 try {
+                   // Создаем сессию, если её нет
+                   let sessionId = currentSession?.id;
+                   if (!sessionId) {
+                     await createSession(
+                       `Експлуатаційне утримання доріг - ${new Date().toLocaleString('uk-UA')}`,
+                       'Сесія розрахунків аналізу дорожніх секцій'
+                     );
+                     // После создания сессии, получаем её ID из currentSession
+                     sessionId = currentSession?.id;
+                   }
+
+                   if (sessionId) {
+                     // Создаем фиктивные результаты финансирования для демонстрации
+                     const fundingResults = {
+                       stateFunding: stateRoadRate.category1 * 1000, // Примерные значения
+                       localFunding: localRoadRate.category1 * 1000,
+                       totalFunding: (stateRoadRate.category1 + localRoadRate.category1) * 1000
+                     };
+
+                     await dispatch(saveBlockTwoData({
+                       sessionId: sessionId,
+                       stateRoadBaseRate,
+                       localRoadBaseRate,
+                       stateInflationIndexes,
+                       localInflationIndexes,
+                       selectedRegion: "Оберіть регіон",
+                       stateRoadRates: stateRoadRate,
+                       localRoadRates: localRoadRate,
+                       fundingResults
+                     }));
+
+                     setSaveStatus("✅ Збережено в історію!");
+                     console.log('Результати експлуатаційного утримання збережено в Redux історію');
+                   } else {
+                     setSaveStatus("❌ Помилка створення сесії");
+                   }
+            } catch (error) {
+              console.error('Ошибка при сохранении:', error);
+              setSaveStatus("Помилка збереження");
+            }
             setTimeout(() => setSaveStatus(""), 3000);
           }}
           className="bg-blue-600 hover:bg-blue-700 text-white"

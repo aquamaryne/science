@@ -1,5 +1,14 @@
 import { type TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from './store';
+import { 
+  createSession, 
+  loadUserSessions, 
+  loadStatistics, 
+  deleteSession, 
+  exportSession, 
+  clearError, 
+  setCurrentSession 
+} from './slices/historySlice';
 
 // Создаем типизированные версии хуков
 // Используйте их вместо обычных useDispatch и useSelector
@@ -69,6 +78,7 @@ export const useAppStatus = () => {
   const blockOne = useAppSelector(state => state.blockOne);
   const blockTwo = useAppSelector(state => state.blockTwo);
   const blockThree = useAppSelector(state => state.blockThree);
+  const history = useAppSelector(state => state.history);
   
   return {
     blockOne: {
@@ -91,5 +101,43 @@ export const useAppStatus = () => {
       ).length,
       totalCost: blockThree.sections.reduce((sum, s) => sum + (s.estimatedCost || 0), 0),
     },
+    history: {
+      sessionsCount: history.sessions.length,
+      currentSession: history.currentSession,
+      lastSaved: history.lastSaved,
+      statistics: history.statistics,
+    },
+  };
+};
+
+// Хуки для работы с историей
+export const useHistory = () => {
+  const dispatch = useAppDispatch();
+  const history = useAppSelector(state => state.history);
+  
+  return {
+    ...history,
+    dispatch,
+    // Удобные методы для работы с историей
+    createSession: (title?: string, description?: string) => 
+      dispatch(createSession({ title, description })),
+    loadSessions: () => dispatch(loadUserSessions()),
+    loadStatistics: () => dispatch(loadStatistics()),
+    deleteSession: (sessionId: string) => dispatch(deleteSession(sessionId)),
+    exportSession: (sessionId: string) => dispatch(exportSession(sessionId)),
+    clearError: () => dispatch(clearError()),
+  };
+};
+
+// Хук для работы с текущей сессией
+export const useCurrentSession = () => {
+  const currentSession = useAppSelector(state => state.history.currentSession);
+  const dispatch = useAppDispatch();
+  
+  return {
+    currentSession,
+    setCurrentSession: (session: any) => dispatch(setCurrentSession(session)),
+    hasCurrentSession: !!currentSession,
+    isComplete: currentSession?.isComplete || false,
   };
 };

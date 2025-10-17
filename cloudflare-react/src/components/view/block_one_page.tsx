@@ -7,6 +7,8 @@ import {
   calculateQ2
 } from '../../modules/block_one';
 import { calculationResultsService } from '../../service/resultLocalStorage';
+import { useHistory, useCurrentSession } from '../../redux/hooks';
+import { saveBlockOneData } from '../../redux/slices/historySlice';
 // shadcn/ui components
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -611,7 +613,11 @@ const RoadFundingApp: React.FC = () => {
   const [q2Results, setQ2Results] = useState<{ value: number; items: ExtendedBudgetItem[] } | null>(null);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
-  // Создаем сессию при первом рендере
+  // Redux hooks
+  const { createSession, dispatch } = useHistory();
+  const { currentSession } = useCurrentSession();
+
+  // Инициализируем старый сервис при первом рендере
   React.useEffect(() => {
     const newSessionId = calculationResultsService.createSession();
     setSessionId(newSessionId);
@@ -626,9 +632,31 @@ const RoadFundingApp: React.FC = () => {
   };
 
   // Сохранение результатов в сервис
-  const saveResults = () => {
+  const saveResults = async () => {
     if (!q1Results || !q2Results) {
       alert("Спочатку виконайте розрахунки Q₁ та Q₂!");
+      return;
+    }
+
+    // Создаем сессию, если её нет
+    let sessionId = currentSession?.id;
+    if (!sessionId) {
+      try {
+        await createSession(
+          `Розрахунок бюджетного фінансування - ${new Date().toLocaleString('uk-UA')}`,
+          'Сесія розрахунків визначення обсягу бюджетного фінансування'
+        );
+        // После создания сессии, получаем её ID из currentSession
+        sessionId = currentSession?.id;
+      } catch (error) {
+        console.error('Помилка створення сесії:', error);
+        alert("Помилка створення сесії");
+        return;
+      }
+    }
+
+    if (!sessionId) {
+      alert("Немає активної сесії для збереження");
       return;
     }
 
@@ -637,16 +665,43 @@ const RoadFundingApp: React.FC = () => {
       return items.map(({ attachedFiles, ...item }) => item);
     };
 
-    const success = calculationResultsService.saveBlockOneResults(
-      convertToBasicItems(q1Results.items),
-      q1Results.value,
-      convertToBasicItems(q2Results.items),
-      q2Results.value
-    );
+    try {
+      console.log('🟢 Блок 1: Начинаем сохранение...', {
+        sessionId: currentSession.id,
+        q1Result: q1Results.value,
+        q2Result: q2Results.value
+      });
 
-    if (success) {
-      setShowSaveSuccess(true);
-      setTimeout(() => setShowSaveSuccess(false), 3000);
+      // Сохраняем в старый сервис
+      const success = calculationResultsService.saveBlockOneResults(
+        convertToBasicItems(q1Results.items),
+        q1Results.value,
+        convertToBasicItems(q2Results.items),
+        q2Results.value
+      );
+
+      if (success) {
+        // Сохраняем в Redux
+        const result = await dispatch(saveBlockOneData({
+          sessionId: sessionId!,
+          stateRoadBudget: convertToBasicItems(q1Results.items),
+          localRoadBudget: convertToBasicItems(q2Results.items),
+          q1Result: q1Results.value,
+          q2Result: q2Results.value
+        }));
+
+        if (result.type.endsWith('/fulfilled')) {
+          setShowSaveSuccess(true);
+          setTimeout(() => setShowSaveSuccess(false), 3000);
+          console.log('✅ Результати розрахунку бюджетного фінансування збережено в Redux історію');
+        } else {
+          console.error('❌ Помилка збереження в Redux:', result);
+          alert('Помилка збереження в історію');
+        }
+      }
+    } catch (error) {
+      console.error('🔴 Ошибка при сохранении результатов:', error);
+      alert('Помилка при збереженні результатів');
     }
   };
 

@@ -486,7 +486,7 @@ const ENPVCalculationTool: React.FC = () => {
           <CheckCircle2 className="h-4 w-4 text-green-600" />
           <AlertDescription className="text-green-800">
             <div className="space-y-2">
-              <div className="font-semibold">Результати з Блоку 2 (Експлуатаційне утримання):</div>
+              <div className="font-semibold">Результати з Експлуатаційне утримання:</div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-3 bg-white rounded border">
                   <div className="text-lg font-bold text-blue-700">
@@ -534,7 +534,7 @@ const ENPVCalculationTool: React.FC = () => {
         <Alert className="bg-orange-50 border-orange-400">
           <AlertCircle className="h-5 w-5 text-orange-600" />
           <AlertDescription className="text-orange-800">
-            <strong>Немає даних з Блоку 2!</strong>
+            <strong>Немає даних з Експлуатаційне утримання доріг!</strong>
             <div className="text-sm mt-1">
               Спочатку перейдіть на вкладку "Експлуатаційне утримання доріг" 
               та виконайте розрахунки обсягу коштів на ЕУ.

@@ -5,6 +5,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle, Download, Calculator, AlertTriangle, Construction, Upload, Edit } from "lucide-react";
 import * as XLSX from 'xlsx';
 
+// ✅ ІМПОРТ REDUX
+import { useAppSelector, useAppDispatch } from '@/redux/hooks';
+import { saveBlockTwoData } from '@/redux/slices/historySlice';
+
 // ✅ ІМПОРТИ З МОДУЛЯ
 import type { 
   RegionCoefficients,
@@ -73,6 +77,13 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
   regionCoefficients,
   stateInflationIndexes
 }) => {
+  // ✅ REDUX HOOKS
+  const dispatch = useAppDispatch();
+  const currentSession = useAppSelector(state => state.history.currentSession);
+  const q1Value = currentSession?.blockOneData?.q1Result || null;
+  const q2Value = currentSession?.blockOneData?.q2Result || null;
+  const hasBlockOneData = currentSession?.blockOneData !== undefined;
+
   const [roadType, setRoadType] = React.useState<RoadType>('state');
   const [regionalData, setRegionalData] = React.useState<RegionalRoadData[]>([]);
   const [regionalResults, setRegionalResults] = React.useState<RegionalCalculationResult[]>([]);
@@ -389,6 +400,51 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
     }
   };
 
+  // ✅ ФУНКЦІЯ ЗБЕРЕЖЕННЯ РЕЗУЛЬТАТІВ БЛОКУ 2
+  const saveBlockTwoResults = async () => {
+    if (!currentSession?.id || regionalResults.length === 0) {
+      alert("Немає результатів для збереження!");
+      return;
+    }
+
+    try {
+      const totalFunding = regionalResults.reduce((sum, r) => sum + r.totalFunding, 0);
+      const stateFunding = roadType === 'state' ? totalFunding : 0;
+      const localFunding = roadType === 'local' ? totalFunding : 0;
+
+      const result = await dispatch(saveBlockTwoData({
+        sessionId: currentSession.id,
+        stateRoadBaseRate: 0, // Можна додати пізніше
+        localRoadBaseRate: 0, // Можна додати пізніше
+        stateInflationIndexes,
+        localInflationIndexes: stateInflationIndexes, // Використовуємо ті ж індекси
+        selectedRegion: 'Україна',
+        stateRoadRates: {
+          category1: 0, category2: 0, category3: 0, category4: 0, category5: 0
+        },
+        localRoadRates: {
+          category1: 0, category2: 0, category3: 0, category4: 0, category5: 0
+        },
+        fundingResults: {
+          stateFunding,
+          localFunding,
+          totalFunding
+        }
+      }));
+
+      if (result.type.endsWith('/fulfilled')) {
+        console.log('✅ Результати Блоку 2 збережено в Redux');
+        alert('Результати Блоку 2 успішно збережено!');
+      } else {
+        console.error('❌ Помилка збереження Блоку 2:', result);
+        alert('Помилка при збереженні результатів Блоку 2');
+      }
+    } catch (error) {
+      console.error('❌ Помилка збереження Блоку 2:', error);
+      alert('Помилка при збереженні результатів Блоку 2');
+    }
+  };
+
   // Очищаємо результати при зміні типу доріг
   React.useEffect(() => {
     setRegionalResults([]);
@@ -408,6 +464,48 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        
+        {/* ✅ ПОКАЗУЄМО Q1 ТА Q2 З БЛОКУ 1 */}
+        {hasBlockOneData && (
+          <Alert className="bg-blue-50 border-blue-200">
+            <AlertDescription>
+              <div className="space-y-2">
+                <div className="font-semibold text-blue-900">Дані з Розрахунок бюджетного фінансування доріг</div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-3 bg-white rounded border">
+                    <div className="text-lg font-bold text-blue-700">
+                      {q1Value ? q1Value.toLocaleString() : '—'} тис. грн
+                    </div>
+                    <div className="text-xs text-gray-600">Q₁ (Державні дороги)</div>
+                  </div>
+                  <div className="text-center p-3 bg-white rounded border">
+                    <div className="text-lg font-bold text-green-700">
+                      {q2Value ? q2Value.toLocaleString() : '—'} тис. грн
+                    </div>
+                    <div className="text-xs text-gray-600">Q₂ (Місцеві дороги)</div>
+                  </div>
+                </div>
+                <div className="text-xs text-blue-700">
+                  💡 Ці значення будуть використані для розрахунку залишку коштів на ремонти
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* ✅ ПОПЕРЕДЖЕННЯ ЯКЩО НЕМАЄ ДАНИХ З БЛОКУ 1 */}
+        {!hasBlockOneData && (
+          <Alert className="bg-yellow-50 border-yellow-400">
+            <AlertTriangle className="h-5 w-5 text-yellow-600" />
+            <AlertDescription className="text-yellow-800">
+              <strong>Немає даних з Блоку 1!</strong>
+              <div className="text-sm mt-1">
+                Спочатку перейдіть на вкладку "Визначення обсягу бюджетного фінансування" 
+                та виконайте розрахунки Q₁ та Q₂.
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
         
         {/* ВИБІР ТИПУ ДОРІГ */}
         <Alert className="bg-purple-50 border-purple-300">
@@ -1014,7 +1112,81 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                     </CardContent>
                   </Card>
 
-                  {/* 4. ALERT ПРО УСПІШНЕ ЗАВЕРШЕННЯ */}
+                  {/* 4. РОЗРАХУНОК ЗАЛИШКУ КОШТІВ */}
+                  {hasBlockOneData && (
+                    <Card className="bg-orange-50 border-2 border-orange-300">
+                      <CardHeader>
+                        <CardTitle className="text-orange-800 text-base">
+                          🧮 Розрахунок залишку коштів на ремонти
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="text-center p-4 bg-white rounded border">
+                              <div className="text-sm text-gray-600 mb-1">
+                                {roadType === 'state' ? 'Q₁ (Державні дороги)' : 'Q₂ (Місцеві дороги)'}
+                              </div>
+                              <div className="text-2xl font-bold text-blue-700">
+                                {roadType === 'state' ? 
+                                  (q1Value ? q1Value.toLocaleString() : '—') : 
+                                  (q2Value ? q2Value.toLocaleString() : '—')
+                                } тис. грн
+                              </div>
+                            </div>
+                            
+                            <div className="text-center p-4 bg-white rounded border">
+                              <div className="text-sm text-gray-600 mb-1">Витрати на ЕУ</div>
+                              <div className="text-2xl font-bold text-red-700">
+                                {regionalResults.reduce((sum, r) => sum + r.totalFunding, 0).toLocaleString()} тис. грн
+                              </div>
+                            </div>
+                            
+                            <div className="text-center p-4 bg-white rounded border">
+                              <div className="text-sm text-gray-600 mb-1">Залишок на ремонти</div>
+                              <div className={`text-2xl font-bold ${
+                                (() => {
+                                  const totalEU = regionalResults.reduce((sum, r) => sum + r.totalFunding, 0);
+                                  const available = roadType === 'state' ? (q1Value || 0) : (q2Value || 0);
+                                  const remainder = available - totalEU;
+                                  return remainder >= 0 ? 'text-green-700' : 'text-red-700';
+                                })()
+                              }`}>
+                                {(() => {
+                                  const totalEU = regionalResults.reduce((sum, r) => sum + r.totalFunding, 0);
+                                  const available = roadType === 'state' ? (q1Value || 0) : (q2Value || 0);
+                                  const remainder = available - totalEU;
+                                  return remainder.toLocaleString();
+                                })()} тис. грн
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* 5. КНОПКА ЗБЕРЕЖЕННЯ РЕЗУЛЬТАТІВ */}
+                  <Card className="bg-blue-50 border-2 border-blue-300">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-semibold text-blue-900">Зберегти результати Блоку 2</div>
+                          <div className="text-sm text-blue-700">
+                            Результати будуть доступні в Блоці 3 для розрахунку ENPV
+                          </div>
+                        </div>
+                        <Button
+                          onClick={saveBlockTwoResults}
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          💾 Зберегти результати
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* 6. ALERT ПРО УСПІШНЕ ЗАВЕРШЕННЯ */}
                   <Alert className="bg-green-100 border-green-400">
                     <CheckCircle className="h-5 w-5 text-green-700" />
                     <AlertTitle className="text-green-800 font-bold">✅ Розрахунок завершено успішно!</AlertTitle>
@@ -1023,6 +1195,18 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                         <div>Розраховано обсяг фінансування для <strong>{regionalResults.length} областей</strong> України.</div>
                         <div>Тип доріг: <strong>{roadType === 'state' ? 'Державного значення' : 'Місцевого значення'}</strong></div>
                         <div>Загальна сума: <strong className="text-lg">{(regionalResults.reduce((sum, r) => sum + r.totalFunding, 0) / 1000000).toFixed(2)} млрд. грн</strong></div>
+                        {hasBlockOneData && (
+                          <div className="text-sm">
+                            Залишок на ремонти: <strong className="text-lg">
+                              {(() => {
+                                const totalEU = regionalResults.reduce((sum, r) => sum + r.totalFunding, 0);
+                                const available = roadType === 'state' ? (q1Value || 0) : (q2Value || 0);
+                                const remainder = available - totalEU;
+                                return remainder.toLocaleString();
+                              })()} тис. грн
+                            </strong>
+                          </div>
+                        )}
                       </div>
                     </AlertDescription>
                   </Alert>

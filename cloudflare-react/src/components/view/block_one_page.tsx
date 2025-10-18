@@ -18,160 +18,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { UploadIcon, FileIcon, XIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { setBlockOneBudgetData, getBudgetStatistics } from '../../modules/block_three';
 
 // Расширенный интерфейс для BudgetItem с файлами
 interface ExtendedBudgetItem extends BudgetItem {
   attachedFiles?: File[];
 }
 
-const BlockThreeIntegration: React.FC<{
-  q1Results: { value: number; items: ExtendedBudgetItem[] } | null;
-  q2Results: { value: number; items: ExtendedBudgetItem[] } | null;
-  sessionId: string | null;
-}> = ({ q1Results, q2Results, sessionId }) => {
-  const [isDataSent, setIsDataSent] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-
-  // Функция передачи данных в Блок 3
-  const sendDataToBlockThree = () => {
-    if (!q1Results || !q2Results || !sessionId) {
-      alert("Спочатку виконайте всі розрахунки!");
-      return;
-    }
-
-    // Конвертируем ExtendedBudgetItem обратно в BudgetItem
-    const convertToBasicItems = (items: ExtendedBudgetItem[]): BudgetItem[] => {
-      return items.map(({ attachedFiles, ...item }) => item);
-    };
-
-    try {
-      // Передаем данные в модуль block_three
-      setBlockOneBudgetData({
-        q1Value: q1Results.value,
-        q2Value: q2Results.value,
-        q1Items: convertToBasicItems(q1Results.items),
-        q2Items: convertToBasicItems(q2Results.items),
-        sessionId: sessionId
-      });
-
-      setIsDataSent(true);
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
-
-      console.log('Дані успішно передані в Блок 3');
-    } catch (error) {
-      console.error('Помилка при передачі даних в Блок 3:', error);
-      alert('Помилка при передачі даних в Блок 3');
-    }
-  };
-
-  // Проверяем статус данных в Блоке 3
-  const budgetStats = getBudgetStatistics();
-
-  return (
-    <Card className="glass-card mt-8 w-full">
-      <CardHeader className="glass-card-header">
-        <CardTitle className="text-xl font-bold">
-          <div>Інтеграція з Блоком 3: Планування ремонтів</div>
-          <div className="text-sm font-normal">
-            {budgetStats.hasData ? (
-              <span className="text-green-600">🟢 Дані передані</span>
-            ) : (
-              <span className="text-orange-600">🟡 Очікує передачі</span>
-            )}
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-6">
-        {showSuccess && (
-          <Alert className="glass-card mb-4">
-            <AlertDescription className="text-green-600 font-medium">
-              ✅ Дані успішно передані в Блок 3 для планування ремонтів!
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <div className="space-y-4">
-          <div className="text-sm text-gray-600">
-            <strong>Дані для передачі в Блок 3:</strong>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div className="glass-card p-3">
-              <div className="text-lg font-bold">
-                {q1Results?.value.toLocaleString() || '—'} тис. грн
-              </div>
-              <div className="text-xs opacity-70">Q₁ (Державні дороги)</div>
-            </div>
-            
-            <div className="glass-card p-3">
-              <div className="text-lg font-bold">
-                {q2Results?.value.toLocaleString() || '—'} тис. грн
-              </div>
-              <div className="text-xs opacity-70">Q₂ (Місцеві дороги)</div>
-            </div>
-            
-            <div className="glass-card p-3" style={{ background: 'rgba(var(--c-action), 0.08)' }}>
-              <div className="text-lg font-bold" style={{ color: 'rgb(var(--c-action))' }}>
-                {(q1Results && q2Results) ? 
-                  (q1Results.value + q2Results.value).toLocaleString() : '—'} тис. грн
-              </div>
-            <div className="text-xs opacity-70">Загальний бюджет</div>
-          </div>
-        </div>
-
-          {budgetStats.hasData && (
-            <div className="mt-4 p-3 bg-green-50 rounded border border-green-200">
-              <div className="text-sm text-green-700">
-                <strong>Статус в Блоці 3:</strong>
-              </div>
-              <div className="grid grid-cols-2 gap-4 mt-2 text-xs">
-                <div>
-                  <div>Загальний бюджет: <strong>{budgetStats.totalBudget.toLocaleString()}</strong> тис. грн</div>
-                  <div>Державні дороги: <strong>{budgetStats.q1Budget.toLocaleString()}</strong> тис. грн</div>
-                  <div>Місцеві дороги: <strong>{budgetStats.q2Budget.toLocaleString()}</strong> тис. грн</div>
-                </div>
-                {budgetStats.allocation && (
-                  <div>
-                    <div>Поточний ремонт: <strong>{budgetStats.allocation.currentRepair.toLocaleString()}</strong> тис. грн</div>
-                    <div>Капітальний ремонт: <strong>{budgetStats.allocation.capitalRepair.toLocaleString()}</strong> тис. грн</div>
-                    <div>Реконструкція: <strong>{budgetStats.allocation.reconstruction.toLocaleString()}</strong> тис. грн</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          
-          <div className="text-xs text-gray-500">
-            Сесія: {sessionId} | 
-            Стан: {isDataSent ? 'Передано' : 'Готово до передачі'}
-          </div>
-          
-          <Button 
-            onClick={sendDataToBlockThree}
-            disabled={!q1Results || !q2Results || !sessionId}
-            className={`glass-button glass-button--xl w-full ${
-              isDataSent 
-                ? 'glass-button--success' 
-                : 'glass-button--primary'
-            }`}
-          >
-            {isDataSent ? (
-              <>✅ Дані передані - Перерахувати і передати знову</>
-            ) : (
-              <>📤 Передати дані в Блок 3 для планування ремонтів</>
-            )}
-          </Button>
-
-          <div className="text-xs text-gray-500 text-center">
-            💡 Після передачі даних ви зможете використовувати їх для планування ремонтних робіт у Блоці 3
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
 
 // Модифицированные данные с переносом на новую строку
 const modifyItemsWithLineBreak = (items: BudgetItem[]): ExtendedBudgetItem[] => {
@@ -179,7 +31,7 @@ const modifyItemsWithLineBreak = (items: BudgetItem[]): ExtendedBudgetItem[] => 
     // Делим название на части, учитывая специфические места разделения
     let modifiedName = item.name;
 
-    if (item.id === "Qдз") {
+    if (item.id === "Q2") {
       modifiedName = "Обсяг бюджетних коштів на фінансове забезпечення нового будівництва, реконструкції,\nкапітального та поточного ремонтів і утримання автомобільних доріг державного значення";
     } 
     else if (item.id === "Qпп") {
@@ -505,10 +357,10 @@ const LocalRoadFundingBlock = ({
       };
     });
 
-    const qmzValue = originalLocalRoadItems.find(item => item.id === "Qмз")?.value;
+    const qmzValue = originalLocalRoadItems.find(item => item.id === "Q2")?.value;
     
     if (qmzValue === null || qmzValue === undefined) {
-      alert("Необхідно заповнити значення Qмз!");
+      alert("Необхідно заповнити значення Q2!");
       return;
     }
 
@@ -767,15 +619,10 @@ const RoadFundingApp: React.FC = () => {
                 </div>
               </div>
               
-              <BlockThreeIntegration 
-                q1Results={q1Results}
-                q2Results={q2Results}
-                sessionId={sessionId}
-              />
 
               <Button 
                 onClick={saveResults}
-                className="glass-button glass-button--success glass-button--xl w-full mt-6 text-blue-600 text-blue"
+                className="glass-button glass-button--success glass-button--xl w-full mt-6 text-white"
               >
                 💾 Зберегти результати в сесію розрахунків
               </Button>

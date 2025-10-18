@@ -20,7 +20,7 @@ export interface RoadFundingData {
 // Начальные данные для государственных дорог
 export const initialStateRoadItems: BudgetItem[] = [
   {
-    id: "Qдз",
+    id: "Q1",
     name: "Обсяг бюджетного фінансування автомобільних доріг державного значення",
     value: null,
     tooltip: "Обсяг бюджетних коштів, що спрямовується на фінансове забезпечення нового будівництва, реконструкції, капітального та поточного ремонтів і утримання автомобільних доріг загального користування державного значення"
@@ -78,7 +78,7 @@ export const initialStateRoadItems: BudgetItem[] = [
 // Сокращенные названия для местных дорог
 export const initialLocalRoadItems: BudgetItem[] = [
   {
-    id: "Qмз",
+    id: "Q2",
     name: "Обсяг бюджетних коштів на дороги місцевого значення",
     value: null,
     tooltip: "Загальний обсяг бюджетних коштів на дороги місцевого значення"
@@ -110,17 +110,17 @@ export const initialLocalRoadItems: BudgetItem[] = [
 ];
 // Расчет Q1 (для государственных дорог)
 export const calculateQ1 = (items: BudgetItem[]): number | null => {
-  const qdzValue = items.find(item => item.id === "Qдз")?.value;
+  const qdzValue = items.find(item => item.id === "Q1")?.value;
   
   if (qdzValue === null || qdzValue === undefined) {
     return null;
   }
 
-  // Расчет по формуле: Q1 = Qдз - Qпп - Qміжн - QІАС - Qн - Qлік - Qвп - Qупр - QДПП
+  // Расчет по формуле: Qдз = Q1 - Qпп - Qміжн - QІАС - Qн - Qлік - Qвп - Qупр - QДПП
   let result = qdzValue;
   
   items.forEach(item => {
-    if (item.id !== "Qдз" && item.value !== null) {
+    if (item.id !== "Q1" && item.value !== null) {
       result -= item.value;
     }
   });
@@ -130,17 +130,17 @@ export const calculateQ1 = (items: BudgetItem[]): number | null => {
 
 // Расчет Q2 (для местных дорог)
 export const calculateQ2 = (items: BudgetItem[]): number | null => {
-  const qmzValue = items.find(item => item.id === "Qмз")?.value;
+  const qmzValue = items.find(item => item.id === "Q2")?.value;
   
   if (qmzValue === null || qmzValue === undefined) {
     return null;
   }
 
-  // Расчет по формуле: Q2 = Qмз - Qкред - Qн2 - QДПП2 - Qком
+  // Расчет по формуле: Qмз = Q2 - Qкред - Qн2 - QДПП2 - Qком
   let result = qmzValue;
   
   items.forEach(item => {
-    if (item.id !== "Qмз" && item.value !== null) {
+    if (item.id !== "Q2" && item.value !== null) {
       result -= item.value;
     }
   });

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // ✅ ІМПОРТ REDUX
-import { useAppSelector } from '@/store/hooks';
+import { useAppSelector } from '@/redux/hooks';
 
 // ИМПОРТ ФУНКЦИЙ ИЗ МОДУЛЯ
 import { 
@@ -102,6 +102,17 @@ const ENPVCalculationTool: React.FC = () => {
   const calculatedRoadsFromRedux = useAppSelector(state => state.roadData.calculatedRoads);
   const hasCalculatedData = calculatedRoadsFromRedux.length > 0;
   const lastCalculationTime = useAppSelector(state => state.roadData.lastCalculationTime);
+  
+  // ✅ ЧИТАЄМО Q1 ТА Q2 З БЛОКУ 1
+  const currentSession = useAppSelector(state => state.history.currentSession);
+  const q1Value = currentSession?.blockOneData?.q1Result || null;
+  const q2Value = currentSession?.blockOneData?.q2Result || null;
+  const hasBlockOneData = currentSession?.blockOneData !== undefined;
+  
+  // ✅ ЧИТАЄМО РЕЗУЛЬТАТИ З БЛОКУ 2
+  const blockTwoData = currentSession?.blockTwoData;
+  const hasBlockTwoData = blockTwoData !== undefined;
+  const blockTwoFunding = blockTwoData?.fundingResults;
 
   // ✅ ФОРМУЄМО СПИСОК ДОРІГ З REDUX
   const roadSections = useMemo<RoadSection[]>(() => {
@@ -363,6 +374,13 @@ const ENPVCalculationTool: React.FC = () => {
       console.log(`BCR: ${(totalDiscountedBenefits / totalDiscountedCosts).toFixed(2)}`);
       console.log(`Фінальна ENPV: ${cumulativeENPV.toFixed(2)} млн грн`);
   
+      // ✅ РОЗРАХУЄМО ЗАЛИШОК КОШТІВ НА РЕМОНТИ (використовується в UI)
+      // const projectCost = currentData.totalReconstructionCost;
+      // const availableBudget = currentData.roadCategory === '1' || currentData.roadCategory === '2' || currentData.roadCategory === '3' 
+      //   ? (q1Value || 0) 
+      //   : (q2Value || 0);
+      // const remainderForRepairs = availableBudget - projectCost;
+
       const results: DetailedResults = {
         yearlyData,
         summary: {
@@ -457,6 +475,69 @@ const ENPVCalculationTool: React.FC = () => {
             <div className="text-sm mt-1">
               Спочатку перейдіть на вкладку "Визначення показників транспортно-експлуатаційного стану" 
               та виконайте розрахунок для доріг.
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* ✅ ПОКАЗУЄМО РЕЗУЛЬТАТИ З БЛОКУ 2 */}
+      {hasBlockTwoData && blockTwoFunding && (
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            <div className="space-y-2">
+              <div className="font-semibold">Результати з Блоку 2 (Експлуатаційне утримання):</div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-3 bg-white rounded border">
+                  <div className="text-lg font-bold text-blue-700">
+                    {blockTwoFunding.stateFunding.toLocaleString()} тис. грн
+                  </div>
+                  <div className="text-xs text-gray-600">Державні дороги</div>
+                </div>
+                <div className="text-center p-3 bg-white rounded border">
+                  <div className="text-lg font-bold text-green-700">
+                    {blockTwoFunding.localFunding.toLocaleString()} тис. грн
+                  </div>
+                  <div className="text-xs text-gray-600">Місцеві дороги</div>
+                </div>
+                <div className="text-center p-3 bg-white rounded border">
+                  <div className="text-lg font-bold text-purple-700">
+                    {blockTwoFunding.totalFunding.toLocaleString()} тис. грн
+                  </div>
+                  <div className="text-xs text-gray-600">Загальна сума</div>
+                </div>
+              </div>
+              <div className="text-xs text-green-700">
+                💡 Ці результати використовуються для розрахунку залишку коштів на ремонти
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* ✅ ПОПЕРЕДЖЕННЯ ЯКЩО НЕМАЄ ДАНИХ З БЛОКУ 1 */}
+      {!hasBlockOneData && (
+        <Alert className="bg-yellow-50 border-yellow-400">
+          <AlertCircle className="h-5 w-5 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            <strong>Немає даних з Блоку 1!</strong>
+            <div className="text-sm mt-1">
+              Спочатку перейдіть на вкладку "Визначення обсягу бюджетного фінансування" 
+              та виконайте розрахунки Q₁ та Q₂.
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* ✅ ПОПЕРЕДЖЕННЯ ЯКЩО НЕМАЄ ДАНИХ З БЛОКУ 2 */}
+      {!hasBlockTwoData && (
+        <Alert className="bg-orange-50 border-orange-400">
+          <AlertCircle className="h-5 w-5 text-orange-600" />
+          <AlertDescription className="text-orange-800">
+            <strong>Немає даних з Блоку 2!</strong>
+            <div className="text-sm mt-1">
+              Спочатку перейдіть на вкладку "Експлуатаційне утримання доріг" 
+              та виконайте розрахунки обсягу коштів на ЕУ.
             </div>
           </AlertDescription>
         </Alert>
@@ -1267,6 +1348,90 @@ const ENPVCalculationTool: React.FC = () => {
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* ✅ РОЗРАХУНОК ЗАЛИШКУ КОШТІВ НА РЕМОНТИ */}
+                {hasBlockOneData && hasBlockTwoData && blockTwoFunding && (
+                  <Card className="bg-orange-50 border-2 border-orange-300">
+                    <CardHeader>
+                      <CardTitle className="text-orange-800 text-base">
+                        🧮 Розрахунок залишку коштів на ремонти
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <div className="text-center p-4 bg-white rounded border">
+                            <div className="text-sm text-gray-600 mb-1">
+                              {currentData.roadCategory === '1' || currentData.roadCategory === '2' || currentData.roadCategory === '3' 
+                                ? 'Q₁ (Державні дороги)' 
+                                : 'Q₂ (Місцеві дороги)'}
+                            </div>
+                            <div className="text-2xl font-bold text-blue-700">
+                              {(() => {
+                                const available = currentData.roadCategory === '1' || currentData.roadCategory === '2' || currentData.roadCategory === '3' 
+                                  ? (q1Value || 0) 
+                                  : (q2Value || 0);
+                                return available.toLocaleString();
+                              })()} тис. грн
+                            </div>
+                          </div>
+                          
+                          <div className="text-center p-4 bg-white rounded border">
+                            <div className="text-sm text-gray-600 mb-1">Витрати на ЕУ</div>
+                            <div className="text-2xl font-bold text-orange-700">
+                              {(() => {
+                                const euCosts = currentData.roadCategory === '1' || currentData.roadCategory === '2' || currentData.roadCategory === '3' 
+                                  ? blockTwoFunding.stateFunding 
+                                  : blockTwoFunding.localFunding;
+                                return euCosts.toLocaleString();
+                              })()} тис. грн
+                            </div>
+                          </div>
+                          
+                          <div className="text-center p-4 bg-white rounded border">
+                            <div className="text-sm text-gray-600 mb-1">Вартість проекту</div>
+                            <div className="text-2xl font-bold text-red-700">
+                              {currentData.totalReconstructionCost.toLocaleString()} тис. грн
+                            </div>
+                          </div>
+                          
+                          <div className="text-center p-4 bg-white rounded border">
+                            <div className="text-sm text-gray-600 mb-1">Залишок на ремонти</div>
+                            <div className={`text-2xl font-bold ${
+                              (() => {
+                                const available = currentData.roadCategory === '1' || currentData.roadCategory === '2' || currentData.roadCategory === '3' 
+                                  ? (q1Value || 0) 
+                                  : (q2Value || 0);
+                                const euCosts = currentData.roadCategory === '1' || currentData.roadCategory === '2' || currentData.roadCategory === '3' 
+                                  ? blockTwoFunding.stateFunding 
+                                  : blockTwoFunding.localFunding;
+                                const remainder = available - euCosts - currentData.totalReconstructionCost;
+                                return remainder >= 0 ? 'text-green-700' : 'text-red-700';
+                              })()
+                            }`}>
+                              {(() => {
+                                const available = currentData.roadCategory === '1' || currentData.roadCategory === '2' || currentData.roadCategory === '3' 
+                                  ? (q1Value || 0) 
+                                  : (q2Value || 0);
+                                const euCosts = currentData.roadCategory === '1' || currentData.roadCategory === '2' || currentData.roadCategory === '3' 
+                                  ? blockTwoFunding.stateFunding 
+                                  : blockTwoFunding.localFunding;
+                                const remainder = available - euCosts - currentData.totalReconstructionCost;
+                                return remainder.toLocaleString();
+                              })()} тис. грн
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="text-center p-3 bg-yellow-100 rounded border">
+                          <div className="text-sm text-yellow-800">
+                            <strong>Формула:</strong> {currentData.roadCategory === '1' || currentData.roadCategory === '2' || currentData.roadCategory === '3' ? 'Q₁' : 'Q₂'} - Витрати на ЕУ - Вартість проекту = Залишок на ремонти
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Структура вигод */}
                 <Card>

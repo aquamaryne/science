@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   type BudgetItem,
   initialStateRoadItems,
@@ -9,6 +9,15 @@ import {
 import { calculationResultsService } from '../../service/resultLocalStorage';
 import { useHistory, useCurrentSession } from '../../redux/hooks';
 import { saveBlockOneData } from '../../redux/slices/historySlice';
+import { useAppSelector, useAppDispatch } from '../../redux/hooks';
+import { 
+  setStateRoadBudget,
+  setLocalRoadBudget,
+  setQ1Result,
+  setQ2Result,
+  updateStateRoadItem,
+  updateLocalRoadItem
+} from '../../redux/slices/blockOneSlice';
 // shadcn/ui components
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,7 +27,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { UploadIcon, FileIcon, XIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import PDFReport from "@/components/PDFReport";
+import PDFReportBlockOne from "@/components/PDFReportBlockOne";
 
 // Расширенный интерфейс для BudgetItem с файлами
 interface ExtendedBudgetItem extends BudgetItem {
@@ -166,19 +175,37 @@ const StateRoadFundingBlock = ({
 }: { 
   onResultsChange?: (q1: number, items: ExtendedBudgetItem[]) => void 
 }) => {
+  const appDispatch = useAppDispatch();
+  const blockOneState = useAppSelector(state => state.blockOne);
+  
   const [stateRoadBudget, setStateRoadBudget] = useState<ExtendedBudgetItem[]>(
-    modifyItemsWithLineBreak(initialStateRoadItems)
+    blockOneState.stateRoadBudget.length > 0 
+      ? modifyItemsWithLineBreak(blockOneState.stateRoadBudget as BudgetItem[])
+      : modifyItemsWithLineBreak(initialStateRoadItems)
   );
-  const [q1Result, setQ1Result] = useState<number | null>(null);
+  const [q1Result, setQ1Result] = useState<number | null>(blockOneState.q1Result);
+
+  // Синхронизируем с Redux при загрузке
+  useEffect(() => {
+    if (blockOneState.stateRoadBudget.length > 0) {
+      setStateRoadBudget(modifyItemsWithLineBreak(blockOneState.stateRoadBudget as BudgetItem[]));
+    }
+    if (blockOneState.q1Result !== null) {
+      setQ1Result(blockOneState.q1Result);
+    }
+  }, [blockOneState.stateRoadBudget, blockOneState.q1Result]);
+
 
   // Обработчик изменения значений полей ввода
   const handleInputChange = (id: string, value: string) => {
     const newValue = value === "" ? null : parseFloat(value);
-    setStateRoadBudget(prev => 
-      prev.map(item => 
-        item.id === id ? { ...item, value: newValue } : item
-      )
+    const updatedItems = stateRoadBudget.map(item => 
+      item.id === id ? { ...item, value: newValue } : item
     );
+    setStateRoadBudget(updatedItems);
+    
+    // Сохраняем в Redux
+    appDispatch(updateStateRoadItem({ id, value: newValue }));
   };
 
   // Обработчик изменения нормативного документа
@@ -318,18 +345,35 @@ const LocalRoadFundingBlock = ({
 }: { 
   onResultsChange?: (q2: number, items: ExtendedBudgetItem[]) => void 
 }) => {
+  const appDispatch = useAppDispatch();
+  const blockOneState = useAppSelector(state => state.blockOne);
+  
   const [localRoadBudget, setLocalRoadBudget] = useState<ExtendedBudgetItem[]>(
-    modifyItemsWithLineBreak(initialLocalRoadItems)
+    blockOneState.localRoadBudget.length > 0 
+      ? modifyItemsWithLineBreak(blockOneState.localRoadBudget as BudgetItem[])
+      : modifyItemsWithLineBreak(initialLocalRoadItems)
   );
-  const [q2Result, setQ2Result] = useState<number | null>(null);
+  const [q2Result, setQ2Result] = useState<number | null>(blockOneState.q2Result);
+
+  // Синхронизируем с Redux при загрузке
+  useEffect(() => {
+    if (blockOneState.localRoadBudget.length > 0) {
+      setLocalRoadBudget(modifyItemsWithLineBreak(blockOneState.localRoadBudget as BudgetItem[]));
+    }
+    if (blockOneState.q2Result !== null) {
+      setQ2Result(blockOneState.q2Result);
+    }
+  }, [blockOneState.localRoadBudget, blockOneState.q2Result]);
 
   const handleInputChange = (id: string, value: string) => {
     const newValue = value === "" ? null : parseFloat(value);
-    setLocalRoadBudget(prev => 
-      prev.map(item => 
-        item.id === id ? { ...item, value: newValue } : item
-      )
+    const updatedItems = localRoadBudget.map(item => 
+      item.id === id ? { ...item, value: newValue } : item
     );
+    setLocalRoadBudget(updatedItems);
+    
+    // Сохраняем в Redux
+    appDispatch(updateLocalRoadItem({ id, value: newValue }));
   };
 
   const handleDocumentChange = (id: string, document: string) => {
@@ -461,6 +505,7 @@ const LocalRoadFundingBlock = ({
 
 // Главный компонент приложения
 const RoadFundingApp: React.FC = () => {
+  const appDispatch = useAppDispatch();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [q1Results, setQ1Results] = useState<{ value: number; items: ExtendedBudgetItem[] } | null>(null);
   const [q2Results, setQ2Results] = useState<{ value: number; items: ExtendedBudgetItem[] } | null>(null);
@@ -469,6 +514,23 @@ const RoadFundingApp: React.FC = () => {
   // Redux hooks
   const { createSession, dispatch } = useHistory();
   const { currentSession } = useCurrentSession();
+  const blockOneState = useAppSelector(state => state.blockOne);
+
+  // Инициализируем данные в Redux при первой загрузке
+  useEffect(() => {
+    if (blockOneState.stateRoadBudget.length === 0) {
+      appDispatch(setStateRoadBudget(initialStateRoadItems.map(item => ({
+        ...item,
+        attachedFiles: []
+      }))));
+    }
+    if (blockOneState.localRoadBudget.length === 0) {
+      appDispatch(setLocalRoadBudget(initialLocalRoadItems.map(item => ({
+        ...item,
+        attachedFiles: []
+      }))));
+    }
+  }, [appDispatch, blockOneState.stateRoadBudget.length, blockOneState.localRoadBudget.length]);
 
   // Инициализируем старый сервис при первом рендере
   React.useEffect(() => {
@@ -478,10 +540,32 @@ const RoadFundingApp: React.FC = () => {
 
   const handleQ1Results = (q1: number, items: ExtendedBudgetItem[]) => {
     setQ1Results({ value: q1, items });
+    // Сохраняем в Redux
+    appDispatch(setQ1Result(q1));
+    appDispatch(setStateRoadBudget(items.map(({ attachedFiles, ...item }) => ({
+      ...item,
+      attachedFiles: attachedFiles?.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      }))
+    }))));
   };
 
   const handleQ2Results = (q2: number, items: ExtendedBudgetItem[]) => {
     setQ2Results({ value: q2, items });
+    // Сохраняем в Redux
+    appDispatch(setQ2Result(q2));
+    appDispatch(setLocalRoadBudget(items.map(({ attachedFiles, ...item }) => ({
+      ...item,
+      attachedFiles: attachedFiles?.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      }))
+    }))));
   };
 
   // Сохранение результатов в сервис
@@ -641,7 +725,7 @@ const RoadFundingApp: React.FC = () => {
 
         {/* PDF Звіт */}
         <div className="mt-8">
-          <PDFReport />
+          <PDFReportBlockOne />
         </div>
       </div>
     </div>

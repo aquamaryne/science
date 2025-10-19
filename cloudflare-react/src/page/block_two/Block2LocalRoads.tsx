@@ -4,46 +4,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { X, Plus } from "lucide-react";
-
-interface Block2LocalRoadsProps {
-  localRoadBaseRate: number;
-  setLocalRoadBaseRate: (value: number) => void;
-  localInflationIndexes: number[];
-  setLocalInflationIndexes: (value: number[]) => void;
-  localRoadRate: {
-    category1: number;
-    category2: number;
-    category3: number;
-    category4: number;
-    category5: number;
-  };
-  calculateCumulativeInflationIndex: (indexes: number[]) => number;
-}
-
-const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = ({
-  localRoadBaseRate,
+import { useAppSelector, useAppDispatch } from '@/redux/hooks';
+import { 
   setLocalRoadBaseRate,
-  localInflationIndexes,
-  setLocalInflationIndexes,
-  localRoadRate,
-  calculateCumulativeInflationIndex
-}) => {
-  const addLocalInflationIndex = () => {
-    setLocalInflationIndexes([...localInflationIndexes, 0]);
+  addLocalInflationIndex,
+  removeLocalInflationIndex,
+  updateLocalInflationIndex
+} from '@/redux/slices/blockTwoSlice';
+
+const Block2LocalRoads: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const blockTwoState = useAppSelector(state => state.blockTwo);
+  
+  const localRoadBaseRate = blockTwoState.localRoadBaseRate;
+  const localInflationIndexes = blockTwoState.localInflationIndexes;
+  const localRoadRate = blockTwoState.localRoadRates;
+  const addLocalInflationIndexHandler = () => {
+    dispatch(addLocalInflationIndex(0));
   };
 
-  const removeLocalInflationIndex = (index: number) => {
+  const removeLocalInflationIndexHandler = (index: number) => {
     if (localInflationIndexes.length > 1) {
-      const newIndexes = [...localInflationIndexes];
-      newIndexes.splice(index, 1);
-      setLocalInflationIndexes(newIndexes);
+      dispatch(removeLocalInflationIndex(index));
     }
   };
 
   const handleLocalInflationChange = (index: number, value: string) => {
-    const newIndexes = [...localInflationIndexes];
-    newIndexes[index] = parseFloat(value) || 0;
-    setLocalInflationIndexes(newIndexes);
+    dispatch(updateLocalInflationIndex({ index, value: parseFloat(value) || 0 }));
+  };
+
+  const calculateCumulativeInflationIndex = (indexes: number[]): number => {
+    return indexes.reduce((acc, curr) => acc * (1 + curr / 100), 1);
   };
 
   return (
@@ -64,7 +55,7 @@ const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = ({
                 id="localRoadBaseRate"
                 type="number"
                 value={localRoadBaseRate}
-                onChange={(e) => setLocalRoadBaseRate(parseFloat(e.target.value) || 360.544)}
+                onChange={(e) => dispatch(setLocalRoadBaseRate(parseFloat(e.target.value) || 360.544))}
                 className="mt-2"
               />
             </div>
@@ -75,7 +66,7 @@ const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = ({
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={addLocalInflationIndex}
+                  onClick={addLocalInflationIndexHandler}
                 >
                   <Plus className="h-4 w-4 mr-1" /> Додати індекс
                 </Button>
@@ -97,7 +88,7 @@ const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = ({
                       <Button 
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeLocalInflationIndex(i)}
+                        onClick={() => removeLocalInflationIndexHandler(i)}
                         className="ml-2 p-1 h-auto"
                       >
                         <X className="h-4 w-4" />

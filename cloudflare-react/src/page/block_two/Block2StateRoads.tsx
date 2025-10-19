@@ -4,46 +4,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { X, Plus } from "lucide-react";
-
-interface Block2StateRoadsProps {
-  stateRoadBaseRate: number;
-  setStateRoadBaseRate: (value: number) => void;
-  stateInflationIndexes: number[];
-  setStateInflationIndexes: (value: number[]) => void;
-  stateRoadRate: {
-    category1: number;
-    category2: number;
-    category3: number;
-    category4: number;
-    category5: number;
-  };
-  calculateCumulativeInflationIndex: (indexes: number[]) => number;
-}
-
-const Block2StateRoads: React.FC<Block2StateRoadsProps> = ({
-  stateRoadBaseRate,
+import { useAppSelector, useAppDispatch } from '@/redux/hooks';
+import { 
   setStateRoadBaseRate,
-  stateInflationIndexes,
-  setStateInflationIndexes,
-  stateRoadRate,
-  calculateCumulativeInflationIndex
-}) => {
-  const addStateInflationIndex = () => {
-    setStateInflationIndexes([...stateInflationIndexes, 0]);
+  addStateInflationIndex,
+  removeStateInflationIndex,
+  updateStateInflationIndex
+} from '@/redux/slices/blockTwoSlice';
+
+const Block2StateRoads: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const blockTwoState = useAppSelector(state => state.blockTwo);
+  
+  const stateRoadBaseRate = blockTwoState.stateRoadBaseRate;
+  const stateInflationIndexes = blockTwoState.stateInflationIndexes;
+  const stateRoadRate = blockTwoState.stateRoadRates;
+  const addStateInflationIndexHandler = () => {
+    dispatch(addStateInflationIndex(0));
   };
 
-  const removeStateInflationIndex = (index: number) => {
+  const removeStateInflationIndexHandler = (index: number) => {
     if (stateInflationIndexes.length > 1) {
-      const newIndexes = [...stateInflationIndexes];
-      newIndexes.splice(index, 1);
-      setStateInflationIndexes(newIndexes);
+      dispatch(removeStateInflationIndex(index));
     }
   };
 
   const handleStateInflationChange = (index: number, value: string) => {
-    const newIndexes = [...stateInflationIndexes];
-    newIndexes[index] = parseFloat(value) || 0;
-    setStateInflationIndexes(newIndexes);
+    dispatch(updateStateInflationIndex({ index, value: parseFloat(value) || 0 }));
+  };
+
+  const calculateCumulativeInflationIndex = (indexes: number[]): number => {
+    return indexes.reduce((acc, curr) => acc * (1 + curr / 100), 1);
   };
 
   return (
@@ -64,7 +55,7 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = ({
                 id="stateRoadBaseRate"
                 type="number"
                 value={stateRoadBaseRate}
-                onChange={(e) => setStateRoadBaseRate(parseFloat(e.target.value) || 604.761)}
+                onChange={(e) => dispatch(setStateRoadBaseRate(parseFloat(e.target.value) || 604.761))}
                 className="mt-2"
               />
             </div>
@@ -75,7 +66,7 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = ({
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={addStateInflationIndex}
+                  onClick={addStateInflationIndexHandler}
                 >
                   <Plus className="h-4 w-4 mr-1" /> Додати індекс
                 </Button>
@@ -97,7 +88,7 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = ({
                       <Button 
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeStateInflationIndex(i)}
+                        onClick={() => removeStateInflationIndexHandler(i)}
                         className="ml-2 p-1 h-auto"
                       >
                         <X className="h-4 w-4" />

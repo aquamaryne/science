@@ -437,15 +437,15 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
       }));
 
       if (result.type.endsWith('/fulfilled')) {
-        console.log('✅ Результати Блоку 2 збережено в Redux');
-        alert('Результати Блоку 2 успішно збережено!');
+        console.log('✅ Результати збережено в Redux');
+        alert('Результати успішно збережено!');
       } else {
-        console.error('❌ Помилка збереження Блоку 2:', result);
-        alert('Помилка при збереженні результатів Блоку 2');
+        console.error('❌ Помилка збереження:', result);
+        alert('Помилка при збереженні результатів');
       }
     } catch (error) {
-      console.error('❌ Помилка збереження Блоку 2:', error);
-      alert('Помилка при збереженні результатів Блоку 2');
+      console.error('❌ Помилка збереження:', error);
+      alert('Помилка при збереженні результатів');
     }
   };
 
@@ -554,7 +554,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                 <Button
                   onClick={() => {
                     const link = document.createElement('a');
-                    link.href = '/templates/шаблон_державні.xlsx';
+                    link.href = '/src/windows/шаблон_державні.xlsx';
                     link.download = 'шаблон_державні.xlsx';
                     link.click();
                   }}
@@ -567,7 +567,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                 <Button
                   onClick={() => {
                     const link = document.createElement('a');
-                    link.href = '/templates/шаблон_місцеві.xlsx';
+                    link.href = '/src/windows/шаблон_місцеві.xlsx';
                     link.download = 'шаблон_місцеві.xlsx';
                     link.click();
                   }}

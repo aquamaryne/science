@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowRight, Save } from "lucide-react";
 import { Progress } from '../ui/progress';
 import { Button } from '../ui/button';
@@ -8,7 +8,11 @@ import  ENPVInputTable from '@/page/block_three/page_five_and_six';
 import { RoadRankingTable } from '@/page/block_three/page_seven';
 import { useHistory, useCurrentSession } from '../../redux/hooks';
 import { saveBlockThreeData } from '../../redux/slices/historySlice';
-import PDFReport from "@/components/PDFReport";
+import { useAppSelector, useAppDispatch } from '../../redux/hooks';
+import { 
+  setCurrentPage as setCurrentPageAction
+} from '../../redux/slices/blockThreeSlice';
+import PDFReportBlockThree from "@/components/PDFReportBlockThree";
 
 export interface RoadSectionUI {
   id: string;
@@ -48,13 +52,22 @@ export interface RoadSectionUI {
 };
 
 export const Block3MultiPageApp: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [sections, setSections] = useState<RoadSectionUI[]>([]);
+  const appDispatch = useAppDispatch();
+  const blockThreeState = useAppSelector(state => state.blockThree);
+  
+  const [currentPage, setCurrentPage] = useState(blockThreeState.currentPage);
+  const [sections, setSections] = useState<RoadSectionUI[]>(blockThreeState.sections);
   const [saveStatus, setSaveStatus] = useState<string>("");
 
   // Redux hooks
   const { createSession, dispatch } = useHistory();
   const { currentSession } = useCurrentSession();
+
+  // Синхронизация с Redux при загрузке
+  useEffect(() => {
+    setCurrentPage(blockThreeState.currentPage);
+    setSections(blockThreeState.sections);
+  }, [blockThreeState]);
 
   React.useEffect(() => {
     console.log('Головний стан sections оновлено:', sections.length, 'секцій');
@@ -70,6 +83,7 @@ export const Block3MultiPageApp: React.FC = () => {
 
   const handlePageSelect = (page: number) => {
     setCurrentPage(page);
+    appDispatch(setCurrentPageAction(page));
   };
 
   const handleSave = async () => {
@@ -254,7 +268,7 @@ export const Block3MultiPageApp: React.FC = () => {
 
       {/* PDF Звіт */}
       <div className="mt-8">
-        <PDFReport />
+        <PDFReportBlockThree />
       </div>
     </div>
   );

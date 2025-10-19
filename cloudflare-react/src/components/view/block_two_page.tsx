@@ -3,12 +3,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useHistory, useCurrentSession } from '../../redux/hooks';
 import { saveBlockTwoData } from '../../redux/slices/historySlice';
+import { useAppSelector, useAppDispatch } from '../../redux/hooks';
+import { 
+  setStateRoadRates as setStateRoadRatesAction,
+  setLocalRoadRates as setLocalRoadRatesAction
+} from '../../redux/slices/blockTwoSlice';
 
 // Импорт компонентов
 import Block2StateRoads from '../../page/block_two/Block2StateRoads';
 import Block2LocalRoads from '../../page/block_two/Block2LocalRoads';
 import Block2FundingCalculation from '../../page/block_two/Block2FundingCalculation';
-import PDFReport from "@/components/PDFReport";
+import PDFReportBlockTwo from "@/components/PDFReportBlockTwo";
 
 // Импорт функций расчета
 import {
@@ -24,39 +29,30 @@ import type {
 } from '../../modules/block_two';
 
 const Block2MaintenanceCalculator: React.FC = () => {
+  const appDispatch = useAppDispatch();
+  const blockTwoState = useAppSelector(state => state.blockTwo);
+  
   // State для государственных дорог (Блок 2.1)
-  const [stateRoadBaseRate, setStateRoadBaseRate] = useState<number>(604.761);
-  const [stateInflationIndexes, setStateInflationIndexes] = useState<number[]>([10]);
+  const [stateRoadBaseRate, setStateRoadBaseRate] = useState<number>(blockTwoState.stateRoadBaseRate);
+  const [stateInflationIndexes, setStateInflationIndexes] = useState<number[]>(blockTwoState.stateInflationIndexes);
   const [stateRoadRate, setStateRoadRates] = useState<{
     category1: number;
     category2: number;
     category3: number;
     category4: number;
     category5: number;
-  }>({
-    category1: 0,
-    category2: 0,
-    category3: 0,
-    category4: 0,
-    category5: 0
-  });
+  }>(blockTwoState.stateRoadRates);
 
   // State для местных дорог (Блок 2.2)
-  const [localRoadBaseRate, setLocalRoadBaseRate] = useState<number>(360.544);
-  const [localInflationIndexes, setLocalInflationIndexes] = useState<number[]>([10]);
+  const [localRoadBaseRate, setLocalRoadBaseRate] = useState<number>(blockTwoState.localRoadBaseRate);
+  const [localInflationIndexes, setLocalInflationIndexes] = useState<number[]>(blockTwoState.localInflationIndexes);
   const [localRoadRate, setLocalRoadRates] = useState<{
     category1: number;
     category2: number;
     category3: number;
     category4: number;
     category5: number;
-  }>({
-    category1: 0,
-    category2: 0,
-    category3: 0,
-    category4: 0,
-    category5: 0
-  });
+  }>(blockTwoState.localRoadRates);
 
   // State для расчета финансирования (Блок 2.3-2.8)
   const [regionCoefficients] = useState<RegionCoefficients[]>(getRegionCoefficients());
@@ -64,8 +60,18 @@ const Block2MaintenanceCalculator: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<string>("");
   
   // Redux hooks
-  const { createSession, dispatch } = useHistory();
+  const { createSession, dispatch: historyDispatch } = useHistory();
   const { currentSession } = useCurrentSession();
+
+  // Синхронизация с Redux при загрузке
+  useEffect(() => {
+    setStateRoadBaseRate(blockTwoState.stateRoadBaseRate);
+    setStateInflationIndexes(blockTwoState.stateInflationIndexes);
+    setStateRoadRates(blockTwoState.stateRoadRates);
+    setLocalRoadBaseRate(blockTwoState.localRoadBaseRate);
+    setLocalInflationIndexes(blockTwoState.localInflationIndexes);
+    setLocalRoadRates(blockTwoState.localRoadRates);
+  }, [blockTwoState]);
 
   // Инициализация расчетов при монтировании компонента
   useEffect(() => {
@@ -96,13 +102,16 @@ const Block2MaintenanceCalculator: React.FC = () => {
     const category4 = calculateStateRoadMaintenanceRate(4, totalInflationIndex);
     const category5 = calculateStateRoadMaintenanceRate(5, totalInflationIndex);
 
-    setStateRoadRates({
+    const newRates = {
       category1,
       category2,
       category3,
       category4,
       category5
-    });
+    };
+    
+    setStateRoadRates(newRates);
+    appDispatch(setStateRoadRatesAction(newRates));
   };
 
   // Расчет нормативов для местных дорог
@@ -115,13 +124,16 @@ const Block2MaintenanceCalculator: React.FC = () => {
     const category4 = calculateLocalRoadMaintenanceRate(4, totalInflationIndex);
     const category5 = calculateLocalRoadMaintenanceRate(5, totalInflationIndex);
 
-    setLocalRoadRates({
+    const newRates = {
       category1,
       category2,
       category3,
       category4,
       category5
-    });
+    };
+    
+    setLocalRoadRates(newRates);
+    appDispatch(setLocalRoadRatesAction(newRates));
   };
 
   return (
@@ -140,26 +152,12 @@ const Block2MaintenanceCalculator: React.FC = () => {
         
         {/* Вкладка 1: Государственные дороги */}
         <TabsContent value="step1">
-          <Block2StateRoads
-            stateRoadBaseRate={stateRoadBaseRate}
-            setStateRoadBaseRate={setStateRoadBaseRate}
-            stateInflationIndexes={stateInflationIndexes}
-            setStateInflationIndexes={setStateInflationIndexes}
-            stateRoadRate={stateRoadRate}
-            calculateCumulativeInflationIndex={calculateCumulativeInflationIndex}
-          />
+          <Block2StateRoads />
         </TabsContent>
         
         {/* Вкладка 2: Местные дороги */}
         <TabsContent value="step2">
-          <Block2LocalRoads
-            localRoadBaseRate={localRoadBaseRate}
-            setLocalRoadBaseRate={setLocalRoadBaseRate}
-            localInflationIndexes={localInflationIndexes}
-            setLocalInflationIndexes={setLocalInflationIndexes}
-            localRoadRate={localRoadRate}
-            calculateCumulativeInflationIndex={calculateCumulativeInflationIndex}
-          />
+          <Block2LocalRoads />
         </TabsContent>
         
         {/* Вкладка 3: Расчет финансирования */}
@@ -196,7 +194,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
                        totalFunding: (stateRoadRate.category1 + localRoadRate.category1) * 1000
                      };
 
-                     await dispatch(saveBlockTwoData({
+                     await historyDispatch(saveBlockTwoData({
                        sessionId: sessionId,
                        stateRoadBaseRate,
                        localRoadBaseRate,
@@ -230,7 +228,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
 
       {/* PDF Звіт */}
       <div className="mt-8">
-        <PDFReport />
+        <PDFReportBlockTwo />
       </div>
     </div>
   );

@@ -91,6 +91,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
   const [uploadStatus, setUploadStatus] = React.useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = React.useState(false);
+  const [selectedRegion, setSelectedRegion] = React.useState<string>('all');
 
   // ==================== ДОПОМІЖНІ ФУНКЦІЇ ====================
   
@@ -601,6 +602,41 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
         {/* Таблиця завантажених даних */}
         {regionalData.length > 0 && (
             <>
+              {/* ФІЛЬТР ПО ОБЛАСТЯХ */}
+              <Card className="bg-gray-50 border-gray-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-gray-700">
+                        Фільтр по області:
+                      </label>
+                      <select
+                        value={selectedRegion}
+                        onChange={(e) => setSelectedRegion(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="all">Всі області ({regionalData.length})</option>
+                        {regionalData.map((region, idx) => (
+                          <option key={idx} value={region.name}>
+                            {region.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {selectedRegion !== 'all' && (
+                      <Button
+                        onClick={() => setSelectedRegion('all')}
+                        variant="outline"
+                        size="sm"
+                        className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                      >
+                        Показати всі
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* 1. ЗАВАНТАЖЕНІ ДАНІ ПО ОБЛАСТЯХ - З РЕДАГУВАННЯМ */}
               <Card className="bg-white">
                 <CardHeader>
@@ -648,9 +684,11 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                           <th className="border border-gray-400 p-2 text-center" colSpan={3}>
                             Протяжність доріг з інтенсивністю
                           </th>
-                          <th className="border border-gray-400 p-2 text-center" colSpan={5}>
-                            Інші показники
-                          </th>
+                          {roadType === 'state' && (
+                            <th className="border border-gray-400 p-2 text-center" colSpan={5}>
+                              Інші показники
+                            </th>
+                          )}
                         </tr>
                         <tr>
                           <th className="border border-gray-400 p-1 text-center">I</th>
@@ -662,15 +700,21 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                           <th className="border border-gray-400 p-1 text-center text-[10px]">15-20 тис</th>
                           <th className="border border-gray-400 p-1 text-center text-[10px]">20-30 тис</th>
                           <th className="border border-gray-400 p-1 text-center text-[10px]">30+ тис</th>
-                          <th className="border border-gray-400 p-1 text-center text-[10px]">Євро</th>
-                          <th className="border border-gray-400 p-1 text-center text-[10px]">МПП</th>
-                          <th className="border border-gray-400 p-1 text-center text-[10px]">Освітл.</th>
-                          <th className="border border-gray-400 p-1 text-center text-[10px]">Ремонт</th>
-                          <th className="border border-gray-400 p-1 text-center text-[10px]">Кр.інф.</th>
+                          {roadType === 'state' && (
+                            <>
+                              <th className="border border-gray-400 p-1 text-center text-[10px]">Євро</th>
+                              <th className="border border-gray-400 p-1 text-center text-[10px]">МПП</th>
+                              <th className="border border-gray-400 p-1 text-center text-[10px]">Освітл.</th>
+                              <th className="border border-gray-400 p-1 text-center text-[10px]">Ремонт</th>
+                              <th className="border border-gray-400 p-1 text-center text-[10px]">Кр.інф.</th>
+                            </>
+                          )}
                         </tr>
                       </thead>
                       <tbody>
-                        {regionalData.map((region, idx) => (
+                        {regionalData
+                          .filter(region => selectedRegion === 'all' || region.name === selectedRegion)
+                          .map((region, idx) => (
                           <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                             <td className="border border-gray-300 p-2">{region.name}</td>
                             
@@ -749,91 +793,95 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                               )}
                             </td>
                             
-                            <td className="border border-gray-300 p-1">
-                              {isEditing ? (
-                                <input
-                                  type="number"
-                                  value={region.europeanRoadsLength}
-                                  onChange={(e) => {
-                                    const newData = [...regionalData];
-                                    newData[idx].europeanRoadsLength = parseFloat(e.target.value) || 0;
-                                    setRegionalData(newData);
-                                  }}
-                                  className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
-                                  style={{ fontSize: '11px' }}
-                                />
-                              ) : (
-                                <div className="text-right">{region.europeanRoadsLength}</div>
-                              )}
-                            </td>
-                            <td className="border border-gray-300 p-1">
-                              {isEditing ? (
-                                <input
-                                  type="number"
-                                  value={region.borderCrossingLength}
-                                  onChange={(e) => {
-                                    const newData = [...regionalData];
-                                    newData[idx].borderCrossingLength = parseFloat(e.target.value) || 0;
-                                    setRegionalData(newData);
-                                  }}
-                                  className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
-                                  style={{ fontSize: '11px' }}
-                                />
-                              ) : (
-                                <div className="text-right">{region.borderCrossingLength}</div>
-                              )}
-                            </td>
-                            <td className="border border-gray-300 p-1">
-                              {isEditing ? (
-                                <input
-                                  type="number"
-                                  value={region.lightingLength}
-                                  onChange={(e) => {
-                                    const newData = [...regionalData];
-                                    newData[idx].lightingLength = parseFloat(e.target.value) || 0;
-                                    setRegionalData(newData);
-                                  }}
-                                  className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
-                                  style={{ fontSize: '11px' }}
-                                />
-                              ) : (
-                                <div className="text-right">{region.lightingLength}</div>
-                              )}
-                            </td>
-                            <td className="border border-gray-300 p-1">
-                              {isEditing ? (
-                                <input
-                                  type="number"
-                                  value={region.repairedLength}
-                                  onChange={(e) => {
-                                    const newData = [...regionalData];
-                                    newData[idx].repairedLength = parseFloat(e.target.value) || 0;
-                                    setRegionalData(newData);
-                                  }}
-                                  className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
-                                  style={{ fontSize: '11px' }}
-                                />
-                              ) : (
-                                <div className="text-right">{region.repairedLength}</div>
-                              )}
-                            </td>
-                            <td className="border border-gray-300 p-1">
-                              {isEditing ? (
-                                <input
-                                  type="number"
-                                  value={region.criticalInfraCount}
-                                  onChange={(e) => {
-                                    const newData = [...regionalData];
-                                    newData[idx].criticalInfraCount = parseFloat(e.target.value) || 0;
-                                    setRegionalData(newData);
-                                  }}
-                                  className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
-                                  style={{ fontSize: '11px' }}
-                                />
-                              ) : (
-                                <div className="text-right">{region.criticalInfraCount}</div>
-                              )}
-                            </td>
+                            {roadType === 'state' && (
+                              <>
+                                <td className="border border-gray-300 p-1">
+                                  {isEditing ? (
+                                    <input
+                                      type="number"
+                                      value={region.europeanRoadsLength}
+                                      onChange={(e) => {
+                                        const newData = [...regionalData];
+                                        newData[idx].europeanRoadsLength = parseFloat(e.target.value) || 0;
+                                        setRegionalData(newData);
+                                      }}
+                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
+                                      style={{ fontSize: '11px' }}
+                                    />
+                                  ) : (
+                                    <div className="text-right">{region.europeanRoadsLength}</div>
+                                  )}
+                                </td>
+                                <td className="border border-gray-300 p-1">
+                                  {isEditing ? (
+                                    <input
+                                      type="number"
+                                      value={region.borderCrossingLength}
+                                      onChange={(e) => {
+                                        const newData = [...regionalData];
+                                        newData[idx].borderCrossingLength = parseFloat(e.target.value) || 0;
+                                        setRegionalData(newData);
+                                      }}
+                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
+                                      style={{ fontSize: '11px' }}
+                                    />
+                                  ) : (
+                                    <div className="text-right">{region.borderCrossingLength}</div>
+                                  )}
+                                </td>
+                                <td className="border border-gray-300 p-1">
+                                  {isEditing ? (
+                                    <input
+                                      type="number"
+                                      value={region.lightingLength}
+                                      onChange={(e) => {
+                                        const newData = [...regionalData];
+                                        newData[idx].lightingLength = parseFloat(e.target.value) || 0;
+                                        setRegionalData(newData);
+                                      }}
+                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
+                                      style={{ fontSize: '11px' }}
+                                    />
+                                  ) : (
+                                    <div className="text-right">{region.lightingLength}</div>
+                                  )}
+                                </td>
+                                <td className="border border-gray-300 p-1">
+                                  {isEditing ? (
+                                    <input
+                                      type="number"
+                                      value={region.repairedLength}
+                                      onChange={(e) => {
+                                        const newData = [...regionalData];
+                                        newData[idx].repairedLength = parseFloat(e.target.value) || 0;
+                                        setRegionalData(newData);
+                                      }}
+                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
+                                      style={{ fontSize: '11px' }}
+                                    />
+                                  ) : (
+                                    <div className="text-right">{region.repairedLength}</div>
+                                  )}
+                                </td>
+                                <td className="border border-gray-300 p-1">
+                                  {isEditing ? (
+                                    <input
+                                      type="number"
+                                      value={region.criticalInfraCount}
+                                      onChange={(e) => {
+                                        const newData = [...regionalData];
+                                        newData[idx].criticalInfraCount = parseFloat(e.target.value) || 0;
+                                        setRegionalData(newData);
+                                      }}
+                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
+                                      style={{ fontSize: '11px' }}
+                                    />
+                                  ) : (
+                                    <div className="text-right">{region.criticalInfraCount}</div>
+                                  )}
+                                </td>
+                              </>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -888,7 +936,9 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                             </tr>
                           </thead>
                           <tbody>
-                            {regionalResults.map((result, idx) => {
+                            {regionalResults
+                              .filter(result => selectedRegion === 'all' || result.regionName === selectedRegion)
+                              .map((result, idx) => {
                               let currentProduct;
                               if (roadType === 'state') {
                                 currentProduct = 
@@ -1049,7 +1099,9 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                               </tr>
                             </thead>
                             <tbody>
-                              {regionalData.map((region, idx) => {
+                              {regionalData
+                                .filter(region => selectedRegion === 'all' || region.name === selectedRegion)
+                                .map((region, idx) => {
                                 const totalFunding = regionalResults.reduce((sum, r) => sum + r.totalFunding, 0);
                                 const regionResult = regionalResults.find(r => r.regionName === region.name);
                                 const percentage = regionResult ? (regionResult.totalFunding / totalFunding * 100) : 0;
@@ -1088,27 +1140,37 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                 );
                               })}
                               <tr className="bg-gray-300 font-bold">
-                                <td className="border-2 border-gray-400 p-3">ВСЬОГО ПО УКРАЇНІ</td>
+                                <td className="border-2 border-gray-400 p-3">
+                                  {selectedRegion === 'all' ? 'ВСЬОГО ПО УКРАЇНІ' : `ВСЬОГО ПО ${selectedRegion.toUpperCase()}`}
+                                </td>
                                 {([1, 2, 3, 4, 5] as const).map(cat => (
                                   <td key={`total-length-${cat}`} className="border-2 border-gray-400 p-2 text-right">
-                                    {regionalData.reduce((sum, r) => sum + r.lengthByCategory[cat], 0).toFixed(0)}
+                                    {regionalData
+                                      .filter(region => selectedRegion === 'all' || region.name === selectedRegion)
+                                      .reduce((sum, r) => sum + r.lengthByCategory[cat], 0).toFixed(0)}
                                   </td>
                                 ))}
                                 <td className="border-2 border-gray-400 p-2 text-right bg-blue-100 text-base">
-                                  {regionalData.reduce((sum, r) => sum + r.totalLength, 0).toFixed(0)}
+                                  {regionalData
+                                    .filter(region => selectedRegion === 'all' || region.name === selectedRegion)
+                                    .reduce((sum, r) => sum + r.totalLength, 0).toFixed(0)}
                                 </td>
                                 {([1, 2, 3, 4, 5] as const).map(cat => (
                                   <td key={`total-funding-${cat}`} className="border-2 border-gray-400 p-2 text-right">
-                                    {regionalResults.reduce((sum, r) => sum + (r.fundingByCategory?.[cat] || 0), 0)
+                                    {regionalResults
+                                      .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
+                                      .reduce((sum, r) => sum + (r.fundingByCategory?.[cat] || 0), 0)
                                       .toLocaleString('uk-UA', {maximumFractionDigits: 0})}
                                   </td>
                                 ))}
                                 <td className="border-2 border-gray-400 p-2 text-right bg-green-100 text-lg">
-                                  {regionalResults.reduce((sum, r) => sum + r.totalFunding, 0)
+                                  {regionalResults
+                                    .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
+                                    .reduce((sum, r) => sum + r.totalFunding, 0)
                                     .toLocaleString('uk-UA', {maximumFractionDigits: 0})}
                                 </td>
                                 <td className="border-2 border-gray-400 p-2 text-right bg-yellow-100 text-base">
-                                  100.00
+                                  {selectedRegion === 'all' ? '100.00' : '100.00'}
                                 </td>
                               </tr>
                             </tbody>
@@ -1120,21 +1182,34 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                       <div className="grid grid-cols-3 gap-4">
                         <div className="text-center p-4 bg-white rounded-lg shadow">
                           <div className="text-3xl font-bold text-green-700">
-                            {regionalResults.length}
+                            {selectedRegion === 'all' 
+                              ? regionalResults.length 
+                              : regionalResults.filter(r => r.regionName === selectedRegion).length
+                            }
                           </div>
-                          <div className="text-sm text-gray-600">Областей проаналізовано</div>
+                          <div className="text-sm text-gray-600">
+                            {selectedRegion === 'all' ? 'Областей проаналізовано' : 'Областей показано'}
+                          </div>
                         </div>
                         <div className="text-center p-4 bg-white rounded-lg shadow">
                           <div className="text-3xl font-bold text-blue-700">
-                            {regionalData.reduce((sum, r) => sum + r.totalLength, 0).toFixed(0)}
+                            {regionalData
+                              .filter(region => selectedRegion === 'all' || region.name === selectedRegion)
+                              .reduce((sum, r) => sum + r.totalLength, 0).toFixed(0)}
                           </div>
-                          <div className="text-sm text-gray-600">Загальна довжина (км)</div>
+                          <div className="text-sm text-gray-600">
+                            {selectedRegion === 'all' ? 'Загальна довжина (км)' : 'Довжина (км)'}
+                          </div>
                         </div>
                         <div className="text-center p-4 bg-white rounded-lg shadow">
                           <div className="text-3xl font-bold text-purple-700">
-                            {(regionalResults.reduce((sum, r) => sum + r.totalFunding, 0) / 1000000).toFixed(2)}
+                            {(regionalResults
+                              .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
+                              .reduce((sum, r) => sum + r.totalFunding, 0) / 1000000).toFixed(2)}
                           </div>
-                          <div className="text-sm text-gray-600">Млрд. грн (загалом)</div>
+                          <div className="text-sm text-gray-600">
+                            {selectedRegion === 'all' ? 'Млрд. грн (загалом)' : 'Млрд. грн'}
+                          </div>
                         </div>
                       </div>
                     </CardContent>
@@ -1164,9 +1239,13 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                             </div>
                             
                             <div className="text-center p-4 bg-white rounded border">
-                              <div className="text-sm text-gray-600 mb-1">Витрати на ЕУ</div>
+                              <div className="text-sm text-gray-600 mb-1">
+                                {selectedRegion === 'all' ? 'Витрати на ЕУ' : 'Витрати на ЕУ (фільтр)'}
+                              </div>
                               <div className="text-2xl font-bold text-red-700">
-                                {regionalResults.reduce((sum, r) => sum + r.totalFunding, 0).toLocaleString()} тис. грн
+                                {regionalResults
+                                  .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
+                                  .reduce((sum, r) => sum + r.totalFunding, 0).toLocaleString()} тис. грн
                               </div>
                             </div>
                             
@@ -1174,14 +1253,18 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                               <div className="text-sm text-gray-600 mb-1">Залишок на ремонти</div>
                               <div className={`text-2xl font-bold ${
                                 (() => {
-                                  const totalEU = regionalResults.reduce((sum, r) => sum + r.totalFunding, 0);
+                                  const totalEU = regionalResults
+                                    .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
+                                    .reduce((sum, r) => sum + r.totalFunding, 0);
                                   const available = roadType === 'state' ? (q1Value || 0) : (q2Value || 0);
                                   const remainder = available - totalEU;
                                   return remainder >= 0 ? 'text-green-700' : 'text-red-700';
                                 })()
                               }`}>
                                 {(() => {
-                                  const totalEU = regionalResults.reduce((sum, r) => sum + r.totalFunding, 0);
+                                  const totalEU = regionalResults
+                                    .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
+                                    .reduce((sum, r) => sum + r.totalFunding, 0);
                                   const available = roadType === 'state' ? (q1Value || 0) : (q2Value || 0);
                                   const remainder = available - totalEU;
                                   return remainder.toLocaleString();
@@ -1199,7 +1282,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="font-semibold text-blue-900">Зберегти результати Блоку 2</div>
+                          <div className="font-semibold text-blue-900">Зберегти результати Експлуатаційне утримання доріг</div>
                           <div className="text-sm text-blue-700">
                             Результати будуть доступні в Блоці 3 для розрахунку ENPV
                           </div>
@@ -1220,14 +1303,29 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                     <AlertTitle className="text-green-800 font-bold">✅ Розрахунок завершено успішно!</AlertTitle>
                     <AlertDescription className="text-green-700">
                       <div className="space-y-1">
-                        <div>Розраховано обсяг фінансування для <strong>{regionalResults.length} областей</strong> України.</div>
+                        <div>
+                          Розраховано обсяг фінансування для <strong>
+                            {selectedRegion === 'all' 
+                              ? `${regionalResults.length} областей` 
+                              : `області ${selectedRegion}`
+                            }
+                          </strong> України.
+                        </div>
                         <div>Тип доріг: <strong>{roadType === 'state' ? 'Державного значення' : 'Місцевого значення'}</strong></div>
-                        <div>Загальна сума: <strong className="text-lg">{(regionalResults.reduce((sum, r) => sum + r.totalFunding, 0) / 1000000).toFixed(2)} млрд. грн</strong></div>
+                        <div>
+                          {selectedRegion === 'all' ? 'Загальна сума' : 'Сума (фільтр)'}: <strong className="text-lg">
+                            {(regionalResults
+                              .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
+                              .reduce((sum, r) => sum + r.totalFunding, 0) / 1000000).toFixed(2)} млрд. грн
+                          </strong>
+                        </div>
                         {hasBlockOneData && (
                           <div className="text-sm">
                             Залишок на ремонти: <strong className="text-lg">
                               {(() => {
-                                const totalEU = regionalResults.reduce((sum, r) => sum + r.totalFunding, 0);
+                                const totalEU = regionalResults
+                                  .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
+                                  .reduce((sum, r) => sum + r.totalFunding, 0);
                                 const available = roadType === 'state' ? (q1Value || 0) : (q2Value || 0);
                                 const remainder = available - totalEU;
                                 return remainder.toLocaleString();

@@ -6,8 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   BookOpen, 
-  PlayCircle, 
-  Image as ImageIcon, 
   AlertCircle, 
   CheckCircle2,
   Calculator,
@@ -15,82 +13,6 @@ import {
   Settings,
   Info
 } from 'lucide-react';
-
-// Компонент плейсхолдера для відео
-// Оновлений VideoPlaceholder з підтримкою відео
-const VideoPlaceholder: React.FC<{ 
-  title: string; 
-  description?: string;
-  videoUrl?: string; // URL до відео файлу (MP4, WebM)
-  youtubeId?: string; // YouTube video ID
-  vimeoId?: string; // Vimeo video ID
-}> = ({ title, description, videoUrl }) => {
-  
-  if (videoUrl) {
-    return (
-      <Card className="mb-6 overflow-hidden">
-        <CardHeader className="bg-gray-900 text-white py-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <PlayCircle className="h-5 w-5 text-red-500" />
-            {title}
-          </CardTitle>
-          {description && (
-            <CardDescription className="text-gray-400 text-sm mt-1">
-              {description}
-            </CardDescription>
-          )}
-        </CardHeader>
-        <CardContent className="p-0">
-          <video 
-            controls 
-            className="w-full"
-            preload="metadata"
-          >
-            <source src={videoUrl} type="video/mp4" />
-            <source src={videoUrl.replace('.mp4', '.webm')} type="video/webm" />
-            Ваш браузер не підтримує відтворення відео.
-          </video>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Плейсхолдер (якщо відео не вказано)
-  return (
-    <Card className="bg-gray-900 border-2 border-dashed border-gray-700 mb-6">
-      <CardContent className="p-8">
-        <div className="flex flex-col items-center justify-center text-center space-y-4">
-          <PlayCircle className="h-16 w-16 text-red-500" />
-          <div>
-            <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-            {description && <p className="text-sm text-gray-400">{description}</p>}
-          </div>
-          <Badge variant="secondary" className="bg-red-500/20 text-red-400 border-red-500/30">
-            Тут буде відео
-          </Badge>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// Компонент плейсхолдера для фото
-const PhotoPlaceholder: React.FC<{ title: string; description?: string }> = ({ title, description }) => (
-  <Card className="bg-blue-50 border-2 border-dashed border-blue-300 mb-6">
-    <CardContent className="p-6">
-      <div className="flex items-center space-x-4">
-        <ImageIcon className="h-12 w-12 text-blue-500 flex-shrink-0" />
-        <div className="flex-1">
-          <h3 className="font-semibold text-blue-900 mb-1">{title}</h3>
-          {description && <p className="text-sm text-blue-700">{description}</p>}
-        </div>
-        <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30">
-          Скріншот
-        </Badge>
-      </div>
-    </CardContent>
-  </Card>
-);
 
 const UserManual: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -117,11 +39,11 @@ const UserManual: React.FC = () => {
         <Info className="h-5 w-5 text-blue-600" />
         <AlertTitle className="text-blue-900">📋 Загальний огляд системи</AlertTitle>
         <AlertDescription className="text-blue-800">
-          Система складається з трьох основних блоків:
+          Система складається з трьох основних розділів:
           <ul className="list-disc list-inside mt-2 space-y-1">
-            <li><strong>Сторінка "Розрахунок бюджетного фінансування доріг" - </strong> Визначення загального обсягу бюджетного фінансування</li>
-            <li><strong>Сторінка "Експлуатаційне утримання доріг" - </strong> Розрахунок нормативів та розподіл коштів по регіонах</li>
-            <li><strong>Сторінка "Планування ремонтів автомобільних доріг" - </strong> Технічна оцінка доріг та планування ремонтів</li>
+            <li><strong>Розрахунок бюджетного фінансування доріг - </strong> Визначення загального обсягу бюджетного фінансування</li>
+            <li><strong>Експлуатаційне утримання доріг - </strong> Розрахунок нормативів та розподіл коштів по регіонах</li>
+            <li><strong>Планування ремонтів автомобільних доріг - </strong> Технічна оцінка доріг та планування ремонтів</li>
           </ul>
         </AlertDescription>
       </Alert>
@@ -130,19 +52,13 @@ const UserManual: React.FC = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="overview">Огляд</TabsTrigger>
-          <TabsTrigger value="block1">Розрахунок бюджетного фінансування доріг</TabsTrigger>
-          <TabsTrigger value="block2">Експлуатаційне утримання доріг</TabsTrigger>
-          <TabsTrigger value="block3">Планування ремонтів автомобільних доріг</TabsTrigger>
+          <TabsTrigger value="budget">Розрахунок бюджетного фінансування доріг</TabsTrigger>
+          <TabsTrigger value="maintenance">Експлуатаційне утримання доріг</TabsTrigger>
+          <TabsTrigger value="repairs">Планування ремонтів автомобільних доріг</TabsTrigger>
         </TabsList>
 
         {/* ВКЛАДКА: Огляд */}
         <TabsContent value="overview" className="space-y-6">
-          <VideoPlaceholder 
-            title="Загальний огляд системи" 
-            description="Знайомство з інтерфейсом та основними можливостями"
-            
-          />
-
           <Card>
             <CardHeader>
               <CardTitle>🎯 Рекомендована послідовність роботи</CardTitle>
@@ -178,33 +94,27 @@ const UserManual: React.FC = () => {
             <AlertCircle className="h-5 w-5 text-yellow-600" />
             <AlertTitle className="text-yellow-900">⚠️ Важливі примітки</AlertTitle>
             <AlertDescription className="text-yellow-800 space-y-2">
-              <p>• <strong>Збереження даних:</strong> дані зберігаються в браузері (Redux Store). При закритті браузера можуть втратитися.</p>
-              <p>• <strong>Експорт:</strong> регулярно експортуйте результати в Excel/CSV для збереження.</p>
+              <p>• <strong>Збереження даних:</strong> дані зберігаються в браузері. При закритті браузера можуть втратитися.</p>
+              <p>• <strong>Експорт:</strong> регулярно експортуйте результати в Excel для збереження.</p>
               <p>• <strong>Файли:</strong> максимальний розмір завантажуваних файлів - 10 MB.</p>
             </AlertDescription>
           </Alert>
         </TabsContent>
 
-        {/* ВКЛАДКА: БЛОК 1 */}
-        <TabsContent value="block1" className="space-y-6">
+        {/* ВКЛАДКА: Бюджетне фінансування */}
+        <TabsContent value="budget" className="space-y-6">
           <Card className="border-2 border-blue-500">
             <CardHeader className="bg-blue-50">
               <CardTitle className="flex items-center gap-2">
                 <Calculator className="h-6 w-6 text-blue-600" />
-                Сторінка "Розрахунок бюджетного фінансування доріг":  Визначення обсягу бюджетного фінансування
+                Розрахунок бюджетного фінансування доріг
               </CardTitle>
             </CardHeader>
           </Card>
 
-          <VideoPlaceholder 
-            title="Огляд інтерфейсу Блоку 1" 
-            description="Загальна навігація та структура блоку"
-          />
-
-          {/* Крок 1.1 */}
           <Card>
             <CardHeader>
-              <CardTitle>Крок 1.1: Розрахунок для державних доріг (Q₁)</CardTitle>
+              <CardTitle>Розрахунок для державних доріг (Q₁)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -221,11 +131,6 @@ const UserManual: React.FC = () => {
                 </ul>
               </div>
 
-              <VideoPlaceholder 
-                title="Покрокове заповнення таблиці державних доріг" 
-                description="Демонстрація завантаження файлів та заповнення полів"
-              />
-
               <Alert className="bg-blue-50 border-blue-200">
                 <Info className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-blue-800">
@@ -240,18 +145,12 @@ const UserManual: React.FC = () => {
                   <li>Результат відобразиться у зеленій панелі: "Результат для державних доріг: XXX тис. грн"</li>
                 </ul>
               </div>
-
-              <VideoPlaceholder 
-                title="Демонстрація розрахунку Q₁" 
-                description="Процес розрахунку та інтерпретація результатів"
-              />
             </CardContent>
           </Card>
 
-          {/* Крок 1.2 */}
           <Card>
             <CardHeader>
-              <CardTitle>Крок 1.2: Розрахунок для місцевих доріг (Q₂)</CardTitle>
+              <CardTitle>Розрахунок для місцевих доріг (Q₂)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -269,18 +168,12 @@ const UserManual: React.FC = () => {
                   <strong>⚠️ ВАЖЛИВО:</strong> Поле Qмз є обов'язковим для розрахунку Q₂
                 </AlertDescription>
               </Alert>
-
-              <VideoPlaceholder 
-                title="Процес розрахунку Q₂" 
-                description="Заповнення та розрахунок для місцевих доріг"
-              />
             </CardContent>
           </Card>
 
-          {/* Крок 1.3 */}
           <Card>
             <CardHeader>
-              <CardTitle>Крок 1.3: Зведення результатів та передача даних</CardTitle>
+              <CardTitle>Зведення результатів та передача даних</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -303,48 +196,36 @@ const UserManual: React.FC = () => {
               </div>
 
               <div>
-                <h3 className="font-semibold text-lg mb-3">3. Збереження результатів:</h3>
+                <h3 className="font-semibold text-lg mb-3">2. Збереження результатів:</h3>
                 <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
                   <li>Натисніть <Badge className="bg-green-600">💾 Зберегти результати</Badge></li>
                   <li>З'явиться підтвердження: "✅ Результати успішно збережені"</li>
                 </ul>
               </div>
-
-              <VideoPlaceholder 
-                title="Передача даних між блоками" 
-                description="Процес інтеграції та збереження результатів"
-              />
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* ВКЛАДКА: БЛОК 2 */}
-        <TabsContent value="block2" className="space-y-6">
+        {/* ВКЛАДКА: Експлуатаційне утримання */}
+        <TabsContent value="maintenance" className="space-y-6">
           <Card className="border-2 border-green-500">
             <CardHeader className="bg-green-50">
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-6 w-6 text-green-600" />
-                Сторінка "Експлуатаційне утримання доріг": Розрахунок нормативів та розподіл по регіонах
+                Експлуатаційне утримання доріг
               </CardTitle>
             </CardHeader>
           </Card>
 
-          <VideoPlaceholder 
-            title="Вступ до Блоку 2" 
-            description="Структура та можливості блоку"
-          />
-
-          {/* Крок 2.1 */}
           <Card>
             <CardHeader>
-              <CardTitle>Крок 2.1: Вибір типу доріг</CardTitle>
+              <CardTitle>Вибір типу доріг</CardTitle>
               <CardDescription>
                 Оберіть тип доріг для розрахунку. Розрахунки та коефіцієнти відрізняються для різних типів доріг.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               
-              {/* Вибір державних доріг */}
               <div className="space-y-4">
                 <div className="p-6 bg-blue-50 rounded-lg border-2 border-blue-300">
                   <div className="flex items-center justify-center gap-4 mb-4">
@@ -355,11 +236,6 @@ const UserManual: React.FC = () => {
                     </div>
                   </div>
                 </div>
-
-                <PhotoPlaceholder 
-                  title="Таблиця вихідних даних для державних доріг" 
-                  description="Скріншот таблиці з полями: Найменування області, Протяжність по категоріях (I-V), Інтенсивність руху, Євродороги, МПП, Освітлення, Ремонт, Критична інфраструктура"
-                />
 
                 <Alert className="bg-blue-50 border-blue-300">
                   <Info className="h-4 w-4 text-blue-600" />
@@ -376,7 +252,6 @@ const UserManual: React.FC = () => {
 
               <Separator className="my-8" />
 
-              {/* Вибір місцевих доріг */}
               <div className="space-y-4">
                 <div className="p-6 bg-green-50 rounded-lg border-2 border-green-300">
                   <div className="flex items-center justify-center gap-4 mb-4">
@@ -387,11 +262,6 @@ const UserManual: React.FC = () => {
                     </div>
                   </div>
                 </div>
-
-                <PhotoPlaceholder 
-                  title="Таблиця вихідних даних для місцевих доріг" 
-                  description="Скріншот таблиці з полями: Найменування області, Протяжність по категоріях (I-V), Інтенсивність руху (15-20, 20-30, 30+ тис авт/добу)"
-                />
 
                 <Alert className="bg-green-50 border-green-300">
                   <Info className="h-4 w-4 text-green-600" />
@@ -414,97 +284,12 @@ const UserManual: React.FC = () => {
                   В інтерфейсі системи використовуйте кнопки вибору для перемикання між типами.
                 </AlertDescription>
               </Alert>
-
-              <VideoPlaceholder 
-                title="Різниця між розрахунками для державних та місцевих доріг" 
-                description="Порівняння методик, коефіцієнтів та процесу заповнення таблиць"
-              />
             </CardContent>
           </Card>
 
-          {/* Крок 2.2 */}
           <Card>
             <CardHeader>
-              <CardTitle>Крок 2.2: Налаштування базових нормативів</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h3 className="font-semibold text-lg mb-3 text-blue-800">Для державних доріг:</h3>
-                
-                <div className="space-y-4 ml-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">1. Встановлення базового нормативу:</h4>
-                    <p className="text-gray-700">Введіть значення в поле "Встановлений норматив річних фінансових витрат на ЕУ 1 км дороги II кат. державного значення в цінах 2023 року"</p>
-                    <Badge className="mt-2 bg-blue-100 text-blue-800">За замовчуванням: 604.761 тис. грн/км</Badge>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">2. Додавання індексів інфляції:</h4>
-                    <ul className="list-disc list-inside space-y-1 text-gray-700">
-                      <li>Натисніть <Badge variant="outline">+ Додати індекс</Badge> для кожного року</li>
-                      <li>Введіть відсоток інфляції (наприклад, 25.8%)</li>
-                      <li>Система автоматично розраховує коефіцієнт та сукупний індекс</li>
-                      <li>Для видалення натисніть ❌ поруч зі значенням</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">3. Розраховані нормативи по категоріях:</h4>
-                    <div className="grid grid-cols-5 gap-2 mt-3">
-                      {[
-                        { cat: 'I', coef: '1.80' },
-                        { cat: 'II', coef: '1.00' },
-                        { cat: 'III', coef: '0.89' },
-                        { cat: 'IV', coef: '0.61' },
-                        { cat: 'V', coef: '0.39' }
-                      ].map((item) => (
-                        <div key={item.cat} className="p-3 bg-blue-50 rounded text-center border border-blue-200">
-                          <div className="font-bold text-blue-900">{item.cat}</div>
-                          <div className="text-xs text-blue-700 mt-1">к. {item.coef}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <VideoPlaceholder 
-                  title="Налаштування базових нормативів для державних доріг" 
-                  description="Робота з індексами інфляції та перегляд розрахованих нормативів"
-                />
-              </div>
-
-              <Separator />
-
-              <div>
-                <h3 className="font-semibold text-lg mb-3 text-green-800">Для місцевих доріг:</h3>
-                <p className="text-gray-700 mb-3">Аналогічно, але з базовим нормативом <Badge className="bg-green-100 text-green-800">360.544 тис. грн/км</Badge> та іншими коефіцієнтами:</p>
-                <div className="grid grid-cols-5 gap-2">
-                  {[
-                    { cat: 'I', coef: '1.71' },
-                    { cat: 'II', coef: '1.00' },
-                    { cat: 'III', coef: '0.85' },
-                    { cat: 'IV', coef: '0.64' },
-                    { cat: 'V', coef: '0.40' }
-                  ].map((item) => (
-                    <div key={item.cat} className="p-3 bg-green-50 rounded text-center border border-green-200">
-                      <div className="font-bold text-green-900">{item.cat}</div>
-                      <div className="text-xs text-green-700 mt-1">к. {item.coef}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <VideoPlaceholder 
-                  title="Налаштування нормативів для місцевих доріг" 
-                  description="Різниця коефіцієнтів для місцевих доріг"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Крок 2.3 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Крок 2.3: Завантаження даних по областях</CardTitle>
+              <CardTitle>Завантаження даних по областях</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -527,55 +312,14 @@ const UserManual: React.FC = () => {
                   <li>Дочекайтеся повідомлення: "✓ Успішно завантажено дані для XX областей"</li>
                 </ul>
               </div>
-
-              <VideoPlaceholder 
-                title="Процес завантаження Excel файлу" 
-                description="Вибір файлу та можливі помилки при імпорті"
-              />
             </CardContent>
           </Card>
 
-          {/* Крок 2.4 */}
           <Card>
             <CardHeader>
-              <CardTitle>Крок 2.4: Редагування завантажених даних</CardTitle>
+              <CardTitle>Розрахунок обсягу фінансування</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-lg mb-3">1. Активація режиму редагування:</h3>
-                <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
-                  <li>Натисніть <Badge variant="outline">Редагувати дані</Badge> у правому верхньому кутку</li>
-                  <li>З'явиться повідомлення "✏️ Режим редагування активний"</li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-lg mb-3">2. Внесення змін:</h3>
-                <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
-                  <li>Клікніть на будь-яке числове поле в таблиці</li>
-                  <li>Введіть нове значення</li>
-                  <li>При зміні протяжності загальна сума перераховується автоматично</li>
-                </ul>
-              </div>
-
-              <VideoPlaceholder 
-                title="Редагування даних безпосередньо в таблиці" 
-                description="Демонстрація режиму редагування та автоматичних перерахунків"
-              />
-            </CardContent>
-          </Card>
-
-          {/* Крок 2.5 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Крок 2.5: Розрахунок обсягу фінансування</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <PhotoPlaceholder 
-                title="Панель перед розрахунком" 
-                description="Скріншот з виділеною кнопкою 'Розрахувати обсяг коштів'"
-              />
-
               <div>
                 <h3 className="font-semibold text-lg mb-3">1. Запуск розрахунку:</h3>
                 <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
@@ -611,11 +355,6 @@ const UserManual: React.FC = () => {
                     </div>
                   </div>
                 </div>
-
-                <PhotoPlaceholder 
-                  title="Таблиця коефіцієнтів" 
-                  description="Скріншот з розшифровкою всіх позначень"
-                />
               </div>
 
               <div>
@@ -629,11 +368,6 @@ const UserManual: React.FC = () => {
                   <li>Підсумковий рядок "ВСЬОГО ПО УКРАЇНІ"</li>
                 </ul>
               </div>
-
-              <VideoPlaceholder 
-                title="Інтерпретація результатів розрахунку" 
-                description="Пояснення коефіцієнтів та аналіз таблиці фінансування"
-              />
 
               <div>
                 <h3 className="font-semibold text-lg mb-3">4. Статистика:</h3>
@@ -655,10 +389,9 @@ const UserManual: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Крок 2.6 */}
           <Card>
             <CardHeader>
-              <CardTitle>Крок 2.6: Експорт результатів</CardTitle>
+              <CardTitle>Експорт результатів</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -667,51 +400,35 @@ const UserManual: React.FC = () => {
                   <li>Натисніть <Badge className="bg-purple-600">Завантажити результати</Badge></li>
                   <li>Файл містить два аркуші:
                     <ul className="list-circle list-inside ml-6 mt-2 space-y-1">
-                      <li><strong>Аркуш 1:</strong> "Етап X.X - Коефіцієнти"</li>
-                      <li><strong>Аркуш 2:</strong> "Етап X.X - Фінансування"</li>
+                      <li><strong>Аркуш 1:</strong> "Коефіцієнти"</li>
+                      <li><strong>Аркуш 2:</strong> "Фінансування"</li>
                     </ul>
                   </li>
                   <li>Назва файлу автоматично формується з датою</li>
                 </ul>
               </div>
-
-              <VideoPlaceholder 
-                title="Експорт та використання Excel файлу" 
-                description="Огляд структури вивантаженого файлу"
-              />
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* ВКЛАДКА: БЛОК 3 */}
-        <TabsContent value="block3" className="space-y-6">
+        {/* ВКЛАДКА: Планування ремонтів */}
+        <TabsContent value="repairs" className="space-y-6">
           <Card className="border-2 border-purple-500">
             <CardHeader className="bg-purple-50">
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-6 w-6 text-purple-600" />
-                Сторінка "Планування ремонтів автомобільних доріг": Технічна оцінка та планування ремонтів
+                Планування ремонтів автомобільних доріг
               </CardTitle>
             </CardHeader>
           </Card>
 
-          <VideoPlaceholder 
-            title="Огляд структури Блоку 3" 
-            description="Зв'язок між вкладками та загальний workflow"
-          />
-
-          {/* Вкладка 3.1-3.2 */}
           <Card>
             <CardHeader className="bg-blue-50">
-              <CardTitle>Вкладка 3.1-3.2: Визначення показників транспортно-експлуатаційного стану</CardTitle>
+              <CardTitle>Визначення показників транспортно-експлуатаційного стану</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 mt-4">
-              <VideoPlaceholder 
-                title="Введення в технічну оцінку доріг" 
-                description="Що таке коефіцієнти та як вони розраховуються"
-              />
-
               <div>
-                <h3 className="font-semibold text-lg mb-3">Крок 3.1.1: Додавання доріг для аналізу</h3>
+                <h3 className="font-semibold text-lg mb-3">Додавання доріг для аналізу</h3>
                 <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
                   <li>Натисніть <Badge variant="outline">+ Додати рядок</Badge></li>
                   <li>Заповніть основні характеристики:
@@ -731,30 +448,20 @@ const UserManual: React.FC = () => {
                     </ul>
                   </li>
                 </ul>
-
-                <VideoPlaceholder 
-                  title="Покрокове заповнення таблиці" 
-                  description="Пояснення кожного показника та де взяти дані"
-                />
               </div>
 
               <div>
-                <h3 className="font-semibold text-lg mb-3">Крок 3.1.2: Виконання розрахунку</h3>
+                <h3 className="font-semibold text-lg mb-3">Виконання розрахунку</h3>
                 <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
                   <li>Перевірте, що всі поля заповнені</li>
                   <li>Натисніть <Badge className="bg-green-600">Розрахувати</Badge></li>
                   <li>Дочекайтеся автоматичної передачі даних в Redux Store</li>
                   <li>Побачите повідомлення: "✓ Дані успішно збережені"</li>
                 </ul>
-
-                <VideoPlaceholder 
-                  title="Процес розрахунку коефіцієнтів" 
-                  description="Що відбувається під час розрахунку"
-                />
               </div>
 
               <div>
-                <h3 className="font-semibold text-lg mb-3">Крок 3.1.3: Аналіз результатів</h3>
+                <h3 className="font-semibold text-lg mb-3">Аналіз результатів</h3>
                 <p className="text-gray-700 mb-3">Для кожної дороги розраховуються коефіцієнти:</p>
                 
                 <div className="grid grid-cols-2 gap-3 mb-4">
@@ -788,11 +495,6 @@ const UserManual: React.FC = () => {
                   </AlertDescription>
                 </Alert>
 
-                <PhotoPlaceholder 
-                  title="Таблиця результатів з кольоровим кодуванням" 
-                  description="Приклад розрахованих коефіцієнтів для різних доріг"
-                />
-
                 <div className="mt-4">
                   <h4 className="font-semibold mb-2">Автоматичне визначення виду робіт:</h4>
                   <div className="grid grid-cols-2 gap-2">
@@ -802,31 +504,15 @@ const UserManual: React.FC = () => {
                     <Badge className="bg-red-100 text-red-800 text-center py-2">🔴 Реконструкція</Badge>
                   </div>
                 </div>
-
-                <VideoPlaceholder 
-                  title="Пояснення логіки визначення виду робіт" 
-                  description="Можливі сценарії та граничні випадки"
-                />
               </div>
             </CardContent>
           </Card>
 
-          {/* Вкладка 3.3-3.4 */}
           <Card>
             <CardHeader className="bg-green-50">
-              <CardTitle>Вкладка 3.3-3.4: Показники вартості дорожніх робіт</CardTitle>
+              <CardTitle>Показники вартості дорожніх робіт</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 mt-4">
-              <VideoPlaceholder 
-                title="Призначення вкладки" 
-                description="Зв'язок з попереднім етапом та автозавантаження даних"
-              />
-
-              <PhotoPlaceholder 
-                title="Інформаційна панель про завантажені дані" 
-                description="Скріншот синьої панелі з підтвердженням автозавантаження"
-              />
-
               <div>
                 <h3 className="font-semibold text-lg mb-3">Показники вартості по категоріях (тис. грн/км):</h3>
                 <div className="space-y-3">
@@ -879,36 +565,15 @@ const UserManual: React.FC = () => {
                     </ul>
                   </li>
                 </ul>
-
-                <VideoPlaceholder 
-                  title="Алгоритм розрахунку вартості робіт" 
-                  description="Покрокова демонстрація процесу розрахунку"
-                />
               </div>
-
-              <PhotoPlaceholder 
-                title="Таблиця з результатами розрахунку" 
-                description="Скріншот таблиці з виділеною підсумковою статистикою"
-              />
             </CardContent>
           </Card>
 
-          {/* Вкладка 3.5-3.6 */}
           <Card>
             <CardHeader className="bg-purple-50">
-              <CardTitle>Вкладка 3.5-3.6: Визначення ефективності (ENPV)</CardTitle>
+              <CardTitle>Визначення ефективності (ENPV)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 mt-4">
-              <VideoPlaceholder 
-                title="Вступ до економічного аналізу проектів" 
-                description="Що таке ENPV, EIRR, BCR та як їх інтерпретувати"
-              />
-
-              <PhotoPlaceholder 
-                title="Випадаючий список доступних доріг" 
-                description="Скріншот вибору об'єкта з відображенням категорії та протяжності"
-              />
-
               <div>
                 <h3 className="font-semibold text-lg mb-3">Заповнення вихідних даних (31 параметр):</h3>
                 
@@ -956,11 +621,6 @@ const UserManual: React.FC = () => {
                     </ul>
                   </div>
                 </div>
-
-                <VideoPlaceholder 
-                  title="Детальний огляд всіх 31 параметра" 
-                  description="Пояснення кожного поля та рекомендації щодо заповнення"
-                />
               </div>
 
               <div>
@@ -985,11 +645,6 @@ const UserManual: React.FC = () => {
                   </div>
                 </div>
 
-                <PhotoPlaceholder 
-                  title="4 картки з ключовими показниками" 
-                  description="Приклад успішного проекту з позитивними показниками"
-                />
-
                 <Alert className="bg-green-50 border-green-300 mt-4">
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
                   <AlertTitle className="text-green-900">Критерії економічної доцільності:</AlertTitle>
@@ -1001,21 +656,11 @@ const UserManual: React.FC = () => {
                     </ul>
                   </AlertDescription>
                 </Alert>
-
-                <VideoPlaceholder 
-                  title="Інтерпретація показників ENPV" 
-                  description="Критерії прийняття рішення про доцільність проекту"
-                />
               </div>
 
               <div>
                 <h3 className="font-semibold text-lg mb-3">Детальний розрахунок по роках:</h3>
                 
-                <PhotoPlaceholder 
-                  title="Таблиця результатів по роках" 
-                  description="Пояснення кольорового кодування та ключових стовпців"
-                />
-
                 <div className="mt-3 p-4 bg-gray-50 rounded-lg">
                   <h4 className="font-semibold mb-2">Ключові стовпці таблиці:</h4>
                   <div className="grid grid-cols-2 gap-2 text-sm">
@@ -1027,31 +672,20 @@ const UserManual: React.FC = () => {
                     <div>• <strong>ENPV</strong> - накопичена (ключовий!)</div>
                   </div>
                 </div>
-
-                <VideoPlaceholder 
-                  title="Читання таблиці результатів" 
-                  description="Виявлення моменту окупності проекту"
-                />
               </div>
             </CardContent>
           </Card>
 
-          {/* Вкладка 3.7 */}
           <Card>
             <CardHeader className="bg-indigo-50">
-              <CardTitle>Вкладка 3.7: Рангування об'єктів дорожніх робіт</CardTitle>
+              <CardTitle>Рангування об'єктів дорожніх робіт</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 mt-4">
-              <VideoPlaceholder 
-                title="Призначення рангування" 
-                description="Критерії оцінки та пріоритезація проектів"
-              />
-
               <Alert className="bg-blue-50 border-blue-200">
                 <Info className="h-4 w-4 text-blue-600" />
                 <AlertTitle className="text-blue-900">⚡ Автоматичний розрахунок</AlertTitle>
                 <AlertDescription className="text-blue-800">
-                  При відкритті вкладки система автоматично розраховує рангування для всіх доріг з вкладки 3.1-3.2
+                  При відкритті вкладки система автоматично розраховує рангування для всіх доріг з попередньої вкладки
                 </AlertDescription>
               </Alert>
 
@@ -1068,11 +702,6 @@ const UserManual: React.FC = () => {
                   </div>
                 </div>
               </div>
-
-              <PhotoPlaceholder 
-                title="Таблиця рангування" 
-                description="Скріншот з виділеними топ-3 проектами та медалями"
-              />
 
               <div>
                 <h3 className="font-semibold text-lg mb-3">Топ-3 проекти відзначаються:</h3>
@@ -1091,11 +720,6 @@ const UserManual: React.FC = () => {
                   </div>
                 </div>
               </div>
-
-              <VideoPlaceholder 
-                title="Читання таблиці рангування" 
-                description="Як приймати рішення про пріоритетність проектів"
-              />
 
               <div>
                 <h3 className="font-semibold text-lg mb-3">Розподіл за видами робіт:</h3>

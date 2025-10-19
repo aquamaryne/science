@@ -20,7 +20,9 @@ import {
   FileText,
   Calculator,
   TrendingUp,
-  Settings
+  Settings,
+  Paperclip,
+  FileIcon
 } from 'lucide-react';
 import { useHistory, useAppSelector } from '../../redux/hooks';
 import {
@@ -29,6 +31,39 @@ import {
   selectAvailableDays
 } from '../../redux/slices/historySlice';
 import type { CalculationSession } from '../../service/historyService';
+
+// Компонент для отображения файлов
+const FileDisplayComponent: React.FC<{ 
+  files: { name: string; size: number; type: string; lastModified: number }[] 
+}> = ({ files }) => {
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  if (!files || files.length === 0) return null;
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center gap-1 text-sm text-gray-600 mb-1">
+        <Paperclip className="h-3 w-3" />
+        <span>Файли ({files.length}):</span>
+      </div>
+      <div className="space-y-1">
+        {files.map((file, index) => (
+          <div key={index} className="flex items-center gap-2 text-xs bg-gray-50 p-2 rounded">
+            <FileIcon className="h-3 w-3 text-gray-500" />
+            <span className="truncate flex-1">{file.name}</span>
+            <span className="text-gray-500">{formatFileSize(file.size)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const HistoryComponent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('sessions');
@@ -764,6 +799,56 @@ const HistoryComponent: React.FC = () => {
                         </p>
                       </div>
                     </div>
+
+                    {/* Отображение файлов для государственных дорог */}
+                    {selectedSession.blockOneData.stateRoadBudget && (
+                      <div className="mt-6">
+                        <h4 className="text-lg font-semibold mb-3">Державні дороги - завантажені файли</h4>
+                        <div className="space-y-4">
+                          {selectedSession.blockOneData.stateRoadBudget.map((item, index) => (
+                            <div key={index} className="border rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <h5 className="font-medium">{item.id}</h5>
+                                <span className="text-sm text-gray-500">{item.name}</span>
+                              </div>
+                              {item.normativeDocument && (
+                                <p className="text-sm text-gray-600 mb-2">
+                                  <strong>Документ:</strong> {item.normativeDocument}
+                                </p>
+                              )}
+                              {item.attachedFiles && item.attachedFiles.length > 0 && (
+                                <FileDisplayComponent files={item.attachedFiles} />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Отображение файлов для местных дорог */}
+                    {selectedSession.blockOneData.localRoadBudget && (
+                      <div className="mt-6">
+                        <h4 className="text-lg font-semibold mb-3">Місцеві дороги - завантажені файли</h4>
+                        <div className="space-y-4">
+                          {selectedSession.blockOneData.localRoadBudget.map((item, index) => (
+                            <div key={index} className="border rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <h5 className="font-medium">{item.id}</h5>
+                                <span className="text-sm text-gray-500">{item.name}</span>
+                              </div>
+                              {item.normativeDocument && (
+                                <p className="text-sm text-gray-600 mb-2">
+                                  <strong>Документ:</strong> {item.normativeDocument}
+                                </p>
+                              )}
+                              {item.attachedFiles && item.attachedFiles.length > 0 && (
+                                <FileDisplayComponent files={item.attachedFiles} />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}

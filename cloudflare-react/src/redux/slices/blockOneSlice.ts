@@ -7,6 +7,12 @@ export interface BudgetItem {
   value: number | null;
   normativeDocument?: string;
   tooltip?: string;
+  attachedFiles?: {
+    name: string;
+    size: number;
+    type: string;
+    lastModified: number;
+  }[];
 }
 
 export interface BlockOneState {

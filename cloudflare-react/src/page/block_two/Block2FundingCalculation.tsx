@@ -42,6 +42,7 @@ interface RegionalRoadData {
   lightingLength: number;
   repairedLength: number;
   criticalInfraCount: number;
+  europeanIndexLength: number; // Нова колонка для доріг з індексом Е
   fundingByCategory?: { [key in 1 | 2 | 3 | 4 | 5]: number };
   totalFunding?: number;
   fundingPercentage?: number;
@@ -120,7 +121,8 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
           hasEuropeanStatus: region.europeanRoadsLength > 0,
           isBorderCrossing: region.borderCrossingLength > 0,
           hasLighting: region.lightingLength > 0,
-          recentlyRepaired: region.repairedLength > 0
+          recentlyRepaired: region.repairedLength > 0,
+          europeanIndexLength: region.europeanIndexLength // Додаємо нове поле
         });
       }
     });
@@ -173,6 +175,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
             lightingLength: Number(row[12]) || 0,
             repairedLength: Number(row[13]) || 0,
             criticalInfraCount: Number(row[14]) || 0,
+            europeanIndexLength: Number(row[15]) || 0, // Нова колонка для доріг з індексом Е
           };
           
           parsedData.push(regionData);
@@ -681,8 +684,13 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                           <th className="border border-gray-400 p-2 text-center" colSpan={6}>
                             Протяжність доріг {roadType === 'state' ? 'державного' : 'місцевого'} значення (км)
                           </th>
+                          {roadType === 'state' && (
+                            <th className="border border-gray-400 p-2 text-center">
+                              Протяжність доріг з індексом Е
+                            </th>
+                          )}
                           <th className="border border-gray-400 p-2 text-center" colSpan={3}>
-                            Протяжність доріг з інтенсивністю
+                            Протяжність доріг з середньодобовою інтенсивністю
                           </th>
                           {roadType === 'state' && (
                             <th className="border border-gray-400 p-2 text-center" colSpan={5}>
@@ -697,9 +705,12 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                           <th className="border border-gray-400 p-1 text-center">IV</th>
                           <th className="border border-gray-400 p-1 text-center">V</th>
                           <th className="border border-gray-400 p-1 text-center bg-yellow-50">Разом</th>
-                          <th className="border border-gray-400 p-1 text-center text-[10px]">15-20 тис</th>
-                          <th className="border border-gray-400 p-1 text-center text-[10px]">20-30 тис</th>
-                          <th className="border border-gray-400 p-1 text-center text-[10px]">30+ тис</th>
+                          {roadType === 'state' && (
+                            <th className="border border-gray-400 p-1 text-center"></th>
+                          )}
+                          <th className="border border-gray-400 p-1 text-center text-[10px]">15000-20000</th>
+                          <th className="border border-gray-400 p-1 text-center text-[10px]">20001-30000</th>
+                          <th className="border border-gray-400 p-1 text-center text-[10px]">30001 і більше</th>
                           {roadType === 'state' && (
                             <>
                               <th className="border border-gray-400 p-1 text-center text-[10px]">Євро</th>
@@ -740,6 +751,26 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                             ))}
                             
                             <td className="border border-gray-300 p-2 text-right font-bold bg-yellow-50">{region.totalLength.toFixed(0)}</td>
+                            
+                            {roadType === 'state' && (
+                              <td className="border border-gray-300 p-1">
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    value={region.europeanIndexLength}
+                                    onChange={(e) => {
+                                      const newData = [...regionalData];
+                                      newData[idx].europeanIndexLength = parseFloat(e.target.value) || 0;
+                                      setRegionalData(newData);
+                                    }}
+                                    className="w-full text-right p-1 border-0 bg-orange-50 focus:bg-orange-100 rounded"
+                                    style={{ fontSize: '11px' }}
+                                  />
+                                ) : (
+                                  <div className="text-right">{region.europeanIndexLength}</div>
+                                )}
+                              </td>
+                            )}
                             
                             <td className="border border-gray-300 p-1">
                               {isEditing ? (
@@ -1284,7 +1315,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                         <div>
                           <div className="font-semibold text-blue-900">Зберегти результати Експлуатаційне утримання доріг</div>
                           <div className="text-sm text-blue-700">
-                            Результати будуть доступні в Блоці 3 для розрахунку ENPV
+                            Результати будуть доступні в розрахунку ENPV
                           </div>
                         </div>
                         <Button

@@ -23,6 +23,7 @@ export interface RoadSection {
   isBorderCrossing: boolean; // участок возле пунктов пропуска через границу
   hasLighting: boolean; // наличие освещения
   recentlyRepaired: boolean; // проведен ремонт за последние 5 лет
+  europeanIndexLength?: number; // протяженность дорог с индексом Е, км
 }
 
 export interface RegionRoads {

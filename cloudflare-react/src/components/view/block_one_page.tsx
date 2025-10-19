@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { UploadIcon, FileIcon, XIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import PDFReport from "@/components/PDFReport";
 
 // Расширенный интерфейс для BudgetItem с файлами
 interface ExtendedBudgetItem extends BudgetItem {
@@ -514,7 +515,15 @@ const RoadFundingApp: React.FC = () => {
 
     // Конвертируем ExtendedBudgetItem обратно в BudgetItem для сервиса
     const convertToBasicItems = (items: ExtendedBudgetItem[]): BudgetItem[] => {
-      return items.map(({ attachedFiles, ...item }) => item);
+      return items.map(({ attachedFiles, ...item }) => ({
+        ...item,
+        attachedFiles: attachedFiles?.map(file => ({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          lastModified: file.lastModified
+        }))
+      }));
     };
 
     try {
@@ -629,6 +638,11 @@ const RoadFundingApp: React.FC = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* PDF Звіт */}
+        <div className="mt-8">
+          <PDFReport />
+        </div>
       </div>
     </div>
   );

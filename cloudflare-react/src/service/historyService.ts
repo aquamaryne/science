@@ -3,7 +3,7 @@
  * Поддерживает работу нескольких пользователей одновременно
  */
 
-import type { BudgetItem } from '../modules/block_one';
+import type { BudgetItem } from '../redux/slices/blockOneSlice';
 import type { RoadSectionUI } from '../components/view/block_three_page';
 
 // ==================== ТИПЫ ДАННЫХ ====================
@@ -73,6 +73,12 @@ export interface BlockThreeHistoryData {
     nonCompliantSections: number;
     categoryIssues: number;
     frictionIssues: number;
+  };
+  enpvResults?: {
+    enpv: number;
+    eirr: number;
+    bcr: number;
+    paybackPeriod: number;
   };
   reportText: string;
   status: 'completed' | 'in_progress' | 'failed';

@@ -8,6 +8,7 @@ import { saveBlockTwoData } from '../../redux/slices/historySlice';
 import Block2StateRoads from '../../page/block_two/Block2StateRoads';
 import Block2LocalRoads from '../../page/block_two/Block2LocalRoads';
 import Block2FundingCalculation from '../../page/block_two/Block2FundingCalculation';
+import PDFReport from "@/components/PDFReport";
 
 // Импорт функций расчета
 import {
@@ -225,6 +226,11 @@ const Block2MaintenanceCalculator: React.FC = () => {
         {saveStatus && (
           <span className="text-xs text-green-600">{saveStatus}</span>
         )}
+      </div>
+
+      {/* PDF Звіт */}
+      <div className="mt-8">
+        <PDFReport />
       </div>
     </div>
   );

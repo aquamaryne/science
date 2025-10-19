@@ -8,6 +8,7 @@ import  ENPVInputTable from '@/page/block_three/page_five_and_six';
 import { RoadRankingTable } from '@/page/block_three/page_seven';
 import { useHistory, useCurrentSession } from '../../redux/hooks';
 import { saveBlockThreeData } from '../../redux/slices/historySlice';
+import PDFReport from "@/components/PDFReport";
 
 export interface RoadSectionUI {
   id: string;
@@ -250,6 +251,11 @@ export const Block3MultiPageApp: React.FC = () => {
       {currentPage === 2 && <RoadCostIndicators />}
       {currentPage === 3 && <ENPVInputTable />}
       {currentPage === 4 && <RoadRankingTable />}
+
+      {/* PDF Звіт */}
+      <div className="mt-8">
+        <PDFReport />
+      </div>
     </div>
   );
 };

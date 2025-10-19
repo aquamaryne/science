@@ -104,7 +104,7 @@ const PDFReport: React.FC<PDFReportProps> = ({ className }) => {
       </Card>
 
       {/* Прихований контент для PDF */}
-      <div ref={reportRef} className="hidden">
+      <div ref={reportRef} className="hidden" data-testid="pdf-report-content">
         <div className="p-8 bg-white text-black" style={{ fontFamily: 'Arial, sans-serif' }}>
           {/* Заголовок звіту */}
           <div className="text-center mb-8">

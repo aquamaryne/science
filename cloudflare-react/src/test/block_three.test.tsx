@@ -280,8 +280,10 @@ describe('Block Three - Road Repair Planning', () => {
       const section = createTestRoadSection({
         category: 3,
         trafficIntensity: 3000,
-        strengthModulus: 400,
-        roughnessProfile: 5.0 // poor evenness
+        strengthModulus: 400, // достаточная прочность
+        roughnessProfile: 5.0, // плохая ровность
+        rutDepth: 15, // нормальная колея
+        frictionCoeff: 0.40 // нормальное сцепление
       });
       
       const result = determineWorkType(section);
@@ -294,9 +296,10 @@ describe('Block Three - Road Repair Planning', () => {
       const section = createTestRoadSection({
         category: 3,
         trafficIntensity: 3000,
-        strengthModulus: 400,
-        roughnessProfile: 3.0,
-        rutDepth: 30 // excessive rut
+        strengthModulus: 400, // достаточная прочность
+        roughnessProfile: 3.0, // нормальная ровность
+        rutDepth: 30, // избыточная колея
+        frictionCoeff: 0.40 // нормальное сцепление
       });
       
       const result = determineWorkType(section);
@@ -309,10 +312,10 @@ describe('Block Three - Road Repair Planning', () => {
       const section = createTestRoadSection({
         category: 3,
         trafficIntensity: 3000,
-        strengthModulus: 400,
-        roughnessProfile: 3.0,
-        rutDepth: 15,
-        frictionCoeff: 0.40
+        strengthModulus: 400, // достаточная прочность
+        roughnessProfile: 3.0, // нормальная ровность
+        rutDepth: 15, // нормальная колея
+        frictionCoeff: 0.40 // нормальное сцепление
       });
       
       const result = determineWorkType(section);
@@ -655,6 +658,142 @@ describe('Block Three - Road Repair Planning', () => {
       );
       expect(result1).toBeDefined();
       expect(result5).toBeDefined();
+    });
+  });
+
+  describe('ENPV Results', () => {
+    const createTestENPVResults = (overrides: Partial<{
+      enpv: number;
+      eirr: number;
+      bcr: number;
+      paybackPeriod: number;
+    }> = {}) => ({
+      enpv: 1000000,
+      eirr: 0.15,
+      bcr: 1.5,
+      paybackPeriod: 5,
+      ...overrides
+    });
+
+    it('should handle ENPV results with valid data', () => {
+      const enpvResults = createTestENPVResults();
+      
+      expect(enpvResults.enpv).toBe(1000000);
+      expect(enpvResults.eirr).toBe(0.15);
+      expect(enpvResults.bcr).toBe(1.5);
+      expect(enpvResults.paybackPeriod).toBe(5);
+    });
+
+    it('should handle ENPV results with zero values', () => {
+      const enpvResults = createTestENPVResults({
+        enpv: 0,
+        eirr: 0,
+        bcr: 0,
+        paybackPeriod: 0
+      });
+      
+      expect(enpvResults.enpv).toBe(0);
+      expect(enpvResults.eirr).toBe(0);
+      expect(enpvResults.bcr).toBe(0);
+      expect(enpvResults.paybackPeriod).toBe(0);
+    });
+
+    it('should handle ENPV results with negative values', () => {
+      const enpvResults = createTestENPVResults({
+        enpv: -500000,
+        eirr: -0.05,
+        bcr: 0.8,
+        paybackPeriod: 10
+      });
+      
+      expect(enpvResults.enpv).toBe(-500000);
+      expect(enpvResults.eirr).toBe(-0.05);
+      expect(enpvResults.bcr).toBe(0.8);
+      expect(enpvResults.paybackPeriod).toBe(10);
+    });
+
+    it('should validate ENPV results structure', () => {
+      const enpvResults = createTestENPVResults();
+      
+      expect(typeof enpvResults.enpv).toBe('number');
+      expect(typeof enpvResults.eirr).toBe('number');
+      expect(typeof enpvResults.bcr).toBe('number');
+      expect(typeof enpvResults.paybackPeriod).toBe('number');
+      
+      expect(Number.isFinite(enpvResults.enpv)).toBe(true);
+      expect(Number.isFinite(enpvResults.eirr)).toBe(true);
+      expect(Number.isFinite(enpvResults.bcr)).toBe(true);
+      expect(Number.isFinite(enpvResults.paybackPeriod)).toBe(true);
+    });
+
+    it('should handle ENPV results serialization', () => {
+      const enpvResults = createTestENPVResults();
+      
+      // Simulate JSON serialization/deserialization
+      const serialized = JSON.stringify(enpvResults);
+      const deserialized = JSON.parse(serialized);
+      
+      expect(deserialized.enpv).toBe(enpvResults.enpv);
+      expect(deserialized.eirr).toBe(enpvResults.eirr);
+      expect(deserialized.bcr).toBe(enpvResults.bcr);
+      expect(deserialized.paybackPeriod).toBe(enpvResults.paybackPeriod);
+    });
+
+    it('should maintain ENPV results integrity during calculations', () => {
+      const originalResults = createTestENPVResults({
+        enpv: 2000000,
+        eirr: 0.20,
+        bcr: 2.0,
+        paybackPeriod: 3
+      });
+      
+      // Simulate data processing
+      const processedResults = { ...originalResults };
+      
+      expect(processedResults.enpv).toBe(originalResults.enpv);
+      expect(processedResults.eirr).toBe(originalResults.eirr);
+      expect(processedResults.bcr).toBe(originalResults.bcr);
+      expect(processedResults.paybackPeriod).toBe(originalResults.paybackPeriod);
+    });
+
+    it('should handle ENPV results with extreme values', () => {
+      const enpvResults = createTestENPVResults({
+        enpv: 999999999,
+        eirr: 0.99,
+        bcr: 999.99,
+        paybackPeriod: 100
+      });
+      
+      expect(Number.isFinite(enpvResults.enpv)).toBe(true);
+      expect(Number.isFinite(enpvResults.eirr)).toBe(true);
+      expect(Number.isFinite(enpvResults.bcr)).toBe(true);
+      expect(Number.isFinite(enpvResults.paybackPeriod)).toBe(true);
+    });
+
+    it('should correlate ENPV results with project viability', () => {
+      const viableProject = createTestENPVResults({
+        enpv: 1000000,
+        eirr: 0.15,
+        bcr: 1.5,
+        paybackPeriod: 5
+      });
+      
+      const nonViableProject = createTestENPVResults({
+        enpv: -500000,
+        eirr: 0.05,
+        bcr: 0.8,
+        paybackPeriod: 20
+      });
+      
+      expect(viableProject.enpv).toBeGreaterThan(0);
+      expect(viableProject.eirr).toBeGreaterThan(0.1);
+      expect(viableProject.bcr).toBeGreaterThan(1);
+      expect(viableProject.paybackPeriod).toBeLessThan(10);
+      
+      expect(nonViableProject.enpv).toBeLessThan(0);
+      expect(nonViableProject.eirr).toBeLessThan(0.1);
+      expect(nonViableProject.bcr).toBeLessThan(1);
+      expect(nonViableProject.paybackPeriod).toBeGreaterThan(10);
     });
   });
 });

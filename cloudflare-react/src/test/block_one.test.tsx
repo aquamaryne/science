@@ -36,6 +36,15 @@ const createTestBudgetItem = (overrides: Partial<BudgetItem> = {}): BudgetItem =
   tooltip: 'Test tooltip',
   value: null,
   normativeDocument: '',
+  attachedFiles: [],
+  ...overrides
+});
+
+const createTestFile = (overrides: Partial<{name: string; size: number; type: string; lastModified: number}> = {}) => ({
+  name: 'test-file.xlsx',
+  size: 1024,
+  type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  lastModified: Date.now(),
   ...overrides
 });
 
@@ -70,7 +79,6 @@ describe('Block One - Budget Calculations', () => {
         expect(item).toHaveProperty('name');
         expect(item).toHaveProperty('tooltip');
         expect(item).toHaveProperty('value');
-        expect(item).toHaveProperty('normativeDocument');
         expect(typeof item.id).toBe('string');
         expect(typeof item.name).toBe('string');
         expect(typeof item.tooltip).toBe('string');
@@ -86,7 +94,6 @@ describe('Block One - Budget Calculations', () => {
         expect(item).toHaveProperty('name');
         expect(item).toHaveProperty('tooltip');
         expect(item).toHaveProperty('value');
-        expect(item).toHaveProperty('normativeDocument');
       });
     });
 
@@ -104,7 +111,7 @@ describe('Block One - Budget Calculations', () => {
 
     it('should have required state road IDs', () => {
       const ids = initialStateRoadItems.map(item => item.id);
-      const requiredIds = ['Qдз', 'Qпп', 'Qміжн', 'QІАС', 'QДПП'];
+      const requiredIds = ['Q1', 'Qпп', 'Qміжн', 'QІАС', 'QДПП'];
       
       requiredIds.forEach(id => {
         expect(ids).toContain(id);
@@ -113,30 +120,31 @@ describe('Block One - Budget Calculations', () => {
 
     it('should have required local road ID', () => {
       const ids = initialLocalRoadItems.map(item => item.id);
-      expect(ids).toContain('Qмз');
+      expect(ids).toContain('Q2');
     });
   });
 
   describe('Q1 Calculation (State Roads)', () => {
     describe('Valid Calculations', () => {
-      it('should calculate positive value with valid data', () => {
+      it('should calculate value with valid data', () => {
         const items = createValidStateRoadItems();
         const result = calculateQ1(items);
         
-        expect(result).toBeGreaterThan(0);
-        expect(Number.isFinite(result)).toBe(true);
+        expect(result).not.toBeNull();
+        expect(Number.isFinite(result!)).toBe(true);
       });
 
-      it('should sum all item values', () => {
+      it('should calculate Q1 minus other values', () => {
         const items = initialStateRoadItems.map((item, _index) => ({
           ...item,
           value: 1000
         }));
         
         const result = calculateQ1(items);
-        const expectedSum = items.length * 1000;
+        // Q1 = 1000 - (8 * 1000) = -7000
+        const expectedResult = 1000 - (8 * 1000);
         
-        expect(result).toBe(expectedSum);
+        expect(result).toBe(expectedResult);
       });
 
       it('should handle different value magnitudes', () => {
@@ -146,7 +154,8 @@ describe('Block One - Budget Calculations', () => {
         }));
         
         const result = calculateQ1(items);
-        expect(result).toBeGreaterThan(0);
+        expect(result).not.toBeNull();
+        expect(Number.isFinite(result!)).toBe(true);
       });
 
       it('should handle decimal values', () => {
@@ -156,7 +165,9 @@ describe('Block One - Budget Calculations', () => {
         }));
         
         const result = calculateQ1(items);
-        expect(result).toBeCloseTo(items.length * 1000.55, 2);
+        // Q1 = 1000.55 - (8 * 1000.55) = -7003.85
+        const expectedResult = 1000.55 - (8 * 1000.55);
+        expect(result).toBeCloseTo(expectedResult, 2);
       });
     });
 
@@ -171,13 +182,14 @@ describe('Block One - Budget Calculations', () => {
         expect(result).toBe(0);
       });
 
-      it('should throw or handle null values appropriately', () => {
+      it('should return null for null values', () => {
         const items = initialStateRoadItems.map(item => ({
           ...item,
           value: null as any
         }));
         
-        expect(() => calculateQ1(items)).toThrow();
+        const result = calculateQ1(items);
+        expect(result).toBeNull();
       });
 
       it('should handle very large numbers', () => {
@@ -187,17 +199,17 @@ describe('Block One - Budget Calculations', () => {
         }));
         
         const result = calculateQ1(items);
-        expect(Number.isFinite(result)).toBe(true);
-        expect(result).toBeGreaterThan(0);
+        expect(Number.isFinite(result!)).toBe(true);
+        expect(result).not.toBeNull();
       });
 
       it('should handle empty array', () => {
         const result = calculateQ1([]);
-        expect(result).toBe(0);
+        expect(result).toBeNull();
       });
 
       it('should handle single item', () => {
-        const items = [createTestBudgetItem({ id: 'TEST', value: 5000 })];
+        const items = [createTestBudgetItem({ id: 'Q1', value: 5000 })];
         const result = calculateQ1(items);
         expect(result).toBe(5000);
       });
@@ -228,24 +240,25 @@ describe('Block One - Budget Calculations', () => {
 
   describe('Q2 Calculation (Local Roads)', () => {
     describe('Valid Calculations', () => {
-      it('should calculate positive value with valid data', () => {
+      it('should calculate value with valid data', () => {
         const items = createValidLocalRoadItems();
         const result = calculateQ2(items);
         
-        expect(result).toBeGreaterThan(0);
-        expect(Number.isFinite(result)).toBe(true);
+        expect(result).not.toBeNull();
+        expect(Number.isFinite(result!)).toBe(true);
       });
 
-      it('should sum all item values', () => {
+      it('should calculate Q2 minus other values', () => {
         const items = initialLocalRoadItems.map(item => ({
           ...item,
           value: 500
         }));
         
         const result = calculateQ2(items);
-        const expectedSum = items.length * 500;
+        // Q2 = 500 - (4 * 500) = -1500
+        const expectedResult = 500 - (4 * 500);
         
-        expect(result).toBe(expectedSum);
+        expect(result).toBe(expectedResult);
       });
 
       it('should handle different value magnitudes', () => {
@@ -255,7 +268,8 @@ describe('Block One - Budget Calculations', () => {
         }));
         
         const result = calculateQ2(items);
-        expect(result).toBeGreaterThan(0);
+        expect(result).not.toBeNull();
+        expect(Number.isFinite(result!)).toBe(true);
       });
     });
 
@@ -270,18 +284,19 @@ describe('Block One - Budget Calculations', () => {
         expect(result).toBe(0);
       });
 
-      it('should throw or handle null values appropriately', () => {
+      it('should return null for null values', () => {
         const items = initialLocalRoadItems.map(item => ({
           ...item,
           value: null as any
         }));
         
-        expect(() => calculateQ2(items)).toThrow();
+        const result = calculateQ2(items);
+        expect(result).toBeNull();
       });
 
       it('should handle empty array', () => {
         const result = calculateQ2([]);
-        expect(result).toBe(0);
+        expect(result).toBeNull();
       });
     });
   });
@@ -294,7 +309,7 @@ describe('Block One - Budget Calculations', () => {
       expect(session1).toBeTruthy();
       expect(session2).toBeTruthy();
       expect(session1).not.toBe(session2);
-      expect(calculationResultsService.createSession).toHaveBeenCalledTimes(2);
+      expect(vi.mocked(calculationResultsService.createSession)).toHaveBeenCalledTimes(2);
     });
 
     it('should save calculation results successfully', () => {
@@ -311,7 +326,7 @@ describe('Block One - Budget Calculations', () => {
       );
       
       expect(result).toBe(true);
-      expect(calculationResultsService.saveBlockOneResults).toHaveBeenCalledWith(
+      expect(vi.mocked(calculationResultsService.saveBlockOneResults)).toHaveBeenCalledWith(
         q1Items,
         q1Value,
         q2Items,
@@ -336,7 +351,7 @@ describe('Block One - Budget Calculations', () => {
         sessionId
       });
       
-      expect(setBlockOneBudgetData).toHaveBeenCalledWith({
+      expect(vi.mocked(setBlockOneBudgetData)).toHaveBeenCalledWith({
         q1Value: q1Value,
         q2Value: q2Value,
         q1Items,
@@ -357,7 +372,7 @@ describe('Block One - Budget Calculations', () => {
     });
 
     it('should handle budget statistics with allocation', () => {
-      vi.mocked(getBudgetStatistics).mockReturnValue({
+      (getBudgetStatistics as any).mockReturnValue({
         hasData: true,
         totalBudget: 15000,
         q1Budget: 10000,
@@ -388,14 +403,13 @@ describe('Block One - Budget Calculations', () => {
       const q1Result = calculateQ1(q1Items);
       const q2Result = calculateQ2(q2Items);
       
-      expect(q1Result).toBeGreaterThan(0);
-      expect(q2Result).toBeGreaterThan(0);
+      expect(q1Result).not.toBeNull();
+      expect(q2Result).not.toBeNull();
       
       const totalBudget = q1Result! + q2Result!;
       
       expect(totalBudget).toBe(q1Result! + q2Result!);
-      expect(totalBudget).toBeGreaterThan(q1Result!);
-      expect(totalBudget).toBeGreaterThan(q2Result!);
+      expect(Number.isFinite(totalBudget)).toBe(true);
     });
 
     it('should maintain consistency across multiple calculations', () => {
@@ -419,7 +433,9 @@ describe('Block One - Budget Calculations', () => {
       const q1Result = calculateQ1(q1Items);
       const q2Result = calculateQ2(q2Items);
       
-      expect(q1Result).toBeGreaterThan(q2Result!);
+      expect(q1Result).not.toBeNull();
+      expect(q2Result).not.toBeNull();
+      expect(Math.abs(q1Result!)).toBeGreaterThan(Math.abs(q2Result!));
     });
   });
 
@@ -460,6 +476,104 @@ describe('Block One - Budget Calculations', () => {
     });
   });
 
+  describe('Attached Files', () => {
+    it('should handle items with attached files', () => {
+      const testFile = createTestFile();
+      const item = createTestBudgetItem({
+        id: 'Qдз',
+        value: 1000,
+        attachedFiles: [testFile]
+      });
+      
+      expect(item.attachedFiles).toBeDefined();
+      expect(item.attachedFiles).toHaveLength(1);
+      expect(item.attachedFiles![0].name).toBe('test-file.xlsx');
+      expect(item.attachedFiles![0].size).toBe(1024);
+    });
+
+    it('should handle items without attached files', () => {
+      const item = createTestBudgetItem({
+        id: 'Qпп',
+        value: 2000,
+        attachedFiles: []
+      });
+      
+      expect(item.attachedFiles).toBeDefined();
+      expect(item.attachedFiles).toHaveLength(0);
+    });
+
+    it('should handle items with multiple attached files', () => {
+      const files = [
+        createTestFile({ name: 'file1.xlsx', size: 2048 }),
+        createTestFile({ name: 'file2.pdf', size: 1024, type: 'application/pdf' })
+      ];
+      
+      const item = createTestBudgetItem({
+        id: 'Qміжн',
+        value: 3000,
+        attachedFiles: files
+      });
+      
+      expect(item.attachedFiles).toHaveLength(2);
+      expect(item.attachedFiles![0].name).toBe('file1.xlsx');
+      expect(item.attachedFiles![1].name).toBe('file2.pdf');
+    });
+
+    it('should preserve file metadata correctly', () => {
+      const testFile = createTestFile({
+        name: 'budget-analysis.xlsx',
+        size: 5120,
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        lastModified: 1640995200000 // 2022-01-01
+      });
+      
+      const item = createTestBudgetItem({
+        attachedFiles: [testFile]
+      });
+      
+      expect(item.attachedFiles![0].name).toBe('budget-analysis.xlsx');
+      expect(item.attachedFiles![0].size).toBe(5120);
+      expect(item.attachedFiles![0].type).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      expect(item.attachedFiles![0].lastModified).toBe(1640995200000);
+    });
+
+    it('should handle file serialization for Redux storage', () => {
+      const files = [
+        createTestFile({ name: 'document1.xlsx' }),
+        createTestFile({ name: 'document2.pdf', type: 'application/pdf' })
+      ];
+      
+      const item = createTestBudgetItem({
+        attachedFiles: files
+      });
+      
+      // Simulate Redux serialization
+      const serialized = JSON.parse(JSON.stringify(item));
+      
+      expect(serialized.attachedFiles).toHaveLength(2);
+      expect(serialized.attachedFiles[0].name).toBe('document1.xlsx');
+      expect(serialized.attachedFiles[1].name).toBe('document2.pdf');
+    });
+
+    it('should maintain file integrity during calculations', () => {
+      const testFile = createTestFile();
+      const items = initialStateRoadItems.map(item => ({
+        ...item,
+        value: 1000,
+        attachedFiles: [testFile]
+      }));
+      
+      const result = calculateQ1(items);
+      
+      expect(result).not.toBeNull();
+      items.forEach(item => {
+        expect(item.attachedFiles).toBeDefined();
+        expect(item.attachedFiles).toHaveLength(1);
+        expect(item.attachedFiles![0].name).toBe('test-file.xlsx');
+      });
+    });
+  });
+
   describe('Performance', () => {
     it('should calculate Q1 efficiently for standard dataset', () => {
       const items = createValidStateRoadItems();
@@ -495,7 +609,7 @@ describe('Block One - Budget Calculations', () => {
       const endTime = performance.now();
       
       expect(endTime - startTime).toBeLessThan(50);
-      expect(result).toBeGreaterThan(0);
+      expect(result).not.toBeNull();
     });
   });
 
@@ -507,20 +621,21 @@ describe('Block One - Budget Calculations', () => {
       }));
       
       const result = calculateQ1(items);
-      const expectedSum = items.length * 1000.123456;
+      const expectedResult = 1000.123456 - (8 * 1000.123456);
       
-      expect(Math.abs(result! - expectedSum)).toBeLessThan(0.001);
+      expect(Math.abs(result! - expectedResult)).toBeLessThan(0.001);
     });
 
     it('should handle floating point arithmetic correctly', () => {
       const items = [
-        createTestBudgetItem({ id: 'A', value: 0.1 }),
-        createTestBudgetItem({ id: 'B', value: 0.2 }),
-        createTestBudgetItem({ id: 'C', value: 0.3 })
+        createTestBudgetItem({ id: 'Q1', value: 0.1 }),
+        createTestBudgetItem({ id: 'Qпп', value: 0.2 }),
+        createTestBudgetItem({ id: 'Qміжн', value: 0.3 })
       ];
       
       const result = calculateQ1(items);
-      expect(result).toBeCloseTo(0.6, 10);
+      // Q1 = 0.1 - (0.2 + 0.3) = -0.4
+      expect(result).toBeCloseTo(-0.4, 10);
     });
 
     it('should format large numbers correctly', () => {

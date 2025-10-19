@@ -535,17 +535,45 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
         {/* Завантаження файлу */}
         <Alert className="bg-blue-50 border-blue-200">
           <AlertDescription>
-            <div className="flex items-center justify-between">
+            <div className="space-y-4">
               <div>
-                 Завантажте Excel шаблон з вихідними даними про дороги по областях
+                Завантажте Excel шаблон з вихідними даними про дороги по областях
               </div>
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center ml-10 gap-2 bg-blue-600 hover:bg-blue-700"
-              >
-                <Upload className="h-4 w-4" />
-                Завантажити таблицю
-              </Button>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                >
+                  <Upload className="h-4 w-4" />
+                  Завантажити таблицю
+                </Button>
+                <Button
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = '/src/windows/шаблон_державні.xlsx';
+                    link.download = 'шаблон_державні.xlsx';
+                    link.click();
+                  }}
+                  variant="outline"
+                  className="flex items-center gap-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+                >
+                  <Download className="h-4 w-4" />
+                  Шаблон державні дороги
+                </Button>
+                <Button
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = '/src/windows/шаблон_місцеві.xlsx';
+                    link.download = 'шаблон_місцеві.xlsx';
+                    link.click();
+                  }}
+                  variant="outline"
+                  className="flex items-center gap-2 border-green-300 text-green-700 hover:bg-green-50"
+                >
+                  <Download className="h-4 w-4" />
+                  Шаблон місцеві дороги
+                </Button>
+              </div>
             </div>
           </AlertDescription>
         </Alert>

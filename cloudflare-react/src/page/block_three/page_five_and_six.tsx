@@ -515,20 +515,6 @@ const ENPVCalculationTool: React.FC = () => {
         </Alert>
       )}
 
-      {/* ✅ ПОПЕРЕДЖЕННЯ ЯКЩО НЕМАЄ ДАНИХ З БЛОКУ 1 */}
-      {!hasBlockOneData && (
-        <Alert className="bg-yellow-50 border-yellow-400">
-          <AlertCircle className="h-5 w-5 text-yellow-600" />
-          <AlertDescription className="text-yellow-800">
-            <strong>Немає даних з Блоку 1!</strong>
-            <div className="text-sm mt-1">
-              Спочатку перейдіть на вкладку "Визначення обсягу бюджетного фінансування" 
-              та виконайте розрахунки Q₁ та Q₂.
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
       {/* ✅ ПОПЕРЕДЖЕННЯ ЯКЩО НЕМАЄ ДАНИХ З БЛОКУ 2 */}
       {!hasBlockTwoData && (
         <Alert className="bg-orange-50 border-orange-400">

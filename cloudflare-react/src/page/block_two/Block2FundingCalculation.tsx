@@ -498,7 +498,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
           <Alert className="bg-yellow-50 border-yellow-400">
             <AlertTriangle className="h-5 w-5 text-yellow-600" />
             <AlertDescription className="text-yellow-800">
-              <strong>Немає даних з Блоку 1!</strong>
+              <strong>Немає даних з "Розрахунків бюджетного фінансування доріг"</strong>
               <div className="text-sm mt-1">
                 Спочатку перейдіть на вкладку "Визначення обсягу бюджетного фінансування" 
                 та виконайте розрахунки Q₁ та Q₂.
@@ -550,7 +550,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                 <Button
                   onClick={() => {
                     const link = document.createElement('a');
-                    link.href = '/src/windows/шаблон_державні.xlsx';
+                    link.href = '/templates/шаблон_державні.xlsx';
                     link.download = 'шаблон_державні.xlsx';
                     link.click();
                   }}
@@ -563,7 +563,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                 <Button
                   onClick={() => {
                     const link = document.createElement('a');
-                    link.href = '/src/windows/шаблон_місцеві.xlsx';
+                    link.href = '/templates/шаблон_місцеві.xlsx';
                     link.download = 'шаблон_місцеві.xlsx';
                     link.click();
                   }}

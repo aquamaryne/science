@@ -554,7 +554,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                 <Button
                   onClick={() => {
                     const link = document.createElement('a');
-                    link.href = '/src/windows/шаблон_державні.xlsx';
+                    link.href = '/templates/шаблон_державні.xlsx';
                     link.download = 'шаблон_державні.xlsx';
                     link.click();
                   }}
@@ -567,7 +567,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                 <Button
                   onClick={() => {
                     const link = document.createElement('a');
-                    link.href = '/src/windows/шаблон_місцеві.xlsx';
+                    link.href = '/templates/шаблон_місцеві.xlsx';
                     link.download = 'шаблон_місцеві.xlsx';
                     link.click();
                   }}

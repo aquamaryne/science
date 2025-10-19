@@ -465,21 +465,7 @@ const ENPVCalculationTool: React.FC = () => {
           </CardTitle>
         </CardHeader>
       </Card>
-
-      {/* ✅ ПОПЕРЕДЖЕННЯ ЯКЩО НЕМАЄ ДАНИХ */}
-      {!hasCalculatedData && (
-        <Alert className="bg-yellow-50 border-yellow-400">
-          <AlertCircle className="h-5 w-5 text-yellow-600" />
-          <AlertDescription className="text-yellow-800">
-            <strong>Немає розрахованих доріг!</strong>
-            <div className="text-sm mt-1">
-              Спочатку перейдіть на вкладку "Визначення показників транспортно-експлуатаційного стану" 
-              та виконайте розрахунок для доріг.
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
+      
       {/* ✅ ПОКАЗУЄМО РЕЗУЛЬТАТИ З БЛОКУ 2 */}
       {hasBlockTwoData && blockTwoFunding && (
         <Alert className="bg-green-50 border-green-200">

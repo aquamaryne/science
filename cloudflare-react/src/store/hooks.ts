@@ -1,5 +1,6 @@
 import { type TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
-import type { RootState, AppDispatch } from './store';
+import type { RootState, AppDispatch } from '../redux/store';
+import type { TransferredRoadData } from './roadDataSlice';
 
 // Типізовані hooks для використання в компонентах
 // Використовуйте ці hooks замість звичайних useDispatch і useSelector
@@ -22,20 +23,20 @@ export const useCalculatedRoads = () => {
   // Хук для отримання конкретної дороги
   export const useRoadById = (roadId: string) => {
     return useAppSelector(state => 
-      state.roadData.calculatedRoads.find(road => road.id === roadId)
+      state.roadData.calculatedRoads.find((road: TransferredRoadData) => road.id === roadId)
     );
   };
   
   // Хук для фільтрації доріг за категорією
   export const useRoadsByCategory = (category: 1 | 2 | 3 | 4 | 5) => {
     return useAppSelector(state =>
-      state.roadData.calculatedRoads.filter(road => road.category === category)
+      state.roadData.calculatedRoads.filter((road: TransferredRoadData) => road.category === category)
     );
   };
   
   // Хук для фільтрації доріг за видом робіт
   export const useRoadsByWorkType = (workType: string) => {
     return useAppSelector(state =>
-      state.roadData.calculatedRoads.filter(road => road.workType === workType)
+      state.roadData.calculatedRoads.filter((road: TransferredRoadData) => road.workType === workType)
     );
   };

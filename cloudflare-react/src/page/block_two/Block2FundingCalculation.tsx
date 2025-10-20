@@ -725,8 +725,11 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                       <tbody>
                         {regionalData
                           .filter(region => selectedRegion === 'all' || region.name === selectedRegion)
-                          .map((region, idx) => (
-                          <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          .map((region, filteredIdx) => {
+                            // Находим реальный индекс в исходном массиве
+                            const realIdx = regionalData.findIndex(r => r.name === region.name);
+                            return (
+                          <tr key={realIdx} className={filteredIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                             <td className="border border-gray-300 p-2">{region.name}</td>
                             
                             {([1, 2, 3, 4, 5] as const).map(cat => (
@@ -737,8 +740,8 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     value={region.lengthByCategory[cat]}
                                     onChange={(e) => {
                                       const newData = [...regionalData];
-                                      newData[idx].lengthByCategory[cat] = parseFloat(e.target.value) || 0;
-                                      newData[idx].totalLength = Object.values(newData[idx].lengthByCategory).reduce((sum, val) => sum + val, 0);
+                                      newData[realIdx].lengthByCategory[cat] = parseFloat(e.target.value) || 0;
+                                      newData[realIdx].totalLength = Object.values(newData[realIdx].lengthByCategory).reduce((sum, val) => sum + val, 0);
                                       setRegionalData(newData);
                                     }}
                                     className="w-full text-right p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded"
@@ -760,7 +763,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     value={region.europeanIndexLength}
                                     onChange={(e) => {
                                       const newData = [...regionalData];
-                                      newData[idx].europeanIndexLength = parseFloat(e.target.value) || 0;
+                                      newData[realIdx].europeanIndexLength = parseFloat(e.target.value) || 0;
                                       setRegionalData(newData);
                                     }}
                                     className="w-full text-right p-1 border-0 bg-orange-50 focus:bg-orange-100 rounded"
@@ -779,7 +782,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                   value={region.lengthByIntensity.medium}
                                   onChange={(e) => {
                                     const newData = [...regionalData];
-                                    newData[idx].lengthByIntensity.medium = parseFloat(e.target.value) || 0;
+                                    newData[realIdx].lengthByIntensity.medium = parseFloat(e.target.value) || 0;
                                     setRegionalData(newData);
                                   }}
                                   className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded"
@@ -796,7 +799,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                   value={region.lengthByIntensity.high}
                                   onChange={(e) => {
                                     const newData = [...regionalData];
-                                    newData[idx].lengthByIntensity.high = parseFloat(e.target.value) || 0;
+                                    newData[realIdx].lengthByIntensity.high = parseFloat(e.target.value) || 0;
                                     setRegionalData(newData);
                                   }}
                                   className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded"
@@ -813,7 +816,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                   value={region.lengthByIntensity.veryHigh}
                                   onChange={(e) => {
                                     const newData = [...regionalData];
-                                    newData[idx].lengthByIntensity.veryHigh = parseFloat(e.target.value) || 0;
+                                    newData[realIdx].lengthByIntensity.veryHigh = parseFloat(e.target.value) || 0;
                                     setRegionalData(newData);
                                   }}
                                   className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded"
@@ -833,7 +836,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       value={region.europeanRoadsLength}
                                       onChange={(e) => {
                                         const newData = [...regionalData];
-                                        newData[idx].europeanRoadsLength = parseFloat(e.target.value) || 0;
+                                        newData[realIdx].europeanRoadsLength = parseFloat(e.target.value) || 0;
                                         setRegionalData(newData);
                                       }}
                                       className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
@@ -850,7 +853,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       value={region.borderCrossingLength}
                                       onChange={(e) => {
                                         const newData = [...regionalData];
-                                        newData[idx].borderCrossingLength = parseFloat(e.target.value) || 0;
+                                        newData[realIdx].borderCrossingLength = parseFloat(e.target.value) || 0;
                                         setRegionalData(newData);
                                       }}
                                       className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
@@ -867,7 +870,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       value={region.lightingLength}
                                       onChange={(e) => {
                                         const newData = [...regionalData];
-                                        newData[idx].lightingLength = parseFloat(e.target.value) || 0;
+                                        newData[realIdx].lightingLength = parseFloat(e.target.value) || 0;
                                         setRegionalData(newData);
                                       }}
                                       className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
@@ -884,7 +887,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       value={region.repairedLength}
                                       onChange={(e) => {
                                         const newData = [...regionalData];
-                                        newData[idx].repairedLength = parseFloat(e.target.value) || 0;
+                                        newData[realIdx].repairedLength = parseFloat(e.target.value) || 0;
                                         setRegionalData(newData);
                                       }}
                                       className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
@@ -901,7 +904,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       value={region.criticalInfraCount}
                                       onChange={(e) => {
                                         const newData = [...regionalData];
-                                        newData[idx].criticalInfraCount = parseFloat(e.target.value) || 0;
+                                        newData[realIdx].criticalInfraCount = parseFloat(e.target.value) || 0;
                                         setRegionalData(newData);
                                       }}
                                       className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
@@ -914,7 +917,8 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                               </>
                             )}
                           </tr>
-                        ))}
+                            );
+                          })}
                       </tbody>
                     </table>
                   </div>

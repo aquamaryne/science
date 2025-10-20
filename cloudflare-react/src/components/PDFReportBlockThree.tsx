@@ -115,6 +115,12 @@ const PDFReportBlockThree: React.FC<PDFReportBlockThreeProps> = ({ className }) 
       marginBottom: 6,
       color: '#2c3e50'
     },
+    bullet: {
+      fontSize: 12,
+      marginBottom: 6,
+      color: '#2c3e50',
+      paddingLeft: 15
+    },
     footer: { 
       fontSize: 10, 
       textAlign: 'center', 
@@ -148,9 +154,9 @@ const PDFReportBlockThree: React.FC<PDFReportBlockThreeProps> = ({ className }) 
         </View>
 
         <View style={styles.infoSection}>
-          <Text style={styles.infoItem}>📊 Аналіз економічної ефективності завершено</Text>
-          <Text style={styles.infoItem}>📈 Розрахунки показників ефективності виконано</Text>
-          <Text style={styles.infoItem}>💾 Результати збережено в базі даних</Text>
+          <Text style={styles.bullet}>• Аналіз економічної ефективності завершено</Text>
+          <Text style={styles.bullet}>• Розрахунки показників ефективності виконано</Text>
+          <Text style={styles.bullet}>• Результати збережено в базі даних</Text>
         </View>
 
         <Text style={styles.footer}>{`Звіт згенеровано: ${new Date().toLocaleString('uk-UA')}`}</Text>

@@ -973,7 +973,9 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                           <tbody>
                             {regionalResults
                               .filter(result => selectedRegion === 'all' || result.regionName === selectedRegion)
-                              .map((result, idx) => {
+                              .map((result, filteredIdx) => {
+                                // Находим реальный индекс в исходном массиве
+                                const realIdx = regionalResults.findIndex(r => r.regionName === result.regionName);
                               let currentProduct;
                               if (roadType === 'state') {
                                 currentProduct = 
@@ -994,7 +996,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                               }
 
                               return (
-                                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : roadType === 'state' ? 'bg-blue-50' : 'bg-green-50'}>
+                                <tr key={realIdx} className={filteredIdx % 2 === 0 ? 'bg-white' : roadType === 'state' ? 'bg-blue-50' : 'bg-green-50'}>
                                   <td className={`border p-2 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>{result.regionName}</td>
                                   {roadType === 'state' && (
                                     <td className="border border-blue-300 p-2 text-center bg-gray-100">1.1600</td>
@@ -1010,7 +1012,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                           value={result.coefficients[key as keyof typeof result.coefficients]}
                                           onChange={(e) => {
                                             const newResults = [...regionalResults];
-                                            (newResults[idx].coefficients as any)[key] = parseFloat(e.target.value) || 1;
+                                            (newResults[realIdx].coefficients as any)[key] = parseFloat(e.target.value) || 1;
                                             setRegionalResults(newResults);
                                           }}
                                           className={`w-full text-center p-1 border-0 rounded ${roadType === 'state' ? 'bg-blue-50 focus:bg-blue-100' : 'bg-green-50 focus:bg-green-100'}`}
@@ -1033,7 +1035,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                           value={result.coefficients[key as keyof typeof result.coefficients] || 1}
                                           onChange={(e) => {
                                             const newResults = [...regionalResults];
-                                            (newResults[idx].coefficients as any)[key] = parseFloat(e.target.value) || 1;
+                                            (newResults[realIdx].coefficients as any)[key] = parseFloat(e.target.value) || 1;
                                             setRegionalResults(newResults);
                                           }}
                                           className="w-full text-center p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded"
@@ -1136,13 +1138,15 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                             <tbody>
                               {regionalData
                                 .filter(region => selectedRegion === 'all' || region.name === selectedRegion)
-                                .map((region, idx) => {
+                                .map((region, filteredIdx) => {
+                                  // Находим реальный индекс в исходном массиве
+                                  const realIdx = regionalData.findIndex(r => r.name === region.name);
                                 const totalFunding = regionalResults.reduce((sum, r) => sum + r.totalFunding, 0);
                                 const regionResult = regionalResults.find(r => r.regionName === region.name);
                                 const percentage = regionResult ? (regionResult.totalFunding / totalFunding * 100) : 0;
                                 
                                 return (
-                                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                  <tr key={realIdx} className={filteredIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                     <td className="border border-gray-400 p-2 font-medium sticky left-0 bg-inherit z-10">
                                       {region.name}
                                     </td>

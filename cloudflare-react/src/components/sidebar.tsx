@@ -1,7 +1,13 @@
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import React from "react";
+import React, { useState } from "react";
 import { ScrollArea } from "./ui/scroll-area";
+import { Button } from "./ui/button";
+import { Trash2, AlertTriangle } from "lucide-react";
+import { useAppDispatch } from "@/redux/hooks";
+import { clearAllData } from "@/redux/slices/historySlice";
+import { clearAllAppData } from "@/redux/store";
+import { persistor } from "@/redux/store";
 
 interface NavItem {
     to: string;
@@ -17,6 +23,27 @@ const navItems: NavItem[] = [
 ]
 
 export const Sidebar: React.FC = () => {
+    const dispatch = useAppDispatch();
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+    const handleClearAllData = async () => {
+        try {
+            // Очищаем все данные из Redux
+            await dispatch(clearAllData()).unwrap();
+            
+            // Очищаем все slices
+            dispatch(clearAllAppData());
+            
+            // Очищаем persist store
+            await persistor.purge();
+            
+            // Перезагружаем страницу для полной очистки
+            window.location.reload();
+        } catch (error) {
+            console.error('Ошибка при очистке данных:', error);
+        }
+    };
+
     return (
         <aside className="w-80 h-screen fixed left-0 top-0 z-50">
             {/* Background with animated blobs */}
@@ -103,12 +130,84 @@ export const Sidebar: React.FC = () => {
                     {/* Footer */}
                     <div className="mt-6 pt-4 px-1">
                         <div className="glass-divider" style={{ margin: '0 0 1rem 0' }} />
+                        
+                        {/* Clear Cache Button */}
+                        <div className="mb-4">
+                            <Button
+                                onClick={() => setShowConfirmDialog(true)}
+                                variant="destructive"
+                                className="w-full glass-clear-button"
+                                size="sm"
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Очистити всі дані
+                            </Button>
+                        </div>
+                        
                         <div className="glass-badge px-4 py-2 text-center">
                             <span className="text-xs font-medium text-gray-600">© 2025 ДП "НІРІ"</span>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Confirmation Dialog */}
+            {showConfirmDialog && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+                    <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl border border-red-200">
+                        <div className="flex items-center mb-4">
+                            <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                                <AlertTriangle className="h-6 w-6 text-red-600" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    Підтвердження очищення
+                                </h3>
+                                <p className="text-sm text-gray-500">
+                                    Ця дія незворотна
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div className="mb-6">
+                            <p className="text-gray-700 mb-2">
+                                Ви впевнені, що хочете очистити <strong>ВСІ ДАНІ</strong>?
+                            </p>
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                                <p className="text-sm text-red-800">
+                                    <strong>Буде видалено:</strong>
+                                </p>
+                                <ul className="text-sm text-red-700 mt-1 ml-4 list-disc">
+                                    <li>Всі розрахунки з бюджетного фінансування</li>
+                                    <li>Всі розрахунки з експлуатаційного утримання</li>
+                                    <li>Всі розрахунки з планування ремонтів</li>
+                                    <li>Історію сесій</li>
+                                    <li>Збережені дані</li>
+                                    <li>Налаштування користувача</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div className="flex gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowConfirmDialog(false)}
+                                className="flex-1"
+                            >
+                                Скасувати
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={handleClearAllData}
+                                className="flex-1"
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Очистити все
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* CSS Styles */}
             <style>{`
@@ -233,6 +332,34 @@ export const Sidebar: React.FC = () => {
                     box-shadow: 
                         inset 0 0 0 1px rgba(255, 255, 255, 0.1),
                         0 1px 3px 0 rgba(0, 0, 0, 0.05);
+                }
+
+                /* Clear Button */
+                .glass-clear-button {
+                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                    border: 2px solid #b91c1c;
+                    color: white;
+                    font-weight: 600;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    box-shadow: 
+                        0 4px 12px rgba(239, 68, 68, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                }
+
+                .glass-clear-button:hover {
+                    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+                    border-color: #991b1b;
+                    transform: translateY(-1px);
+                    box-shadow: 
+                        0 6px 16px rgba(239, 68, 68, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+                }
+
+                .glass-clear-button:active {
+                    transform: translateY(0);
+                    box-shadow: 
+                        0 2px 8px rgba(239, 68, 68, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
                 }
 
                 /* Animations */

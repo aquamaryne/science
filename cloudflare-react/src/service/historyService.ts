@@ -609,6 +609,46 @@ class HistoryService {
       return 0;
     }
   }
+
+  /**
+   * Полная очистка всех данных
+   */
+  async clearAllData(): Promise<void> {
+    try {
+      console.log('🔴 HistoryService: Начинаем полную очистку всех данных');
+      
+      // Очищаем localStorage
+      localStorage.removeItem(this.STORAGE_KEY);
+      localStorage.removeItem('persist:root');
+      localStorage.removeItem('persist:history');
+      localStorage.removeItem('persist:blockOne');
+      localStorage.removeItem('persist:blockTwo');
+      localStorage.removeItem('persist:blockThree');
+      localStorage.removeItem('persist:roadData');
+      
+      // Очищаем sessionStorage
+      sessionStorage.clear();
+      
+      // Очищаем IndexedDB если используется
+      if ('indexedDB' in window) {
+        try {
+          const databases = await indexedDB.databases();
+          for (const db of databases) {
+            if (db.name && db.name.includes('road')) {
+              indexedDB.deleteDatabase(db.name);
+            }
+          }
+        } catch (e) {
+          console.warn('Не удалось очистить IndexedDB:', e);
+        }
+      }
+      
+      console.log('🔴 HistoryService: Все данные очищены');
+    } catch (error) {
+      console.error('Ошибка при полной очистке данных:', error);
+      throw error;
+    }
+  }
 }
 
 // ==================== ЭКСПОРТ СИНГЛТОНА ====================

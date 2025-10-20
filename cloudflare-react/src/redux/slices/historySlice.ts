@@ -426,6 +426,24 @@ const historySlice = createSlice({
       .addCase(cleanupOldData.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to cleanup old data';
+      })
+      // Clear All Data
+      .addCase(clearAllData.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(clearAllData.fulfilled, (state) => {
+        state.loading = false;
+        // Полная очистка состояния
+        state.sessions = [];
+        state.currentSession = null;
+        state.statistics = null;
+        state.lastSaved = null;
+        console.log('🔴 Redux: Все данные очищены');
+      })
+      .addCase(clearAllData.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to clear all data';
       });
   },
 });
@@ -567,3 +585,16 @@ export const selectAvailableDays = (state: { history: HistoryState }, year: numb
   });
   return Array.from(days).sort((a, b) => b - a); // Сортировка по убыванию
 };
+
+// ==================== CLEAR ALL DATA ====================
+
+// Очистка всех данных
+export const clearAllData = createAsyncThunk(
+  'history/clearAllData',
+  async () => {
+    console.log('🔴 Redux: clearAllData вызван - очистка всех данных');
+    await historyService.clearAllData();
+    console.log('🔴 Redux: clearAllData завершен');
+    return true;
+  }
+);

@@ -16,7 +16,7 @@ import {
   type BudgetAllocation
 } from '@/modules/block_three';
 
-import { useAppSelector } from '@/store/hooks';
+import { useAppSelector } from '@/redux/hooks';
 import { 
   selectCalculatedRoads, 
   selectHasCalculatedData, 
@@ -76,7 +76,7 @@ export const RoadCostIndicators: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [budgetInfo, setBudgetInfo] = useState<BudgetAllocation | null>(null);
 
-  // Перевірка наявності даних з Блоку 1
+  // Перевірка наявності даних з бюджетного фінансування
   useEffect(() => {
     if (hasBlockOneBudgetData()) {
       const allocation = getBudgetAllocation();
@@ -252,7 +252,7 @@ export const RoadCostIndicators: React.FC = () => {
       {budgetInfo && (
         <Alert className="bg-blue-50 border-blue-200">
           <AlertDescription>
-            <h3 className="font-semibold text-blue-900 mb-2">📊 Інформація з Блоку 1</h3>
+            <h3 className="font-semibold text-blue-900 mb-2">📊 Інформація з бюджетного фінансування</h3>
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
                 <span className="text-gray-600">Поточний ремонт:</span>

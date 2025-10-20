@@ -13,6 +13,7 @@ export interface TransferredRoadData {
   actualRutDepth: number;
   actualFrictionValue: number;
   workType: string;
+  estimatedCost?: number; // Добавляем поле для стоимости
   isInternationalRoad?: boolean;
   isDefenseRoad?: boolean;
   isEuropeanNetwork?: boolean; // додав для повноти

@@ -1,20 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Calculator } from "lucide-react";
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { 
   setLocalRoadBaseRate,
   addLocalInflationIndex,
   removeLocalInflationIndex,
-  updateLocalInflationIndex
+  updateLocalInflationIndex,
+  setLocalRoadRates
 } from '@/redux/slices/blockTwoSlice';
 
 const Block2LocalRoads: React.FC = () => {
   const dispatch = useAppDispatch();
   const blockTwoState = useAppSelector(state => state.blockTwo);
+  const [isCalculated, setIsCalculated] = useState(false);
   
   const localRoadBaseRate = blockTwoState.localRoadBaseRate;
   const localInflationIndexes = blockTwoState.localInflationIndexes;
@@ -35,6 +37,22 @@ const Block2LocalRoads: React.FC = () => {
 
   const calculateCumulativeInflationIndex = (indexes: number[]): number => {
     return indexes.reduce((acc, curr) => acc * (1 + curr / 100), 1);
+  };
+
+  const calculateLocalRoadRates = () => {
+    const cumulativeInflation = calculateCumulativeInflationIndex(localInflationIndexes);
+    const adjustedBaseRate = localRoadBaseRate * cumulativeInflation;
+    
+    const rates = {
+      category1: adjustedBaseRate * 1.71,
+      category2: adjustedBaseRate * 1.00,
+      category3: adjustedBaseRate * 0.85,
+      category4: adjustedBaseRate * 0.64,
+      category5: adjustedBaseRate * 0.40
+    };
+    
+    dispatch(setLocalRoadRates(rates));
+    setIsCalculated(true);
   };
 
   return (
@@ -101,74 +119,87 @@ const Block2LocalRoads: React.FC = () => {
                 </div>
               </div>
             </div>
+            
+            <div className="mt-4">
+              <Button 
+                onClick={calculateLocalRoadRates}
+                className="w-full"
+                size="lg"
+              >
+                <Calculator className="mr-2 h-4 w-4" />
+                Розрахувати нормативи
+              </Button>
+            </div>
           </div>
           
-          <div className="grid grid-cols-5 gap-4 mt-6">
-            <Card className="p-4">
-              <CardContent className="p-0 text-center">
-                <h3 className="font-bold">Категорія I</h3>
-                <div className="text-xl font-bold mt-2">
-                  {localRoadRate.category1.toFixed(2)}
-                </div>
-                <div className="text-sm text-gray-500">тис. грн/км</div>
-                <div className="text-xs text-blue-600 mt-1">
-                  (коеф. 1.71)
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="p-4">
-              <CardContent className="p-0 text-center">
-                <h3 className="font-bold">Категорія II</h3>
-                <div className="text-xl font-bold mt-2">
-                  {localRoadRate.category2.toFixed(2)}
-                </div>
-                <div className="text-sm text-gray-500">тис. грн/км</div>
-                <div className="text-xs text-blue-600 mt-1">
-                  (коеф. 1.00)
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="p-4">
-              <CardContent className="p-0 text-center">
-                <h3 className="font-bold">Категорія III</h3>
-                <div className="text-xl font-bold mt-2">
-                  {localRoadRate.category3.toFixed(2)}
-                </div>
-                <div className="text-sm text-gray-500">тис. грн/км</div>
-                <div className="text-xs text-blue-600 mt-1">
-                  (коеф. 0.85)
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="p-4">
-              <CardContent className="p-0 text-center">
-                <h3 className="font-bold">Категорія IV</h3>
-                <div className="text-xl font-bold mt-2">
-                  {localRoadRate.category4.toFixed(2)}
-                </div>
-                <div className="text-sm text-gray-500">тис. грн/км</div>
-                <div className="text-xs text-blue-600 mt-1">
-                  (коеф. 0.64)
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="p-4">
-              <CardContent className="p-0 text-center">
-                <h3 className="font-bold">Категорія V</h3>
-                <div className="text-xl font-bold mt-2">
-                  {localRoadRate.category5.toFixed(2)}
-                </div>
-                <div className="text-sm text-gray-500">тис. грн/км</div>
-                <div className="text-xs text-blue-600 mt-1">
-                  (коеф. 0.40)
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {isCalculated && (
+            <div className="grid grid-cols-5 gap-4 mt-6">
+              <Card className="p-4">
+                <CardContent className="p-0 text-center">
+                  <h3 className="font-bold">Категорія I</h3>
+                  <div className="text-xl font-bold mt-2">
+                    {localRoadRate.category1.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-gray-500">тис. грн/км</div>
+                  <div className="text-xs text-blue-600 mt-1">
+                    (коеф. 1.71)
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="p-4">
+                <CardContent className="p-0 text-center">
+                  <h3 className="font-bold">Категорія II</h3>
+                  <div className="text-xl font-bold mt-2">
+                    {localRoadRate.category2.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-gray-500">тис. грн/км</div>
+                  <div className="text-xs text-blue-600 mt-1">
+                    (коеф. 1.00)
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="p-4">
+                <CardContent className="p-0 text-center">
+                  <h3 className="font-bold">Категорія III</h3>
+                  <div className="text-xl font-bold mt-2">
+                    {localRoadRate.category3.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-gray-500">тис. грн/км</div>
+                  <div className="text-xs text-blue-600 mt-1">
+                    (коеф. 0.85)
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="p-4">
+                <CardContent className="p-0 text-center">
+                  <h3 className="font-bold">Категорія IV</h3>
+                  <div className="text-xl font-bold mt-2">
+                    {localRoadRate.category4.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-gray-500">тис. грн/км</div>
+                  <div className="text-xs text-blue-600 mt-1">
+                    (коеф. 0.64)
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="p-4">
+                <CardContent className="p-0 text-center">
+                  <h3 className="font-bold">Категорія V</h3>
+                  <div className="text-xl font-bold mt-2">
+                    {localRoadRate.category5.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-gray-500">тис. грн/км</div>
+                  <div className="text-xs text-blue-600 mt-1">
+                    (коеф. 0.40)
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -129,7 +129,7 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
   const ReportDocument = (
     <Document>
       <Page size="A4" style={styles.page}>
-        <Text style={styles.title}>Звіт з розрахунку експлуатаційного утримання доріг</Text>
+        <Text style={styles.title}>Звіт з експлуатаційного утримання доріг</Text>
         
         <Text style={styles.sectionTitle}>Інформація про розрахунки</Text>
         <View style={styles.table}>

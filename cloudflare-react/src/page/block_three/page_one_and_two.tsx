@@ -16,7 +16,7 @@ import {
   type DetailedTechnicalCondition
 } from '@/modules/block_three';
 
-import { useAppDispatch } from '@/store/hooks';
+import { useAppDispatch } from '@/redux/hooks';
 import { setCalculatedRoads } from '@/store/roadDataSlice';
 
 interface InputRow {

@@ -769,7 +769,7 @@ const HistoryComponent: React.FC = () => {
                 </CardHeader>
               </Card>
 
-              {/* Блок 1 */}
+              {/* Бюджетне фінансування */}
               {selectedSession.blockOneData && (
                 <Card>
                   <CardHeader>
@@ -853,7 +853,7 @@ const HistoryComponent: React.FC = () => {
                 </Card>
               )}
 
-              {/* Блок 2 */}
+              {/* Експлуатаційне утримання */}
               {selectedSession.blockTwoData && (
                 <Card>
                   <CardHeader>
@@ -885,7 +885,7 @@ const HistoryComponent: React.FC = () => {
                 </Card>
               )}
 
-              {/* Блок 3 */}
+              {/* Планування ремонтів */}
               {selectedSession.blockThreeData && (
                 <Card>
                   <CardHeader>

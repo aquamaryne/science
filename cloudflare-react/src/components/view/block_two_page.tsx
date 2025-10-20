@@ -32,7 +32,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
   const appDispatch = useAppDispatch();
   const blockTwoState = useAppSelector(state => state.blockTwo);
   
-  // State для государственных дорог (Блок 2.1)
+  // State для государственных дорог (Експлуатаційне утримання - державні дороги)
   const [stateRoadBaseRate, setStateRoadBaseRate] = useState<number>(blockTwoState.stateRoadBaseRate);
   const [stateInflationIndexes, setStateInflationIndexes] = useState<number[]>(blockTwoState.stateInflationIndexes);
   const [stateRoadRate, setStateRoadRates] = useState<{
@@ -43,7 +43,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
     category5: number;
   }>(blockTwoState.stateRoadRates);
 
-  // State для местных дорог (Блок 2.2)
+  // State для местных дорог (Експлуатаційне утримання - місцеві дороги)
   const [localRoadBaseRate, setLocalRoadBaseRate] = useState<number>(blockTwoState.localRoadBaseRate);
   const [localInflationIndexes, setLocalInflationIndexes] = useState<number[]>(blockTwoState.localInflationIndexes);
   const [localRoadRate, setLocalRoadRates] = useState<{
@@ -54,7 +54,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
     category5: number;
   }>(blockTwoState.localRoadRates);
 
-  // State для расчета финансирования (Блок 2.3-2.8)
+  // State для расчета финансирования (Розрахунок фінансування)
   const [regionCoefficients] = useState<RegionCoefficients[]>(getRegionCoefficients());
   const [_regionData] = useState<RegionRoads>(generateSampleRegionData("Оберіть регіон"));
   const [saveStatus, setSaveStatus] = useState<string>("");

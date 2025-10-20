@@ -2,121 +2,244 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { useAppSelector } from '@/redux/hooks';
-import jsPDF from 'jspdf';
+import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Font } from '@react-pdf/renderer';
 
 interface PDFReportBlockOneProps {
   className?: string;
 }
 
-// Функция для конвертации текста в правильную кодировку
-const convertText = (text: string): string => {
-  // Простая замена проблемных символов
-  return text
-    .replace(/і/g, 'i')
-    .replace(/ї/g, 'ji')
-    .replace(/є/g, 'e')
-    .replace(/ґ/g, 'g')
-    .replace(/І/g, 'I')
-    .replace(/Ї/g, 'Ji')
-    .replace(/Є/g, 'E')
-    .replace(/Ґ/g, 'G');
-};
-
 const PDFReportBlockOne: React.FC<PDFReportBlockOneProps> = ({ className }) => {
   const blockOneState = useAppSelector(state => state.blockOne);
 
-  const generatePDF = async () => {
-    if (!blockOneState.q1Result && !blockOneState.q2Result &&
-        blockOneState.stateRoadBudget.length === 0 &&
-        blockOneState.localRoadBudget.length === 0) {
-      alert('Немає даних для генерації PDF звіту');
-      return;
-    }
+  // Register a font that supports Cyrillic (Ukrainian)
+  Font.register({
+    family: 'Roboto',
+    fonts: [
+      {
+        src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-light-webfont.ttf',
+        fontWeight: 300,
+      },
+      {
+        src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf',
+        fontWeight: 400,
+      },
+      {
+        src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-medium-webfont.ttf',
+        fontWeight: 500,
+      },
+      {
+        src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf',
+        fontWeight: 700,
+      },
+    ]
+  });
 
-    try {
-      // Создаем PDF в альбомной ориентации
-      const pdf = new jsPDF('l', 'mm', 'a4'); // landscape, millimeters, A4
-      
-      // Заголовок
-      pdf.setFontSize(20);
-      pdf.text(convertText('Звіт з розрахунку бюджетного фінансування доріг'), 105, 20, { align: 'center' });
-      
-      let yPosition = 40;
-      
-      // Державні дороги
-      pdf.setFontSize(16);
-      pdf.text(convertText('Державні дороги'), 20, yPosition);
-      yPosition += 10;
-      
-      pdf.setFontSize(12);
-      blockOneState.stateRoadBudget.forEach((item: any) => {
-        const text = `${convertText(item.name)}: ${item.value ? item.value.toLocaleString() : 'Не вказано'} тис. грн`;
-        pdf.text(text, 30, yPosition);
-        yPosition += 6;
-      });
-      
-      if (blockOneState.q1Result) {
-        yPosition += 5;
-        pdf.setFontSize(14);
-        pdf.text(convertText(`Результат Q1: ${blockOneState.q1Result.toLocaleString()} тис. грн`), 30, yPosition);
-        yPosition += 10;
-      }
-      
-      // Місцеві дороги
-      pdf.setFontSize(16);
-      pdf.text(convertText('Місцеві дороги'), 20, yPosition);
-      yPosition += 10;
-      
-      pdf.setFontSize(12);
-      blockOneState.localRoadBudget.forEach((item: any) => {
-        const text = `${convertText(item.name)}: ${item.value ? item.value.toLocaleString() : 'Не вказано'} тис. грн`;
-        pdf.text(text, 30, yPosition);
-        yPosition += 6;
-      });
-      
-      if (blockOneState.q2Result) {
-        yPosition += 5;
-        pdf.setFontSize(14);
-        pdf.text(convertText(`Результат Q2: ${blockOneState.q2Result.toLocaleString()} тис. грн`), 30, yPosition);
-        yPosition += 10;
-      }
-      
-      // Загальний результат
-      if (blockOneState.q1Result || blockOneState.q2Result) {
-        yPosition += 10;
-        pdf.setFontSize(16);
-        pdf.text(convertText('Загальний результат'), 20, yPosition);
-        yPosition += 10;
-        
-        pdf.setFontSize(12);
-        pdf.text(convertText(`Q1 (Державні дороги): ${blockOneState.q1Result ? blockOneState.q1Result.toLocaleString() : 'Не розраховано'} тис. грн`), 30, yPosition);
-        yPosition += 6;
-        pdf.text(convertText(`Q2 (Місцеві дороги): ${blockOneState.q2Result ? blockOneState.q2Result.toLocaleString() : 'Не розраховано'} тис. грн`), 30, yPosition);
-        yPosition += 6;
-        
-        pdf.setFontSize(14);
-        const total = (blockOneState.q1Result || 0) + (blockOneState.q2Result || 0);
-        pdf.text(convertText(`Загальний бюджет: ${total.toLocaleString()} тис. грн`), 30, yPosition);
-      }
-      
-      // Дата
-      yPosition += 20;
-      pdf.setFontSize(10);
-      pdf.text(convertText(`Звіт згенеровано: ${new Date().toLocaleString('uk-UA')}`), 105, yPosition, { align: 'center' });
-      
-      // Скачиваем PDF
-      pdf.save('звіт_бюджетне_фінансування.pdf');
-      
-    } catch (error) {
-      console.error('Помилка генерації PDF:', error);
-      alert('Помилка генерації PDF: ' + (error instanceof Error ? error.message : 'Невідома помилка'));
+  const styles = StyleSheet.create({
+    page: { padding: 30, fontFamily: 'Roboto', backgroundColor: '#ffffff' },
+    title: { 
+      fontSize: 22, 
+      textAlign: 'center', 
+      marginBottom: 30, 
+      fontWeight: 700, 
+      color: '#2c3e50',
+      borderBottomWidth: 4,
+      borderBottomColor: '#3498db',
+      paddingBottom: 15
+    },
+    sectionTitle: { 
+      fontSize: 16, 
+      marginTop: 20, 
+      marginBottom: 15, 
+      fontWeight: 600, 
+      color: '#2c3e50',
+      borderLeftWidth: 4,
+      borderLeftColor: '#e74c3c',
+      paddingLeft: 12
+    },
+    table: {
+      width: '100%',
+      marginBottom: 20,
+      borderStyle: 'solid',
+      borderWidth: 2,
+      borderColor: '#3498db',
+      borderRadius: 8
+    },
+    tableHeader: {
+      backgroundColor: '#f8f9fa',
+      color: '#2c3e50',
+      fontWeight: 600,
+      fontSize: 12,
+      borderBottomWidth: 2,
+      borderBottomColor: '#3498db'
+    },
+    tableRow: {
+      flexDirection: 'row',
+      borderBottomWidth: 1,
+      borderBottomColor: '#bdc3c7',
+      minHeight: 35,
+      width: '100%'
+    },
+    tableRowEven: {
+      backgroundColor: '#ffffff'
+    },
+    tableRowOdd: {
+      backgroundColor: '#f8f9fa'
+    },
+    tableCell: {
+      width: '50%',
+      padding: 10,
+      fontSize: 10,
+      borderRightWidth: 1,
+      borderRightColor: '#bdc3c7',
+      color: '#2c3e50',
+      textAlign: 'left'
+    },
+    tableCellHeader: {
+      width: '50%',
+      padding: 10,
+      fontSize: 11,
+      fontWeight: 600,
+      color: '#2c3e50',
+      borderRightWidth: 1,
+      borderRightColor: '#bdc3c7',
+      textAlign: 'left'
+    },
+    totalSection: {
+      borderWidth: 2,
+      borderColor: '#27ae60',
+      borderStyle: 'solid',
+      padding: 15,
+      borderRadius: 8,
+      marginTop: 20,
+      backgroundColor: '#ffffff'
+    },
+    totalTitle: {
+      fontSize: 16,
+      fontWeight: 600,
+      color: '#27ae60',
+      marginBottom: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: '#27ae60',
+      paddingBottom: 5
+    },
+    totalItem: {
+      fontSize: 12,
+      marginBottom: 6,
+      color: '#2c3e50'
+    },
+    totalAmount: {
+      fontSize: 18,
+      fontWeight: 700,
+      color: '#27ae60',
+      marginTop: 10,
+      borderWidth: 2,
+      borderColor: '#27ae60',
+      borderStyle: 'solid',
+      padding: 10,
+      borderRadius: 6,
+      textAlign: 'center'
+    },
+    footer: { 
+      fontSize: 10, 
+      textAlign: 'center', 
+      marginTop: 30,
+      color: '#7f8c8d',
+      borderTopWidth: 1,
+      borderTopColor: '#bdc3c7',
+      paddingTop: 15
     }
-  };
+  });
+
+  const ReportDocument = (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.title}>Звіт з розрахунку бюджетного фінансування доріг</Text>
+
+        {/* Державні дороги таблиця */}
+        <Text style={styles.sectionTitle}>Державні дороги</Text>
+        <View style={styles.table}>
+          <View style={[styles.tableRow, styles.tableHeader]}>
+            <Text style={styles.tableCellHeader}>Назва статті</Text>
+            <Text style={styles.tableCellHeader}>Сума (тис. грн)</Text>
+          </View>
+          {blockOneState.stateRoadBudget.map((item: any, idx: number) => (
+            <View key={`state-${idx}`} style={[styles.tableRow, idx % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}>
+              <Text style={styles.tableCell}>{item.name}</Text>
+              <Text style={styles.tableCell}>{item.value ? item.value.toLocaleString() : 'Не вказано'}</Text>
+            </View>
+          ))}
+          {blockOneState.q1Result && (
+            <View style={[styles.tableRow, styles.tableRowEven, { backgroundColor: '#d5dbdb' }]}>
+              <Text style={[styles.tableCell, { fontWeight: 600, color: '#2c3e50' }]}>Результат Q1</Text>
+              <Text style={[styles.tableCell, { fontWeight: 600, color: '#27ae60' }]}>{blockOneState.q1Result.toLocaleString()}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Місцеві дороги таблиця */}
+        <Text style={styles.sectionTitle}>Місцеві дороги</Text>
+        <View style={styles.table}>
+          <View style={[styles.tableRow, styles.tableHeader]}>
+            <Text style={styles.tableCellHeader}>Назва статті</Text>
+            <Text style={styles.tableCellHeader}>Сума (тис. грн)</Text>
+          </View>
+          {blockOneState.localRoadBudget.map((item: any, idx: number) => (
+            <View key={`local-${idx}`} style={[styles.tableRow, idx % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}>
+              <Text style={styles.tableCell}>{item.name}</Text>
+              <Text style={styles.tableCell}>{item.value ? item.value.toLocaleString() : 'Не вказано'}</Text>
+            </View>
+          ))}
+          {blockOneState.q2Result && (
+            <View style={[styles.tableRow, styles.tableRowEven, { backgroundColor: '#d5dbdb' }]}>
+              <Text style={[styles.tableCell, { fontWeight: 600, color: '#2c3e50' }]}>Результат Q2</Text>
+              <Text style={[styles.tableCell, { fontWeight: 600, color: '#27ae60' }]}>{blockOneState.q2Result.toLocaleString()}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Загальний результат */}
+        {(blockOneState.q1Result || blockOneState.q2Result) && (
+          <View style={styles.totalSection}>
+            <Text style={styles.totalTitle}>Загальний результат</Text>
+            <Text style={styles.totalItem}>Q1 (Державні дороги): {blockOneState.q1Result ? blockOneState.q1Result.toLocaleString() : 'Не розраховано'} тис. грн</Text>
+            <Text style={styles.totalItem}>Q2 (Місцеві дороги): {blockOneState.q2Result ? blockOneState.q2Result.toLocaleString() : 'Не розраховано'} тис. грн</Text>
+            <Text style={styles.totalAmount}>
+              Загальний бюджет: {(((blockOneState.q1Result || 0) + (blockOneState.q2Result || 0))).toLocaleString()} тис. грн
+            </Text>
+          </View>
+        )}
+
+        <Text style={styles.footer}>{`Звіт згенеровано: ${new Date().toLocaleString('uk-UA')}`}</Text>
+      </Page>
+    </Document>
+  );
+
+  const hasData = (
+    !!blockOneState.q1Result ||
+    !!blockOneState.q2Result ||
+    blockOneState.stateRoadBudget.length > 0 ||
+    blockOneState.localRoadBudget.length > 0
+  );
+
+  if (!hasData) {
+    return (
+      <Button className={className} disabled>
+        <Download className="mr-2 h-4 w-4" /> Немає даних для звіту
+      </Button>
+    );
+  }
 
   return (
-    <Button onClick={generatePDF} className={className}>
-      <Download className="mr-2 h-4 w-4" /> Завантажити PDF звіт
+    <PDFDownloadLink
+      document={ReportDocument}
+      fileName={`звіт_бюджетне_фінансування_${new Date().toLocaleDateString('uk-UA').replace(/\./g, '_')}.pdf`}
+    >
+      {({ loading }) => (
+        <Button className={className}>
+          <Download className="mr-2 h-4 w-4" /> {loading ? 'Генеруємо...' : 'Завантажити PDF звіт'}
     </Button>
+      )}
+    </PDFDownloadLink>
   );
 };
 

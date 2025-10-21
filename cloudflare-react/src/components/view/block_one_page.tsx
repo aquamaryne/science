@@ -429,11 +429,11 @@ const LocalRoadFundingBlock = ({
         <div className="w-full overflow-x-auto">
           <Table className="w-full">
             <TableHeader>
-              <TableRow>
-                <TableHead className="w-2/5 bg-white"></TableHead>
-                <TableHead className="w-16 text-center bg-white">Показник</TableHead>
-                <TableHead className="w-32 bg-white">Обсяг, тис.грн.</TableHead>
-                <TableHead className="w-1/4 bg-white">Нормативний документ / Файли</TableHead>
+              <TableRow className="glass-base" style={{ background: 'rgba(var(--c-glass), 0.03)' }}>
+                <TableHead className="font-semibold"></TableHead>
+                <TableHead className="font-semibold">Показник</TableHead>
+                <TableHead className="font-semibold">Обсяг, тис.грн.</TableHead>
+                <TableHead className="font-semibold">Нормативний документ / Файли</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

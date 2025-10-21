@@ -669,6 +669,7 @@ const ENPVCalculationTool: React.FC = () => {
                             value={currentData.totalReconstructionCost}
                             onChange={(e) => handleFieldChange('totalReconstructionCost', parseFloat(e.target.value))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
+                            placeholder="Введіть вартість"
                             />
                         </td>
                         </tr>

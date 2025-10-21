@@ -13,6 +13,7 @@ import {
   setCurrentPage as setCurrentPageAction
 } from '../../redux/slices/blockThreeSlice';
 import PDFReportBlockThree from "@/components/PDFReportBlockThree";
+import ErrorBoundary from '../ErrorBoundary';
 
 export interface RoadSectionUI {
   id: string;
@@ -196,6 +197,7 @@ export const Block3MultiPageApp: React.FC = () => {
   };
 
   return (
+    <ErrorBoundary>
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Заголовок */}
       <div className="mb-8 flex justify-between items-center">
@@ -271,5 +273,6 @@ export const Block3MultiPageApp: React.FC = () => {
         <PDFReportBlockThree />
       </div>
     </div>
+    </ErrorBoundary>
   );
 };

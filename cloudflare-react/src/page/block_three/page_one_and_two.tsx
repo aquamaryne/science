@@ -309,7 +309,26 @@ export const RoadTechnicalAssessment: React.FC = () => {
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>
+            {error}
+            {error.includes('Eo is not a function') && (
+              <div className="mt-2">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => {
+                    if (window.confirm('Очистити пошкоджені дані та перезавантажити сторінку?')) {
+                      localStorage.removeItem('persist:root');
+                      window.location.reload();
+                    }
+                  }}
+                  className="border-red-300 text-red-700"
+                >
+                  Очистити дані
+                </Button>
+              </div>
+            )}
+          </AlertDescription>
         </Alert>
       )}
 

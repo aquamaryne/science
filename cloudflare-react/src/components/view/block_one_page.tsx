@@ -25,8 +25,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
-import { UploadIcon, FileIcon, XIcon } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { UploadIcon, FileIcon, XIcon, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import PDFReportBlockOne from "@/components/PDFReportBlockOne";
 
 // Расширенный интерфейс для BudgetItem с файлами
@@ -184,6 +184,7 @@ const StateRoadFundingBlock = ({
       : modifyItemsWithLineBreak(initialStateRoadItems)
   );
   const [q1Result, setQ1Result] = useState<number | null>(blockOneState.q1Result);
+  const [validationError, setValidationError] = useState<string>('');
 
   // Синхронизируем с Redux при загрузке
   useEffect(() => {
@@ -228,6 +229,8 @@ const StateRoadFundingBlock = ({
 
   // Функция расчета
   const handleCalculate = () => {
+    setValidationError('');
+    
     const originalStateRoadItems = initialStateRoadItems.map((original, index) => {
       return {
         ...original,
@@ -242,7 +245,8 @@ const StateRoadFundingBlock = ({
       .map(item => item.id);
     
     if (missingFields.length > 0) {
-      alert(`Необхідно заповнити наступні поля: ${missingFields.join(', ')}`);
+      setValidationError(`Необхідно заповнити наступні поля: ${missingFields.join(', ')}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -262,6 +266,13 @@ const StateRoadFundingBlock = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
+        {validationError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Помилка валідації</AlertTitle>
+            <AlertDescription>{validationError}</AlertDescription>
+          </Alert>
+        )}
         <div className="w-full overflow-x-auto">
           <Table className="w-full">
             <TableHeader>
@@ -327,12 +338,18 @@ const StateRoadFundingBlock = ({
         </Button>
 
         {q1Result !== null && (
-          <div className="glass-card mt-4 p-6 w-full" style={{ background: 'rgba(var(--c-success), 0.08)' }}>
-            <div className="font-bold text-xl text-center">РЕЗУЛЬТАТ!</div>
-            <div className="text-lg mt-2 text-center">
-              Результат для державних доріг: {q1Result.toLocaleString()} тис. грн
-            </div>
-          </div>
+          <Alert className="mt-4 bg-gradient-to-r from-green-50 to-emerald-50 border-green-500">
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <AlertTitle className="text-green-900 text-lg font-bold">РЕЗУЛЬТАТ!</AlertTitle>
+            <AlertDescription>
+              <div className="text-green-800 text-lg font-semibold mt-1">
+                Q₁ (Державні дороги): {q1Result.toLocaleString()} тис. грн
+              </div>
+              <div className="text-green-700 text-sm mt-2">
+                💡 Розрахунок успішно виконано! Тепер можете перейти до розрахунків для місцевих доріг.
+              </div>
+            </AlertDescription>
+          </Alert>
         )}
       </CardContent>
     </Card>
@@ -354,6 +371,7 @@ const LocalRoadFundingBlock = ({
       : modifyItemsWithLineBreak(initialLocalRoadItems)
   );
   const [q2Result, setQ2Result] = useState<number | null>(blockOneState.q2Result);
+  const [validationError, setValidationError] = useState<string>('');
 
   // Синхронизируем с Redux при загрузке
   useEffect(() => {
@@ -393,6 +411,8 @@ const LocalRoadFundingBlock = ({
   };
 
   const handleCalculate = () => {
+    setValidationError('');
+    
     // Передаем исходные данные без переноса строк для расчета
     const originalLocalRoadItems = initialLocalRoadItems.map((original, index) => {
       return {
@@ -405,7 +425,8 @@ const LocalRoadFundingBlock = ({
     const qmzValue = originalLocalRoadItems.find(item => item.id === "Q2")?.value;
     
     if (qmzValue === null || qmzValue === undefined) {
-      alert("Необхідно заповнити значення Q2!");
+      setValidationError("Необхідно заповнити значення Q2!");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -426,6 +447,13 @@ const LocalRoadFundingBlock = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
+        {validationError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Помилка валідації</AlertTitle>
+            <AlertDescription>{validationError}</AlertDescription>
+          </Alert>
+        )}
         <div className="w-full overflow-x-auto">
           <Table className="w-full">
             <TableHeader>
@@ -491,12 +519,18 @@ const LocalRoadFundingBlock = ({
         </Button>
 
         {q2Result !== null && (
-          <div className="glass-card mt-4 p-6 w-full" style={{ background: 'rgba(var(--c-success), 0.08)' }}>
-            <div className="font-bold text-xl text-center">РЕЗУЛЬТАТ!</div>
-            <div className="text-lg mt-2 text-center">
-              Результат для місцевих доріг: {q2Result.toLocaleString()} тис. грн
+          <Alert className="mt-4 bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-500">
+            <CheckCircle2 className="h-5 w-5 text-blue-600" />
+            <AlertTitle className="text-blue-900 text-lg font-bold">РЕЗУЛЬТАТ!</AlertTitle>
+            <AlertDescription>
+              <div className="text-blue-800 text-lg font-semibold mt-1">
+                Q₂ (Місцеві дороги): {q2Result.toLocaleString()} тис. грн
               </div>
-          </div>
+              <div className="text-blue-700 text-sm mt-2">
+                💡 Розрахунок успішно виконано! Дані доступні для використання в інших розділах.
+              </div>
+            </AlertDescription>
+          </Alert>
         )}
       </CardContent>
     </Card>
@@ -510,6 +544,8 @@ const RoadFundingApp: React.FC = () => {
   const [q1Results, setQ1Results] = useState<{ value: number; items: ExtendedBudgetItem[] } | null>(null);
   const [q2Results, setQ2Results] = useState<{ value: number; items: ExtendedBudgetItem[] } | null>(null);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string>('');
+  const [generalWarning, setGeneralWarning] = useState<string>('');
 
   // Redux hooks
   const { createSession, dispatch } = useHistory();
@@ -570,8 +606,12 @@ const RoadFundingApp: React.FC = () => {
 
   // Сохранение результатов в сервис
   const saveResults = async () => {
+    setSaveError('');
+    setShowSaveSuccess(false);
+    
     if (!q1Results || !q2Results) {
-      alert("Спочатку виконайте розрахунки Q₁ та Q₂!");
+      setGeneralWarning("Спочатку виконайте розрахунки Q₁ та Q₂!");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -587,13 +627,15 @@ const RoadFundingApp: React.FC = () => {
         sessionId = currentSession?.id;
       } catch (error) {
         console.error('Помилка створення сесії:', error);
-        alert("Помилка створення сесії");
+        setSaveError("Помилка створення сесії. Спробуйте ще раз.");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
     }
 
     if (!sessionId) {
-      alert("Немає активної сесії для збереження");
+      setSaveError("Немає активної сесії для збереження. Спробуйте перезавантажити сторінку.");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -641,33 +683,57 @@ const RoadFundingApp: React.FC = () => {
           console.log('✅ Результати розрахунку бюджетного фінансування збережено в Redux історію');
         } else {
           console.error('❌ Помилка збереження в Redux:', result);
-          alert('Помилка збереження в історію');
+          setSaveError('Помилка збереження в історію. Перевірте підключення.');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       }
     } catch (error) {
       console.error('🔴 Ошибка при сохранении результатов:', error);
-      alert('Помилка при збереженні результатів');
+      setSaveError('Помилка при збереженні результатів. Спробуйте ще раз.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   return (
     <div className="min-h-screen p-6 w-full" style={{ background: 'rgb(var(--c-bg))' }}>
       <div className="w-full mx-auto">
-        <Card className="glass-card mb-8 w-full">
-          <CardHeader className="glass-card-header">
-            <CardTitle className="text-3xl font-bold text-gray-800">
+        <Card className="glass-card mb-6 w-full shadow-lg">
+          <CardHeader className="glass-card-header bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-300">
+            <CardTitle className="text-3xl font-bold text-gray-900">
               Визначення загального обсягу бюджетного фінансування розвитку та утримання автомобільних доріг державного та місцевого значення            
             </CardTitle>
             {sessionId && (
-              <div className="text-sm opacity-60 mt-2">
-                Сесія розрахунків: {sessionId}
+              <div className="text-sm text-blue-700 mt-2 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                Сесія розрахунків: <span className="font-mono bg-blue-100 px-2 py-1 rounded">{sessionId}</span>
               </div>
             )}
           </CardHeader>
         </Card>
 
+        {/* Предупреждения и сообщения */}
+        {generalWarning && (
+          <Alert className="mb-6 bg-yellow-50 border-yellow-500">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <AlertTitle className="text-yellow-800">Увага</AlertTitle>
+            <AlertDescription className="text-yellow-700">
+              {generalWarning}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {saveError && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Помилка збереження</AlertTitle>
+            <AlertDescription>{saveError}</AlertDescription>
+          </Alert>
+        )}
+
         {showSaveSuccess && (
-          <Alert className="mb-6 border-green-500 bg-green-50">
+          <Alert className="mb-6 bg-green-50 border-green-500">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertTitle className="text-green-800">Успішно!</AlertTitle>
             <AlertDescription className="text-green-700">
               ✅ Результати бюджетного фінансування успішно збережені в сесії розрахунків!
             </AlertDescription>
@@ -680,43 +746,67 @@ const RoadFundingApp: React.FC = () => {
         {/* Дороги местного значения */}
         <LocalRoadFundingBlock onResultsChange={handleQ2Results} />
 
+        {/* Інформаційна підказка */}
+        {!q1Results && !q2Results && (
+          <Alert className="mb-6 bg-blue-50 border-blue-300">
+            <AlertCircle className="h-4 w-4 text-blue-600" />
+            <AlertTitle className="text-blue-900">Інструкція</AlertTitle>
+            <AlertDescription className="text-blue-800">
+              <ol className="list-decimal list-inside space-y-1 mt-2">
+                <li>Заповніть всі поля для <strong>державних доріг</strong> і натисніть "Розрахувати"</li>
+                <li>Заповніть всі поля для <strong>місцевих доріг</strong> і натисніть "Розрахувати"</li>
+                <li>Після отримання обох результатів з'явиться кнопка <strong>"Зберегти результати"</strong></li>
+              </ol>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Сводка и сохранение результатов */}
         {q1Results && q2Results && (
-          <Card className="mt-8 w-full border-green-500 shadow-sm rounded-none">
-            <CardHeader className="bg-green-50 border-b border-green-500">
-              <CardTitle className="text-xl font-bold text-green-800">
+          <Card className="mt-8 w-full border-green-500 shadow-lg rounded-lg overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-500">
+              <CardTitle className="text-2xl font-bold text-green-900 flex items-center gap-2">
+                <CheckCircle2 className="h-6 w-6" />
                 Сводка результатів
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-800">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div className="text-center bg-gradient-to-br from-green-100 to-green-50 p-6 rounded-lg border-2 border-green-300">
+                  <div className="text-sm font-semibold text-green-900 mb-2">Q₁ - Державні дороги</div>
+                  <div className="text-4xl font-bold text-green-700">
                     {q1Results.value.toLocaleString()}
                   </div>
-                  <div className="text-sm text-gray-600">(тис. грн)</div>
-                  <div className="text-xs text-gray-500">Державні дороги</div>
+                  <div className="text-sm text-green-600 mt-1">тис. грн</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-800">
+                <div className="text-center bg-gradient-to-br from-blue-100 to-blue-50 p-6 rounded-lg border-2 border-blue-300">
+                  <div className="text-sm font-semibold text-blue-900 mb-2">Q₂ - Місцеві дороги</div>
+                  <div className="text-4xl font-bold text-blue-700">
                     {q2Results.value.toLocaleString()}
                   </div>
-                  <div className="text-sm text-gray-600">(тис. грн)</div>
-                  <div className="text-xs text-gray-500">Місцеві дороги</div>
+                  <div className="text-sm text-blue-600 mt-1">тис. грн</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-green-700">
+                <div className="text-center bg-gradient-to-br from-purple-100 to-purple-50 p-6 rounded-lg border-2 border-purple-400">
+                  <div className="text-sm font-semibold text-purple-900 mb-2">Q - Загальний бюджет</div>
+                  <div className="text-4xl font-bold text-purple-700">
                     {(q1Results.value + q2Results.value).toLocaleString()}
                   </div>
-                  <div className="text-sm text-gray-600">Загальний бюджет (тис. грн)</div>
+                  <div className="text-sm text-purple-600 mt-1">тис. грн</div>
                 </div>
               </div>
               
+              <Alert className="mb-4 bg-purple-50 border-purple-300">
+                <AlertCircle className="h-4 w-4 text-purple-600" />
+                <AlertDescription className="text-purple-800">
+                  <strong>📊 Розрахунки завершені!</strong> Збережіть результати для використання в наступних розділах (Експлуатаційне утримання, Планування ремонтів).
+                </AlertDescription>
+              </Alert>
 
               <Button 
                 onClick={saveResults}
-                className="glass-button glass-button--success glass-button--xl w-full mt-6 text-white"
+                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl"
               >
+                <CheckCircle2 className="h-5 w-5 mr-2" />
                 💾 Зберегти результати в сесію розрахунків
               </Button>
             </CardContent>

@@ -9,10 +9,39 @@ interface PDFReportBlockThreeProps {
   className?: string;
 }
 
+const WORK_TYPE_NAMES: Record<string, string> = {
+  current_repair: 'Поточний ремонт',
+  capital_repair: 'Капітальний ремонт',
+  reconstruction: 'Реконструкція',
+  no_work_needed: 'Не потрібно',
+  '': '-'
+};
+
 const PDFReportBlockThree: React.FC<PDFReportBlockThreeProps> = ({ className }) => {
-  // Получаем данные из Redux store
-  const calculatedRoads = useAppSelector(selectCalculatedRoads);
-  const hasCalculatedData = useAppSelector(selectHasCalculatedData);
+  // Получаем данные из Redux store с защитой от ошибок
+  const calculatedRoads = useAppSelector((state) => {
+    try {
+      const roads = selectCalculatedRoads(state);
+      // Проверяем что это массив
+      if (!Array.isArray(roads)) {
+        console.warn('calculatedRoads is not an array:', roads);
+        return [];
+      }
+      return roads;
+    } catch (error) {
+      console.error('Error reading calculatedRoads:', error);
+      return [];
+    }
+  });
+  
+  const hasCalculatedData = useAppSelector((state) => {
+    try {
+      return selectHasCalculatedData(state);
+    } catch (error) {
+      console.error('Error reading hasCalculatedData:', error);
+      return false;
+    }
+  });
   
   // Register a font that supports Cyrillic (Ukrainian)
   Font.register({
@@ -59,6 +88,13 @@ const PDFReportBlockThree: React.FC<PDFReportBlockThreeProps> = ({ className }) 
       borderLeftColor: '#f39c12',
       paddingLeft: 12
     },
+    subSectionTitle: {
+      fontSize: 12,
+      marginTop: 10,
+      marginBottom: 8,
+      fontWeight: 500,
+      color: '#34495e'
+    },
     table: {
       width: '100%',
       marginBottom: 20,
@@ -97,38 +133,6 @@ const PDFReportBlockThree: React.FC<PDFReportBlockThreeProps> = ({ className }) 
       color: '#2c3e50',
       textAlign: 'left'
     },
-    dataTable: {
-      width: '100%',
-      marginBottom: 20,
-      borderStyle: 'solid',
-      borderWidth: 1,
-      borderColor: '#34495e',
-      borderRadius: 4
-    },
-    dataTableHeader: {
-      backgroundColor: '#ecf0f1',
-      color: '#2c3e50',
-      fontWeight: 600,
-      fontSize: 9,
-      borderBottomWidth: 1,
-      borderBottomColor: '#bdc3c7'
-    },
-    dataTableCell: {
-      padding: 6,
-      fontSize: 8,
-      borderRightWidth: 1,
-      borderRightColor: '#bdc3c7',
-      color: '#2c3e50',
-      textAlign: 'left'
-    },
-    dataTableCellNumber: {
-      padding: 6,
-      fontSize: 8,
-      borderRightWidth: 1,
-      borderRightColor: '#bdc3c7',
-      color: '#2c3e50',
-      textAlign: 'right'
-    },
     tableCellHeader: {
       width: '50%',
       padding: 10,
@@ -138,26 +142,6 @@ const PDFReportBlockThree: React.FC<PDFReportBlockThreeProps> = ({ className }) 
       borderRightWidth: 1,
       borderRightColor: '#bdc3c7',
       textAlign: 'left'
-    },
-    infoSection: {
-      borderWidth: 2,
-      borderColor: '#8e44ad',
-      borderStyle: 'solid',
-      padding: 15,
-      borderRadius: 8,
-      marginTop: 20,
-      backgroundColor: '#ffffff'
-    },
-    infoItem: {
-      fontSize: 12,
-      marginBottom: 6,
-      color: '#2c3e50'
-    },
-    bullet: {
-      fontSize: 12,
-      marginBottom: 6,
-      color: '#2c3e50',
-      paddingLeft: 15
     },
     footer: { 
       fontSize: 10, 
@@ -173,10 +157,9 @@ const PDFReportBlockThree: React.FC<PDFReportBlockThreeProps> = ({ className }) 
   // Подготавливаем данные для отчета
   const totalRoads = calculatedRoads.length;
   const totalLength = calculatedRoads.reduce((sum, road) => sum + road.length, 0);
-  const totalCost = calculatedRoads.reduce((sum, road) => sum + (road.estimatedCost || 0), 0);
   
   const workTypeStats = calculatedRoads.reduce((stats, road) => {
-    const workType = road.workType || 'Не визначено';
+    const workType = road.workType || 'no_work_needed';
     stats[workType] = (stats[workType] || 0) + 1;
     return stats;
   }, {} as Record<string, number>);
@@ -184,132 +167,190 @@ const PDFReportBlockThree: React.FC<PDFReportBlockThreeProps> = ({ className }) 
   const ReportDocument = (
     <Document>
       <Page size="A4" style={styles.page}>
-        <Text style={styles.title}>Звіт з планування ремонтів автомобільних доріг</Text>
+        <Text style={styles.title}>Звіт з оцінки транспортно-експлуатаційного стану доріг</Text>
         
-        <Text style={styles.sectionTitle}>Інформація про розрахунки</Text>
+        {/* Загальна інформація */}
+        <Text style={styles.sectionTitle}>Загальна інформація</Text>
         <View style={styles.table}>
           <View style={[styles.tableRow, styles.tableHeader]}>
             <Text style={styles.tableCellHeader}>Показник</Text>
-            <Text style={styles.tableCellHeader}>Статус</Text>
+            <Text style={styles.tableCellHeader}>Значення</Text>
           </View>
           <View style={[styles.tableRow, styles.tableRowEven]}>
-            <Text style={styles.tableCell}>Збереження даних</Text>
+            <Text style={styles.tableCell}>Кількість оцінених доріг</Text>
+            <Text style={styles.tableCell}>{totalRoads} од.</Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowOdd]}>
+            <Text style={styles.tableCell}>Загальна протяжність</Text>
+            <Text style={styles.tableCell}>{totalLength.toFixed(2)} км</Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowEven]}>
+            <Text style={styles.tableCell}>Статус даних</Text>
             <Text style={styles.tableCell}>
               {hasCalculatedData ? 'Дані збережено в системі' : 'Дані не збережено'}
             </Text>
           </View>
-          <View style={[styles.tableRow, styles.tableRowOdd]}>
-            <Text style={styles.tableCell}>Розрахунки ефективності</Text>
-            <Text style={styles.tableCell}>
-              {totalRoads > 0 ? `Розрахунки виконано для ${totalRoads} доріг` : 'Розрахунки не виконано'}
-            </Text>
-          </View>
         </View>
 
+        {/* Розподіл за видами робіт */}
         {totalRoads > 0 && (
           <>
-            <Text style={styles.sectionTitle}>Загальна статистика</Text>
-            <View style={styles.dataTable}>
-              <View style={[styles.tableRow, styles.dataTableHeader]}>
-                <Text style={[styles.dataTableCell, { width: '40%' }]}>Показник</Text>
-                <Text style={[styles.dataTableCellNumber, { width: '30%' }]}>Значення</Text>
-                <Text style={[styles.dataTableCell, { width: '30%' }]}>Одиниця</Text>
-              </View>
-              <View style={[styles.tableRow, styles.tableRowEven]}>
-                <Text style={[styles.dataTableCell, { width: '40%' }]}>Кількість доріг</Text>
-                <Text style={[styles.dataTableCellNumber, { width: '30%' }]}>{totalRoads}</Text>
-                <Text style={[styles.dataTableCell, { width: '30%' }]}>од.</Text>
-              </View>
-              <View style={[styles.tableRow, styles.tableRowOdd]}>
-                <Text style={[styles.dataTableCell, { width: '40%' }]}>Загальна протяжність</Text>
-                <Text style={[styles.dataTableCellNumber, { width: '30%' }]}>{totalLength.toFixed(2)}</Text>
-                <Text style={[styles.dataTableCell, { width: '30%' }]}>км</Text>
-              </View>
-              <View style={[styles.tableRow, styles.tableRowEven]}>
-                <Text style={[styles.dataTableCell, { width: '40%' }]}>Загальна вартість</Text>
-                <Text style={[styles.dataTableCellNumber, { width: '30%' }]}>{totalCost.toLocaleString('uk-UA')}</Text>
-                <Text style={[styles.dataTableCell, { width: '30%' }]}>грн</Text>
-              </View>
-            </View>
-
             <Text style={styles.sectionTitle}>Розподіл за видами робіт</Text>
-            <View style={styles.dataTable}>
-              <View style={[styles.tableRow, styles.dataTableHeader]}>
-                <Text style={[styles.dataTableCell, { width: '60%' }]}>Вид робіт</Text>
-                <Text style={[styles.dataTableCellNumber, { width: '20%' }]}>Кількість</Text>
-                <Text style={[styles.dataTableCellNumber, { width: '20%' }]}>%</Text>
+            <View style={styles.table}>
+              <View style={[styles.tableRow, styles.tableHeader]}>
+                <Text style={styles.tableCellHeader}>Вид робіт</Text>
+                <Text style={styles.tableCellHeader}>Кількість доріг</Text>
               </View>
               {Object.entries(workTypeStats).map(([workType, count], index) => (
                 <View key={workType} style={[styles.tableRow, index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}>
-                  <Text style={[styles.dataTableCell, { width: '60%' }]}>{workType}</Text>
-                  <Text style={[styles.dataTableCellNumber, { width: '20%' }]}>{count}</Text>
-                  <Text style={[styles.dataTableCellNumber, { width: '20%' }]}>
-                    {((count / totalRoads) * 100).toFixed(1)}%
+                  <Text style={styles.tableCell}>{WORK_TYPE_NAMES[workType] || workType}</Text>
+                  <Text style={styles.tableCell}>
+                    {count} ({((count / totalRoads) * 100).toFixed(1)}%)
                   </Text>
                 </View>
               ))}
             </View>
 
+            {/* Детальна інформація по кожній дорозі */}
             <Text style={styles.sectionTitle}>Детальні дані по дорогах</Text>
-            <View style={styles.dataTable}>
-              <View style={[styles.tableRow, styles.dataTableHeader]}>
-                <Text style={[styles.dataTableCell, { width: '25%' }]}>Назва дороги</Text>
-                <Text style={[styles.dataTableCellNumber, { width: '10%' }]}>Кат.</Text>
-                <Text style={[styles.dataTableCellNumber, { width: '15%' }]}>Довжина</Text>
-                <Text style={[styles.dataTableCell, { width: '25%' }]}>Вид робіт</Text>
-                <Text style={[styles.dataTableCellNumber, { width: '25%' }]}>Вартість</Text>
+            {calculatedRoads.map((road, roadIndex) => (
+              <View key={road.id} style={{ marginBottom: 15 }}>
+                <Text style={styles.subSectionTitle}>
+                  {roadIndex + 1}. {road.roadName} (Категорія {road.category}, {road.length} км)
+                </Text>
+                
+                {/* Вихідні дані */}
+                <View style={styles.table}>
+                  <View style={[styles.tableRow, styles.tableHeader]}>
+                    <Text style={styles.tableCellHeader}>Вихідні дані</Text>
+                    <Text style={styles.tableCellHeader}>Значення</Text>
+                  </View>
+                  <View style={[styles.tableRow, styles.tableRowEven]}>
+                    <Text style={styles.tableCell}>Інтенсивність руху</Text>
+                    <Text style={styles.tableCell}>{road.actualIntensity} авт./добу</Text>
+                  </View>
+                  <View style={[styles.tableRow, styles.tableRowOdd]}>
+                    <Text style={styles.tableCell}>Модуль пружності</Text>
+                    <Text style={styles.tableCell}>{road.actualElasticModulus} МПа</Text>
+                  </View>
+                  <View style={[styles.tableRow, styles.tableRowEven]}>
+                    <Text style={styles.tableCell}>Рівність покриття</Text>
+                    <Text style={styles.tableCell}>{road.actualSurfaceEvenness} м/км</Text>
+                  </View>
+                  <View style={[styles.tableRow, styles.tableRowOdd]}>
+                    <Text style={styles.tableCell}>Глибина колії</Text>
+                    <Text style={styles.tableCell}>{road.actualRutDepth} мм</Text>
+                  </View>
+                  <View style={[styles.tableRow, styles.tableRowEven]}>
+                    <Text style={styles.tableCell}>Коефіцієнт зчеплення</Text>
+                    <Text style={styles.tableCell}>{road.actualFrictionValue}</Text>
+                  </View>
+                </View>
+
+                {/* Розраховані коефіцієнти */}
+                <View style={styles.table}>
+                  <View style={[styles.tableRow, styles.tableHeader]}>
+                    <Text style={styles.tableCellHeader}>Розраховані коефіцієнти</Text>
+                    <Text style={styles.tableCellHeader}>Значення</Text>
+                  </View>
+                  <View style={[styles.tableRow, styles.tableRowEven]}>
+                    <Text style={styles.tableCell}>Коеф. інтенсивності</Text>
+                    <Text style={styles.tableCell}>
+                      {road.detailedCondition.intensityCoefficient.toFixed(3)} 
+                      {road.detailedCondition.intensityCoefficient >= 1.0 ? ' ✓' : ' ✗'}
+                    </Text>
+                  </View>
+                  <View style={[styles.tableRow, styles.tableRowOdd]}>
+                    <Text style={styles.tableCell}>Коеф. міцності</Text>
+                    <Text style={styles.tableCell}>
+                      {road.detailedCondition.strengthCoefficient.toFixed(3)}
+                      {road.detailedCondition.strengthCoefficient >= 0.85 ? ' ✓' : ' ✗'}
+                    </Text>
+                  </View>
+                  <View style={[styles.tableRow, styles.tableRowEven]}>
+                    <Text style={styles.tableCell}>Коеф. рівності</Text>
+                    <Text style={styles.tableCell}>
+                      {road.detailedCondition.evennessCoefficient.toFixed(3)}
+                      {road.detailedCondition.evennessCoefficient >= 1.0 ? ' ✓' : ' ✗'}
+                    </Text>
+                  </View>
+                  <View style={[styles.tableRow, styles.tableRowOdd]}>
+                    <Text style={styles.tableCell}>Коеф. колійності</Text>
+                    <Text style={styles.tableCell}>
+                      {road.detailedCondition.rutCoefficient.toFixed(3)}
+                      {road.detailedCondition.rutCoefficient >= 1.0 ? ' ✓' : ' ✗'}
+                    </Text>
+                  </View>
+                  <View style={[styles.tableRow, styles.tableRowEven]}>
+                    <Text style={styles.tableCell}>Коеф. зчеплення</Text>
+                    <Text style={styles.tableCell}>
+                      {road.detailedCondition.frictionCoefficient.toFixed(3)}
+                      {road.detailedCondition.frictionCoefficient >= 1.0 ? ' ✓' : ' ✗'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Висновок */}
+                <View style={styles.table}>
+                  <View style={[styles.tableRow, styles.tableHeader]}>
+                    <Text style={styles.tableCellHeader}>Висновок</Text>
+                    <Text style={styles.tableCellHeader}>Значення</Text>
+                  </View>
+                  <View style={[styles.tableRow, styles.tableRowEven]}>
+                    <Text style={styles.tableCell}>Рекомендований вид робіт</Text>
+                    <Text style={styles.tableCell}>{WORK_TYPE_NAMES[road.workType] || road.workType}</Text>
+                  </View>
+                </View>
               </View>
-              {calculatedRoads.slice(0, 10).map((road, index) => (
-                <View key={road.id} style={[styles.tableRow, index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}>
-                  <Text style={[styles.dataTableCell, { width: '25%' }]}>{road.roadName}</Text>
-                  <Text style={[styles.dataTableCellNumber, { width: '10%' }]}>{road.category}</Text>
-                  <Text style={[styles.dataTableCellNumber, { width: '15%' }]}>{road.length.toFixed(2)}</Text>
-                  <Text style={[styles.dataTableCell, { width: '25%' }]}>{road.workType || 'Не визначено'}</Text>
-                  <Text style={[styles.dataTableCellNumber, { width: '25%' }]}>
-                    {(road.estimatedCost || 0).toLocaleString('uk-UA')}
-                  </Text>
-                </View>
-              ))}
-              {calculatedRoads.length > 10 && (
-                <View style={[styles.tableRow, styles.tableRowEven]}>
-                  <Text style={[styles.dataTableCell, { width: '100%', textAlign: 'center' }]}>
-                    ... та ще {calculatedRoads.length - 10} доріг
-                  </Text>
-                </View>
-              )}
-            </View>
+            ))}
           </>
         )}
 
-        <View style={styles.infoSection}>
-          <Text style={styles.bullet}>
-            • {hasCalculatedData ? 'Аналіз економічної ефективності завершено' : 'Аналіз не виконано - немає даних'}
-          </Text>
-          <Text style={styles.bullet}>
-            • {totalRoads > 0 ? `Розрахунки показників ефективності виконано для ${totalRoads} доріг` : 'Розрахунки не виконано'}
-          </Text>
-          <Text style={styles.bullet}>
-            • {hasCalculatedData ? 'Результати збережено в базі даних' : 'Результати не збережено'}
-          </Text>
-        </View>
+        {!hasCalculatedData && (
+          <View style={styles.table}>
+            <View style={[styles.tableRow, styles.tableRowEven]}>
+              <Text style={[styles.tableCell, { width: '100%', textAlign: 'center', color: '#e74c3c' }]}>
+                Немає даних для відображення. Виконайте розрахунки в розділі "Блок 3".
+              </Text>
+            </View>
+          </View>
+        )}
 
         <Text style={styles.footer}>{`Звіт згенеровано: ${new Date().toLocaleString('uk-UA')}`}</Text>
       </Page>
     </Document>
   );
 
-  return (
-    <PDFDownloadLink
-      document={ReportDocument}
-      fileName={`звіт_планування_ремонтів_${new Date().toLocaleDateString('uk-UA').replace(/\./g, '_')}.pdf`}
-    >
-      {({ loading }) => (
-        <Button className={className}>
-          <Download className="mr-2 h-4 w-4" /> {loading ? 'Генеруємо...' : 'Завантажити PDF звіт'}
-        </Button>
-      )}
-    </PDFDownloadLink>
-  );
+  // Если данных нет или они невалидны - показываем кнопку но отключаем её
+  if (!hasCalculatedData || !Array.isArray(calculatedRoads) || calculatedRoads.length === 0) {
+    return (
+      <Button className={className} disabled>
+        <Download className="mr-2 h-4 w-4" /> Немає даних для звіту
+      </Button>
+    );
+  }
+
+  try {
+    return (
+      <PDFDownloadLink
+        document={ReportDocument}
+        fileName={`звіт_оцінка_доріг_${new Date().toLocaleDateString('uk-UA').replace(/\./g, '_')}.pdf`}
+      >
+        {({ loading }) => (
+          <Button className={className}>
+            <Download className="mr-2 h-4 w-4" /> {loading ? 'Генеруємо...' : 'Завантажити PDF звіт'}
+          </Button>
+        )}
+      </PDFDownloadLink>
+    );
+  } catch (error) {
+    console.error('Error rendering PDFDownloadLink:', error);
+    return (
+      <Button className={className} disabled>
+        <Download className="mr-2 h-4 w-4" /> Помилка генерації PDF
+      </Button>
+    );
+  }
 };
 
 export default PDFReportBlockThree;

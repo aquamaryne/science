@@ -13,7 +13,9 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
   const blockTwoState = useAppSelector(state => state.blockTwo);
   
   // Проверяем наличие региональных результатов
-  const hasRegionalResults = blockTwoState.regionalResults && blockTwoState.regionalResults.length > 0;
+  const hasRegionalResults = Boolean(blockTwoState?.regionalResults && blockTwoState.regionalResults.length > 0);
+  const roadType = blockTwoState?.regionalResultsRoadType || null;
+  const roadTypeLabel = roadType === 'state' ? 'ДЕРЖАВНИХ' : roadType === 'local' ? 'МІСЦЕВИХ' : '';
   
   // Register a font that supports Cyrillic (Ukrainian)
   Font.register({
@@ -139,7 +141,9 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
         <Text style={styles.title}>Звіт з експлуатаційного утримання доріг</Text>
         
         {/* Блок 2.1: Державні дороги */}
-        <Text style={styles.sectionTitle}>2.1. Дороги державного значення</Text>
+        <Text style={styles.sectionTitle}>Дороги державного значення</Text>
+        
+        {/* Базові показники */}
         <View style={styles.table}>
           <View style={[styles.tableRow, styles.tableHeader]}>
             <Text style={styles.tableCellHeader}>Показник</Text>
@@ -159,30 +163,41 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
               {blockTwoState.stateInflationIndexes.reduce((acc, curr) => acc * (1 + curr / 100), 1).toFixed(4)}
             </Text>
           </View>
+        </View>
+
+        {/* Нормативи по категоріях */}
+        <Text style={{ ...styles.sectionTitle, fontSize: 12, marginTop: 15 }}>Нормативи по категоріях доріг</Text>
+        <View style={styles.table}>
+          <View style={[styles.tableRow, styles.tableHeader]}>
+            <Text style={styles.tableCellHeader}>Категорія</Text>
+            <Text style={styles.tableCellHeader}>Норматив (тис. грн/км)</Text>
+          </View>
           <View style={[styles.tableRow, styles.tableRowEven]}>
-            <Text style={styles.tableCell}>Категорія I</Text>
-            <Text style={styles.tableCell}>{blockTwoState.stateRoadRates.category1.toFixed(2)} тис. грн/км</Text>
+            <Text style={styles.tableCell}>I</Text>
+            <Text style={styles.tableCell}>{blockTwoState.stateRoadRates.category1.toFixed(2)}</Text>
           </View>
           <View style={[styles.tableRow, styles.tableRowOdd]}>
-            <Text style={styles.tableCell}>Категорія II</Text>
-            <Text style={styles.tableCell}>{blockTwoState.stateRoadRates.category2.toFixed(2)} тис. грн/км</Text>
+            <Text style={styles.tableCell}>II</Text>
+            <Text style={styles.tableCell}>{blockTwoState.stateRoadRates.category2.toFixed(2)}</Text>
           </View>
           <View style={[styles.tableRow, styles.tableRowEven]}>
-            <Text style={styles.tableCell}>Категорія III</Text>
-            <Text style={styles.tableCell}>{blockTwoState.stateRoadRates.category3.toFixed(2)} тис. грн/км</Text>
+            <Text style={styles.tableCell}>III</Text>
+            <Text style={styles.tableCell}>{blockTwoState.stateRoadRates.category3.toFixed(2)}</Text>
           </View>
           <View style={[styles.tableRow, styles.tableRowOdd]}>
-            <Text style={styles.tableCell}>Категорія IV</Text>
-            <Text style={styles.tableCell}>{blockTwoState.stateRoadRates.category4.toFixed(2)} тис. грн/км</Text>
+            <Text style={styles.tableCell}>IV</Text>
+            <Text style={styles.tableCell}>{blockTwoState.stateRoadRates.category4.toFixed(2)}</Text>
           </View>
           <View style={[styles.tableRow, styles.tableRowEven]}>
-            <Text style={styles.tableCell}>Категорія V</Text>
-            <Text style={styles.tableCell}>{blockTwoState.stateRoadRates.category5.toFixed(2)} тис. грн/км</Text>
+            <Text style={styles.tableCell}>V</Text>
+            <Text style={styles.tableCell}>{blockTwoState.stateRoadRates.category5.toFixed(2)}</Text>
           </View>
         </View>
 
         {/* Блок 2.2: Місцеві дороги */}
-        <Text style={styles.sectionTitle}>2.2. Дороги місцевого значення</Text>
+        <Text style={styles.sectionTitle}>Дороги місцевого значення</Text>
+        
+        {/* Базові показники */}
         <View style={styles.table}>
           <View style={[styles.tableRow, styles.tableHeader]}>
             <Text style={styles.tableCellHeader}>Показник</Text>
@@ -202,25 +217,34 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
               {blockTwoState.localInflationIndexes.reduce((acc, curr) => acc * (1 + curr / 100), 1).toFixed(4)}
             </Text>
           </View>
+        </View>
+
+        {/* Нормативи по категоріях */}
+        <Text style={{ ...styles.sectionTitle, fontSize: 12, marginTop: 15 }}>Нормативи по категоріях доріг</Text>
+        <View style={styles.table}>
+          <View style={[styles.tableRow, styles.tableHeader]}>
+            <Text style={styles.tableCellHeader}>Категорія</Text>
+            <Text style={styles.tableCellHeader}>Норматив (тис. грн/км)</Text>
+          </View>
           <View style={[styles.tableRow, styles.tableRowEven]}>
-            <Text style={styles.tableCell}>Категорія I</Text>
-            <Text style={styles.tableCell}>{blockTwoState.localRoadRates.category1.toFixed(2)} тис. грн/км</Text>
+            <Text style={styles.tableCell}>I</Text>
+            <Text style={styles.tableCell}>{blockTwoState.localRoadRates.category1.toFixed(2)}</Text>
           </View>
           <View style={[styles.tableRow, styles.tableRowOdd]}>
-            <Text style={styles.tableCell}>Категорія II</Text>
-            <Text style={styles.tableCell}>{blockTwoState.localRoadRates.category2.toFixed(2)} тис. грн/км</Text>
+            <Text style={styles.tableCell}>II</Text>
+            <Text style={styles.tableCell}>{blockTwoState.localRoadRates.category2.toFixed(2)}</Text>
           </View>
           <View style={[styles.tableRow, styles.tableRowEven]}>
-            <Text style={styles.tableCell}>Категорія III</Text>
-            <Text style={styles.tableCell}>{blockTwoState.localRoadRates.category3.toFixed(2)} тис. грн/км</Text>
+            <Text style={styles.tableCell}>III</Text>
+            <Text style={styles.tableCell}>{blockTwoState.localRoadRates.category3.toFixed(2)}</Text>
           </View>
           <View style={[styles.tableRow, styles.tableRowOdd]}>
-            <Text style={styles.tableCell}>Категорія IV</Text>
-            <Text style={styles.tableCell}>{blockTwoState.localRoadRates.category4.toFixed(2)} тис. грн/км</Text>
+            <Text style={styles.tableCell}>IV</Text>
+            <Text style={styles.tableCell}>{blockTwoState.localRoadRates.category4.toFixed(2)}</Text>
           </View>
           <View style={[styles.tableRow, styles.tableRowEven]}>
-            <Text style={styles.tableCell}>Категорія V</Text>
-            <Text style={styles.tableCell}>{blockTwoState.localRoadRates.category5.toFixed(2)} тис. грн/км</Text>
+            <Text style={styles.tableCell}>V</Text>
+            <Text style={styles.tableCell}>{blockTwoState.localRoadRates.category5.toFixed(2)}</Text>
           </View>
         </View>
 
@@ -256,7 +280,9 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
         {/* Регіональні результати (якщо є) */}
         {hasRegionalResults && (
           <>
-            <Text style={styles.sectionTitle}>Детальний розрахунок обсягу коштів по областях</Text>
+            <Text style={styles.sectionTitle}>
+              Детальний розрахунок обсягу коштів по областях{roadTypeLabel ? ` (дороги ${roadTypeLabel.toLowerCase()} значення)` : ''}
+            </Text>
             <View style={styles.table}>
               {/* Заголовок таблиці */}
               <View style={[styles.tableRow, styles.tableHeader]}>
@@ -270,7 +296,7 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
               </View>
               
               {/* Дані по областях */}
-              {blockTwoState.regionalResults.map((result: any, idx: number) => (
+              {(blockTwoState?.regionalResults || []).map((result: any, idx: number) => (
                 <View key={idx} style={[styles.tableRow, idx % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}>
                   <Text style={{ width: '25%', padding: 5, fontSize: 8, textAlign: 'left' }}>{result.regionName}</Text>
                   <Text style={{ width: '10%', padding: 5, fontSize: 7, textAlign: 'right' }}>
@@ -298,22 +324,22 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
               <View style={[styles.tableRow, { backgroundColor: '#e8f5e9', borderTopWidth: 2, borderTopColor: '#4caf50' }]}>
                 <Text style={{ width: '25%', padding: 5, fontSize: 9, fontWeight: 700, textAlign: 'left' }}>ВСЬОГО ПО УКРАЇНІ</Text>
                 <Text style={{ width: '10%', padding: 5, fontSize: 8, fontWeight: 700, textAlign: 'right' }}>
-                  {Math.round(blockTwoState.regionalResults.reduce((sum: number, r: any) => sum + r.fundingByCategory[1], 0)).toLocaleString('uk-UA')}
+                  {Math.round((blockTwoState?.regionalResults || []).reduce((sum: number, r: any) => sum + r.fundingByCategory[1], 0)).toLocaleString('uk-UA')}
                 </Text>
                 <Text style={{ width: '10%', padding: 5, fontSize: 8, fontWeight: 700, textAlign: 'right' }}>
-                  {Math.round(blockTwoState.regionalResults.reduce((sum: number, r: any) => sum + r.fundingByCategory[2], 0)).toLocaleString('uk-UA')}
+                  {Math.round((blockTwoState?.regionalResults || []).reduce((sum: number, r: any) => sum + r.fundingByCategory[2], 0)).toLocaleString('uk-UA')}
                 </Text>
                 <Text style={{ width: '10%', padding: 5, fontSize: 8, fontWeight: 700, textAlign: 'right' }}>
-                  {Math.round(blockTwoState.regionalResults.reduce((sum: number, r: any) => sum + r.fundingByCategory[3], 0)).toLocaleString('uk-UA')}
+                  {Math.round((blockTwoState?.regionalResults || []).reduce((sum: number, r: any) => sum + r.fundingByCategory[3], 0)).toLocaleString('uk-UA')}
                 </Text>
                 <Text style={{ width: '10%', padding: 5, fontSize: 8, fontWeight: 700, textAlign: 'right' }}>
-                  {Math.round(blockTwoState.regionalResults.reduce((sum: number, r: any) => sum + r.fundingByCategory[4], 0)).toLocaleString('uk-UA')}
+                  {Math.round((blockTwoState?.regionalResults || []).reduce((sum: number, r: any) => sum + r.fundingByCategory[4], 0)).toLocaleString('uk-UA')}
                 </Text>
                 <Text style={{ width: '10%', padding: 5, fontSize: 8, fontWeight: 700, textAlign: 'right' }}>
-                  {Math.round(blockTwoState.regionalResults.reduce((sum: number, r: any) => sum + r.fundingByCategory[5], 0)).toLocaleString('uk-UA')}
+                  {Math.round((blockTwoState?.regionalResults || []).reduce((sum: number, r: any) => sum + r.fundingByCategory[5], 0)).toLocaleString('uk-UA')}
                 </Text>
                 <Text style={{ width: '25%', padding: 5, fontSize: 9, fontWeight: 700, textAlign: 'right', color: '#2e7d32' }}>
-                  {Math.round(blockTwoState.regionalResults.reduce((sum: number, r: any) => sum + r.totalFunding, 0)).toLocaleString('uk-UA')}
+                  {Math.round((blockTwoState?.regionalResults || []).reduce((sum: number, r: any) => sum + r.totalFunding, 0)).toLocaleString('uk-UA')}
                 </Text>
               </View>
             </View>
@@ -326,7 +352,7 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
                 <Text style={styles.tableCellHeader}>Загальне фінансування (млн. грн)</Text>
               </View>
               {[1, 2, 3, 4, 5].map((cat: number, idx: number) => {
-                const total = blockTwoState.regionalResults.reduce((sum: number, r: any) => sum + r.fundingByCategory[cat], 0);
+                const total = (blockTwoState?.regionalResults || []).reduce((sum: number, r: any) => sum + r.fundingByCategory[cat], 0);
                 return (
                   <View key={cat} style={[styles.tableRow, idx % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}>
                     <Text style={styles.tableCell}>Категорія {['I', 'II', 'III', 'IV', 'V'][cat - 1]}</Text>
@@ -337,17 +363,6 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
             </View>
           </>
         )}
-
-        <View style={styles.infoSection}>
-          <Text style={styles.infoItem}>✅ Розрахунки нормативів для державних доріг виконано</Text>
-          <Text style={styles.infoItem}>✅ Розрахунки нормативів для місцевих доріг виконано</Text>
-          {blockTwoState.fundingResults && (
-            <Text style={styles.infoItem}>✅ Розрахунки фінансування для регіону "{blockTwoState.selectedRegion}" виконано</Text>
-          )}
-          {hasRegionalResults && (
-            <Text style={styles.infoItem}>✅ Розраховано фінансування для {blockTwoState.regionalResults.length} областей України</Text>
-          )}
-        </View>
 
         <Text style={styles.footer}>{`Звіт згенеровано: ${new Date().toLocaleString('uk-UA')}`}</Text>
       </Page>

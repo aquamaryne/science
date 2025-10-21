@@ -29,6 +29,7 @@ export interface BlockTwoState {
   selectedWorksheet: string;
   regionalData: any[];
   regionalResults: any[];
+  regionalResultsRoadType: 'state' | 'local' | null; // Тип доріг для regionalResults
 }
 
 const initialState: BlockTwoState = {
@@ -57,6 +58,7 @@ const initialState: BlockTwoState = {
   selectedWorksheet: '',
   regionalData: [],
   regionalResults: [],
+  regionalResultsRoadType: null,
 };
 
 const blockTwoSlice = createSlice({
@@ -124,6 +126,9 @@ const blockTwoSlice = createSlice({
     setRegionalResults: (state, action: PayloadAction<any[]>) => {
       state.regionalResults = action.payload;
     },
+    setRegionalResultsRoadType: (state, action: PayloadAction<'state' | 'local' | null>) => {
+      state.regionalResultsRoadType = action.payload;
+    },
     resetBlockTwo: () => initialState,
   },
 });
@@ -148,6 +153,7 @@ export const {
   setSelectedWorksheet,
   setRegionalData,
   setRegionalResults,
+  setRegionalResultsRoadType,
   resetBlockTwo,
 } = blockTwoSlice.actions;
 

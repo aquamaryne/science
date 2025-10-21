@@ -854,7 +854,16 @@ const HistoryComponent: React.FC = () => {
               )}
 
               {/* Експлуатаційне утримання */}
-              {selectedSession.blockTwoData && (
+              {selectedSession.blockTwoData && (() => {
+                console.log('📊 History Block 2 Debug:', {
+                  hasBlockTwoData: !!selectedSession.blockTwoData,
+                  hasRegionalResults: !!selectedSession.blockTwoData.regionalResults,
+                  regionalResultsLength: selectedSession.blockTwoData.regionalResults?.length || 0,
+                  roadType: selectedSession.blockTwoData.roadType,
+                  selectedRegion: selectedSession.blockTwoData.selectedRegion
+                });
+                return true;
+              })() && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -1004,6 +1013,135 @@ const HistoryComponent: React.FC = () => {
                         </Table>
                       </div>
                     </div>
+
+                    {/* РЕГІОНАЛЬНІ РЕЗУЛЬТАТИ */}
+                    {selectedSession.blockTwoData && selectedSession.blockTwoData.regionalResults && selectedSession.blockTwoData.regionalResults.length > 0 && (
+                      <div className="mt-6">
+                        <h4 className="text-lg font-semibold mb-3">
+                          📊 Регіональні результати по областях 
+                          <span className="ml-2 text-sm font-normal text-gray-600">
+                            ({selectedSession.blockTwoData.roadType === 'state' ? 'державні дороги' : 'місцеві дороги'})
+                          </span>
+                        </h4>
+                        <div className="border-2 border-purple-200 rounded-lg overflow-hidden">
+                          <div className="overflow-x-auto max-h-[500px]">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-purple-100 hover:bg-purple-100">
+                                  <TableHead className="font-bold text-purple-900 sticky left-0 z-10 bg-purple-100">Область</TableHead>
+                                  <TableHead className="font-bold text-purple-900 text-center">Кат. I</TableHead>
+                                  <TableHead className="font-bold text-purple-900 text-center">Кат. II</TableHead>
+                                  <TableHead className="font-bold text-purple-900 text-center">Кат. III</TableHead>
+                                  <TableHead className="font-bold text-purple-900 text-center">Кат. IV</TableHead>
+                                  <TableHead className="font-bold text-purple-900 text-center">Кат. V</TableHead>
+                                  <TableHead className="font-bold text-purple-900 text-right bg-yellow-100">Разом (тис. грн)</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {selectedSession.blockTwoData.regionalResults.map((result: any, index: number) => (
+                                  <TableRow key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-purple-50'}>
+                                    <TableCell className="font-medium sticky left-0 z-10 bg-inherit">
+                                      {result.regionName}
+                                    </TableCell>
+                                    {[1, 2, 3, 4, 5].map((cat) => (
+                                      <TableCell key={cat} className="text-right text-sm">
+                                        {Math.round(result.fundingByCategory[cat]).toLocaleString()}
+                                      </TableCell>
+                                    ))}
+                                    <TableCell className="text-right font-bold text-base bg-yellow-50">
+                                      {Math.round(result.totalFunding).toLocaleString()}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                                {/* Підсумковий рядок */}
+                                <TableRow className="bg-green-100 border-t-2 border-green-400">
+                                  <TableCell className="font-bold sticky left-0 z-10 bg-green-100">
+                                    ВСЬОГО ПО УКРАЇНІ
+                                  </TableCell>
+                                  {[1, 2, 3, 4, 5].map((cat) => (
+                                    <TableCell key={cat} className="text-right font-bold">
+                                      {Math.round(
+                                        selectedSession.blockTwoData!.regionalResults!.reduce(
+                                          (sum: number, r: any) => sum + r.fundingByCategory[cat], 
+                                          0
+                                        )
+                                      ).toLocaleString()}
+                                    </TableCell>
+                                  ))}
+                                  <TableCell className="text-right font-bold text-lg text-green-700 bg-green-200">
+                                    {Math.round(
+                                      selectedSession.blockTwoData!.regionalResults!.reduce(
+                                        (sum: number, r: any) => sum + r.totalFunding, 
+                                        0
+                                      )
+                                    ).toLocaleString()}
+                                  </TableCell>
+                                </TableRow>
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ТАБЛИЦЯ КОЕФІЦІЄНТІВ */}
+                    {selectedSession.blockTwoData && selectedSession.blockTwoData.regionalResults && selectedSession.blockTwoData.regionalResults.length > 0 && (
+                      <div className="mt-6">
+                        <h4 className="text-lg font-semibold mb-3">📊 Середньозважені коригувальні коефіцієнти</h4>
+                        <div className="border-2 border-cyan-200 rounded-lg overflow-hidden">
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-cyan-100 hover:bg-cyan-100">
+                                  <TableHead className="font-bold text-cyan-900">Область</TableHead>
+                                  {selectedSession.blockTwoData!.roadType === 'state' && (
+                                    <TableHead className="font-bold text-cyan-900 text-center">K<sub>д</sub></TableHead>
+                                  )}
+                                  <TableHead className="font-bold text-cyan-900 text-center">K<sub>г</sub></TableHead>
+                                  <TableHead className="font-bold text-cyan-900 text-center">K<sub>уе</sub></TableHead>
+                                  <TableHead className="font-bold text-cyan-900 text-center">K<sub>інт</sub></TableHead>
+                                  {selectedSession.blockTwoData!.roadType === 'state' && (
+                                    <>
+                                      <TableHead className="font-bold text-cyan-900 text-center">K<sub>е.д</sub></TableHead>
+                                      <TableHead className="font-bold text-cyan-900 text-center">K<sub>мпп</sub></TableHead>
+                                      <TableHead className="font-bold text-cyan-900 text-center">K<sub>осв</sub></TableHead>
+                                      <TableHead className="font-bold text-cyan-900 text-center">K<sub>рем</sub></TableHead>
+                                      <TableHead className="font-bold text-cyan-900 text-center">K<sub>кр.і</sub></TableHead>
+                                    </>
+                                  )}
+                                  <TableHead className="font-bold text-cyan-900 text-right bg-yellow-100">Добуток</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {selectedSession.blockTwoData!.regionalResults!.map((result: any, index: number) => (
+                                  <TableRow key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-cyan-50'}>
+                                    <TableCell className="font-medium">{result.regionName}</TableCell>
+                                    {selectedSession.blockTwoData!.roadType === 'state' && (
+                                      <TableCell className="text-center bg-gray-100">1.1600</TableCell>
+                                    )}
+                                    <TableCell className="text-center">{result.coefficients.mountainous.toFixed(4)}</TableCell>
+                                    <TableCell className="text-center">{result.coefficients.operatingConditions.toFixed(4)}</TableCell>
+                                    <TableCell className="text-center">{result.coefficients.trafficIntensity.toFixed(4)}</TableCell>
+                                    {selectedSession.blockTwoData!.roadType === 'state' && (
+                                      <>
+                                        <TableCell className="text-center">{(result.coefficients.europeanRoad || 1).toFixed(4)}</TableCell>
+                                        <TableCell className="text-center">{(result.coefficients.borderCrossing || 1).toFixed(4)}</TableCell>
+                                        <TableCell className="text-center">{(result.coefficients.lighting || 1).toFixed(4)}</TableCell>
+                                        <TableCell className="text-center">{(result.coefficients.repair || 1).toFixed(4)}</TableCell>
+                                        <TableCell className="text-center">{(result.coefficients.criticalInfra || 1).toFixed(4)}</TableCell>
+                                      </>
+                                    )}
+                                    <TableCell className="text-right font-bold bg-yellow-50">
+                                      {result.coefficients.totalProduct.toFixed(4)}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}

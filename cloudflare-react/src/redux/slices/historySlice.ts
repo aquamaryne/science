@@ -110,6 +110,9 @@ export const saveBlockTwoData = createAsyncThunk(
     stateRoadRates: any;
     localRoadRates: any;
     fundingResults: any;
+    regionalResults?: any[]; // ✅ ДОДАНО
+    regionalData?: any[]; // ✅ ДОДАНО
+    roadType?: 'state' | 'local'; // ✅ ДОДАНО
   }) => {
     const success = await historyService.saveBlockTwoData(
       params.sessionId,
@@ -120,7 +123,10 @@ export const saveBlockTwoData = createAsyncThunk(
       params.selectedRegion,
       params.stateRoadRates,
       params.localRoadRates,
-      params.fundingResults
+      params.fundingResults,
+      params.regionalResults, // ✅ ПЕРЕДАЄМО
+      params.regionalData, // ✅ ПЕРЕДАЄМО
+      params.roadType // ✅ ПЕРЕДАЄМО
     );
     if (success) {
       return await historyService.getCurrentSession();

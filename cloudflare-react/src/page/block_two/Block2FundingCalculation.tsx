@@ -8,6 +8,11 @@ import * as XLSX from 'xlsx';
 // ✅ ІМПОРТ REDUX
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { saveBlockTwoData } from '@/redux/slices/historySlice';
+import { 
+  setRegionalResults as setRegionalResultsAction, 
+  setRegionalResultsRoadType as setRegionalResultsRoadTypeAction,
+  setSelectedRegion as setSelectedRegionAction 
+} from '@/redux/slices/blockTwoSlice';
 
 // ✅ ІМПОРТИ З МОДУЛЯ
 import type { 
@@ -298,6 +303,13 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
         
         console.log('✅ Розрахунок завершено:', results);
         setRegionalResults(results);
+        
+        // ✅ ЗБЕРІГАЄМО В REDUX ДЛЯ PDF ЗВІТУ
+        dispatch(setRegionalResultsAction(results));
+        dispatch(setRegionalResultsRoadTypeAction(roadType));
+        dispatch(setSelectedRegionAction(selectedRegion)); // ✅ ЗБЕРІГАЄМО ВИБРАНИЙ РЕГІОН
+        console.log('✅ Дані збережено в Redux для PDF');
+        
         setIsCalculatingRegional(false);
         
       } catch (error) {
@@ -405,7 +417,12 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
   };
 
   // ✅ ФУНКЦІЯ ЗБЕРЕЖЕННЯ РЕЗУЛЬТАТІВ БЛОКУ 2
-  const saveBlockTwoResults = async () => {
+  const saveBlockTwoResults = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     if (!currentSession?.id || regionalResults.length === 0) {
       alert("Немає результатів для збереження!");
       return;
@@ -416,43 +433,91 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
       const stateFunding = roadType === 'state' ? totalFunding : 0;
       const localFunding = roadType === 'local' ? totalFunding : 0;
 
-      const result = await dispatch(saveBlockTwoData({
+      // Рассчитываем нормативы по категориям
+      const stateTotalInflationIndex = calculateCumulativeInflationIndex(stateInflationIndexes);
+      const stateRates = {
+        category1: calculateStateRoadMaintenanceRate(1, stateTotalInflationIndex),
+        category2: calculateStateRoadMaintenanceRate(2, stateTotalInflationIndex),
+        category3: calculateStateRoadMaintenanceRate(3, stateTotalInflationIndex),
+        category4: calculateStateRoadMaintenanceRate(4, stateTotalInflationIndex),
+        category5: calculateStateRoadMaintenanceRate(5, stateTotalInflationIndex)
+      };
+      const localRates = {
+        category1: calculateLocalRoadMaintenanceRate(1, stateTotalInflationIndex),
+        category2: calculateLocalRoadMaintenanceRate(2, stateTotalInflationIndex),
+        category3: calculateLocalRoadMaintenanceRate(3, stateTotalInflationIndex),
+        category4: calculateLocalRoadMaintenanceRate(4, stateTotalInflationIndex),
+        category5: calculateLocalRoadMaintenanceRate(5, stateTotalInflationIndex)
+      };
+
+      const dataToSave = {
         sessionId: currentSession.id,
-        stateRoadBaseRate: 0, // Можна додати пізніше
-        localRoadBaseRate: 0, // Можна додати пізніше
+        stateRoadBaseRate: 8.25, // Базовий норматив для державних доріг
+        localRoadBaseRate: 5.25, // Базовий норматив для місцевих доріг
         stateInflationIndexes,
-        localInflationIndexes: stateInflationIndexes, // Використовуємо ті ж індекси
-        selectedRegion: 'Україна',
-        stateRoadRates: {
-          category1: 0, category2: 0, category3: 0, category4: 0, category5: 0
-        },
-        localRoadRates: {
-          category1: 0, category2: 0, category3: 0, category4: 0, category5: 0
-        },
+        localInflationIndexes: stateInflationIndexes,
+        selectedRegion: selectedRegion === 'all' ? 'Україна' : selectedRegion,
+        stateRoadRates: stateRates,
+        localRoadRates: localRates,
         fundingResults: {
           stateFunding,
           localFunding,
           totalFunding
-        }
-      }));
+        },
+        regionalResults: regionalResults, // ✅ ДОДАЄМО РЕГІОНАЛЬНІ РЕЗУЛЬТАТИ
+        regionalData: regionalData, // ✅ ДОДАЄМО ВИХІДНІ ДАНІ
+        roadType: roadType // ✅ ДОДАЄМО ТИП ДОРІГ
+      };
+      
+      console.log('💾 Збереження Block 2 даних:', {
+        sessionId: dataToSave.sessionId,
+        regionalResultsLength: regionalResults.length,
+        regionalDataLength: regionalData.length,
+        roadType: roadType,
+        selectedRegion: dataToSave.selectedRegion
+      });
+      
+      const result = await dispatch(saveBlockTwoData(dataToSave));
 
       if (result.type.endsWith('/fulfilled')) {
-        console.log('✅ Результати збережено в Redux');
-        alert('Результати успішно збережено!');
+        const message = `✅ Успішно збережено!\n\n` +
+          `📊 Регіональні результати: ${regionalResults.length} областей\n` +
+          `💰 Загальне фінансування: ${totalFunding.toLocaleString()} тис. грн\n` +
+          `🛣️ Тип доріг: ${roadType === 'state' ? 'Державні' : 'Місцеві'}\n\n` +
+          `Перегляньте детальні таблиці в розділі "Історія"`;
+        alert(message);
       } else {
-        console.error('❌ Помилка збереження:', result);
+        console.error('Помилка збереження:', result);
         alert('Помилка при збереженні результатів');
       }
-    } catch (error) {
-      console.error('❌ Помилка збереження:', error);
-      alert('Помилка при збереженні результатів');
+    } catch (error: any) {
+      console.error('Помилка збереження:', error);
+      
+      // Перевіряємо чи це помилка Redux Persist
+      if (error?.message?.includes('Eo is not a function') || error?.message?.includes('reconciler')) {
+        const shouldClear = confirm(
+          '⚠️ Виявлено проблему з кешем додатку.\n\n' +
+          'Натисніть "OK" щоб очистити дані та перезавантажити сторінку.\n' +
+          'Натисніть "Скасувати" щоб продовжити без очищення.'
+        );
+        
+        if (shouldClear) {
+          localStorage.removeItem('persist:root');
+          window.location.reload();
+        }
+      } else {
+        alert('Помилка при збереженні результатів: ' + (error?.message || 'Невідома помилка'));
+      }
     }
   };
 
   // Очищаємо результати при зміні типу доріг
   React.useEffect(() => {
     setRegionalResults([]);
-  }, [roadType]);
+    // ✅ ТАКОЖ ОЧИЩАЄМО В REDUX
+    dispatch(setRegionalResultsAction([]));
+    dispatch(setRegionalResultsRoadTypeAction(roadType));
+  }, [roadType, dispatch]);
 
   // ==================== RENDER ====================
 
@@ -615,7 +680,10 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                       </label>
                       <select
                         value={selectedRegion}
-                        onChange={(e) => setSelectedRegion(e.target.value)}
+                        onChange={(e) => {
+                          setSelectedRegion(e.target.value);
+                          dispatch(setSelectedRegionAction(e.target.value)); // ✅ ЗБЕРІГАЄМО В REDUX
+                        }}
                         className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="all">Всі області ({regionalData.length})</option>
@@ -628,7 +696,10 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                     </div>
                     {selectedRegion !== 'all' && (
                       <Button
-                        onClick={() => setSelectedRegion('all')}
+                        onClick={() => {
+                          setSelectedRegion('all');
+                          dispatch(setSelectedRegionAction('all')); // ✅ ЗБЕРІГАЄМО В REDUX
+                        }}
                         variant="outline"
                         size="sm"
                         className="text-blue-600 border-blue-300 hover:bg-blue-50"
@@ -665,6 +736,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                         {isEditing ? 'Завершити редагування' : 'Редагувати дані'}
                       </Button>
                       <Button
+                        type="button"
                         onClick={calculateRegionalFinancing}
                         disabled={isCalculatingRegional}
                         className="bg-green-600 hover:bg-green-700"
@@ -1327,6 +1399,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                           </div>
                         </div>
                         <Button
+                          type="button"
                           onClick={saveBlockTwoResults}
                           className="bg-blue-600 hover:bg-blue-700 text-white"
                         >

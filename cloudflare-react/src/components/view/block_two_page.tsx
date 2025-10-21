@@ -14,6 +14,7 @@ import Block2StateRoads from '../../page/block_two/Block2StateRoads';
 import Block2LocalRoads from '../../page/block_two/Block2LocalRoads';
 import Block2FundingCalculation from '../../page/block_two/Block2FundingCalculation';
 import PDFReportBlockTwo from "@/components/PDFReportBlockTwo";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 // Импорт функций расчета
 import {
@@ -228,7 +229,9 @@ const Block2MaintenanceCalculator: React.FC = () => {
 
       {/* PDF Звіт */}
       <div className="mt-8">
-        <PDFReportBlockTwo />
+        <ErrorBoundary>
+          <PDFReportBlockTwo />
+        </ErrorBoundary>
       </div>
     </div>
   );

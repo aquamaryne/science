@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-// import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   History, 
   Download, 
@@ -20,9 +20,7 @@ import {
   FileText,
   Calculator,
   TrendingUp,
-  Settings,
-  Paperclip,
-  FileIcon
+  Settings
 } from 'lucide-react';
 import { useHistory, useAppSelector } from '../../redux/hooks';
 import {
@@ -31,39 +29,6 @@ import {
   selectAvailableDays
 } from '../../redux/slices/historySlice';
 import type { CalculationSession } from '../../service/historyService';
-
-// Компонент для отображения файлов
-const FileDisplayComponent: React.FC<{ 
-  files: { name: string; size: number; type: string; lastModified: number }[] 
-}> = ({ files }) => {
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  if (!files || files.length === 0) return null;
-
-  return (
-    <div className="mt-2">
-      <div className="flex items-center gap-1 text-sm text-gray-600 mb-1">
-        <Paperclip className="h-3 w-3" />
-        <span>Файли ({files.length}):</span>
-      </div>
-      <div className="space-y-1">
-        {files.map((file, index) => (
-          <div key={index} className="flex items-center gap-2 text-xs bg-gray-50 p-2 rounded">
-            <FileIcon className="h-3 w-3 text-gray-500" />
-            <span className="truncate flex-1">{file.name}</span>
-            <span className="text-gray-500">{formatFileSize(file.size)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 const HistoryComponent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('sessions');
@@ -302,22 +267,26 @@ const HistoryComponent: React.FC = () => {
   }
 
   return (
-    <div className="">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <History className="h-8 w-8" />
-            Історія розрахунків
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Перегляд та управління збереженими результатами розрахунків
-          </p>
-        </div>
-        <Button onClick={loadData} variant="outline" className="flex items-center gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Оновити
-        </Button>
-      </div>
+    <div className="p-6">
+      <Card className="mb-6 shadow-lg border-2 border-indigo-200">
+        <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b-2 border-indigo-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-3xl font-bold flex items-center gap-2 text-gray-900">
+                <History className="h-8 w-8 text-indigo-600" />
+                Історія розрахунків
+              </CardTitle>
+              <CardDescription className="mt-2 text-base">
+                Перегляд та управління збереженими результатами розрахунків у вигляді детальних таблиць
+              </CardDescription>
+            </div>
+            <Button onClick={loadData} variant="outline" className="flex items-center gap-2 border-indigo-300 hover:bg-indigo-50">
+              <RefreshCw className="h-4 w-4" />
+              Оновити
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
 
       {error && (
         <Alert className="border-red-200 bg-red-50">
@@ -779,76 +748,107 @@ const HistoryComponent: React.FC = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Q₁ (державні дороги)</p>
-                        <p className="text-lg font-semibold">
-                          {selectedSession.blockOneData.q1Result.toLocaleString()} тыс. грн
-                        </p>
+                    {/* Сводка результатов */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="text-center bg-gradient-to-br from-green-100 to-green-50 p-4 rounded-lg border-2 border-green-300">
+                        <div className="text-sm font-semibold text-green-900 mb-1">Q₁ - Державні дороги</div>
+                        <div className="text-3xl font-bold text-green-700">
+                          {selectedSession.blockOneData.q1Result.toLocaleString()}
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Q₂ (місцеві дороги)</p>
-                        <p className="text-lg font-semibold">
-                          {selectedSession.blockOneData.q2Result.toLocaleString()} тыс. грн
-                        </p>
+                        <div className="text-xs text-green-600 mt-1">тис. грн</div>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Загальний бюджет</p>
-                        <p className="text-lg font-semibold">
-                          {selectedSession.blockOneData.totalBudget.toLocaleString()} тыс. грн
-                        </p>
+                      <div className="text-center bg-gradient-to-br from-blue-100 to-blue-50 p-4 rounded-lg border-2 border-blue-300">
+                        <div className="text-sm font-semibold text-blue-900 mb-1">Q₂ - Місцеві дороги</div>
+                        <div className="text-3xl font-bold text-blue-700">
+                          {selectedSession.blockOneData.q2Result.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-blue-600 mt-1">тис. грн</div>
+                      </div>
+                      <div className="text-center bg-gradient-to-br from-purple-100 to-purple-50 p-4 rounded-lg border-2 border-purple-400">
+                        <div className="text-sm font-semibold text-purple-900 mb-1">Q - Загальний бюджет</div>
+                        <div className="text-3xl font-bold text-purple-700">
+                          {selectedSession.blockOneData.totalBudget.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-purple-600 mt-1">тис. грн</div>
                       </div>
                     </div>
 
-                    {/* Отображение файлов для государственных дорог */}
-                    {selectedSession.blockOneData.stateRoadBudget && (
+                    {/* Таблица с детальными данными государственных дорог */}
+                    {selectedSession.blockOneData.stateRoadBudget && selectedSession.blockOneData.stateRoadBudget.length > 0 && (
                       <div className="mt-6">
-                        <h4 className="text-lg font-semibold mb-3">Державні дороги - завантажені файли</h4>
-                        <div className="space-y-4">
-                          {selectedSession.blockOneData.stateRoadBudget.map((item, index) => (
-                            <div key={index} className="border rounded-lg p-4">
-                              <div className="flex items-center justify-between mb-2">
-                                <h5 className="font-medium">{item.id}</h5>
-                                <span className="text-sm text-gray-500">{item.name}</span>
-                              </div>
-                              {item.normativeDocument && (
-                                <p className="text-sm text-gray-600 mb-2">
-                                  <strong>Документ:</strong> {item.normativeDocument}
-                                </p>
-                              )}
-                              {item.attachedFiles && item.attachedFiles.length > 0 && (
-                                <FileDisplayComponent files={item.attachedFiles} />
-                              )}
-                            </div>
-                          ))}
+                        <h4 className="text-lg font-semibold mb-3">📊 Державні дороги - детальні показники</h4>
+                        <div className="border-2 border-green-200 rounded-lg overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-green-100 hover:bg-green-100">
+                                <TableHead className="font-bold text-green-900">Показник (ID)</TableHead>
+                                <TableHead className="font-bold text-green-900">Обсяг (тис. грн)</TableHead>
+                                <TableHead className="font-bold text-green-900">Нормативний документ</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {selectedSession.blockOneData.stateRoadBudget.map((item: any, index: number) => (
+                                <TableRow key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-green-50'}>
+                                  <TableCell className="font-medium">
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="outline" className="font-mono">{item.id}</Badge>
+                                      <span className="text-sm">{item.name}</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right font-semibold">
+                                    {item.value !== null && item.value !== undefined 
+                                      ? item.value.toLocaleString() 
+                                      : '-'}
+                                  </TableCell>
+                                  <TableCell className="text-sm text-gray-600">
+                                    {item.normativeDocument || '-'}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
                         </div>
                       </div>
                     )}
 
-                    {/* Отображение файлов для местных дорог */}
-                    {selectedSession.blockOneData.localRoadBudget && (
+                    {/* Таблица с детальными данными местных дорог */}
+                    {selectedSession.blockOneData.localRoadBudget && selectedSession.blockOneData.localRoadBudget.length > 0 && (
                       <div className="mt-6">
-                        <h4 className="text-lg font-semibold mb-3">Місцеві дороги - завантажені файли</h4>
-                        <div className="space-y-4">
-                          {selectedSession.blockOneData.localRoadBudget.map((item, index) => (
-                            <div key={index} className="border rounded-lg p-4">
-                              <div className="flex items-center justify-between mb-2">
-                                <h5 className="font-medium">{item.id}</h5>
-                                <span className="text-sm text-gray-500">{item.name}</span>
-                              </div>
-                              {item.normativeDocument && (
-                                <p className="text-sm text-gray-600 mb-2">
-                                  <strong>Документ:</strong> {item.normativeDocument}
-                                </p>
-                              )}
-                              {item.attachedFiles && item.attachedFiles.length > 0 && (
-                                <FileDisplayComponent files={item.attachedFiles} />
-                              )}
-                            </div>
-                          ))}
+                        <h4 className="text-lg font-semibold mb-3">📊 Місцеві дороги - детальні показники</h4>
+                        <div className="border-2 border-blue-200 rounded-lg overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-blue-100 hover:bg-blue-100">
+                                <TableHead className="font-bold text-blue-900">Показник (ID)</TableHead>
+                                <TableHead className="font-bold text-blue-900">Обсяг (тис. грн)</TableHead>
+                                <TableHead className="font-bold text-blue-900">Нормативний документ</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {selectedSession.blockOneData.localRoadBudget.map((item: any, index: number) => (
+                                <TableRow key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
+                                  <TableCell className="font-medium">
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="outline" className="font-mono">{item.id}</Badge>
+                                      <span className="text-sm">{item.name}</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right font-semibold">
+                                    {item.value !== null && item.value !== undefined 
+                                      ? item.value.toLocaleString() 
+                                      : '-'}
+                                  </TableCell>
+                                  <TableCell className="text-sm text-gray-600">
+                                    {item.normativeDocument || '-'}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
                         </div>
                       </div>
                     )}
+
                   </CardContent>
                 </Card>
               )}
@@ -863,22 +863,145 @@ const HistoryComponent: React.FC = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Регіон</p>
-                        <p className="text-lg font-semibold">{selectedSession.blockTwoData.selectedRegion}</p>
+                    {/* Сводка результатов */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="text-center bg-gradient-to-br from-orange-100 to-orange-50 p-4 rounded-lg border-2 border-orange-300">
+                        <div className="text-sm font-semibold text-orange-900 mb-1">Регіон</div>
+                        <div className="text-2xl font-bold text-orange-700">
+                          {selectedSession.blockTwoData.selectedRegion}
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Державне фінансування</p>
-                        <p className="text-lg font-semibold">
-                          {selectedSession.blockTwoData.fundingResults.stateFunding.toLocaleString()} тыс. грн
-                        </p>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Місцеве фінансування</p>
-                        <p className="text-lg font-semibold">
-                          {selectedSession.blockTwoData.fundingResults.localFunding.toLocaleString()} тыс. грн
-                        </p>
+                      <div className="text-center bg-gradient-to-br from-green-100 to-green-50 p-4 rounded-lg border-2 border-green-300">
+                        <div className="text-sm font-semibold text-green-900 mb-1">Державні дороги</div>
+                        <div className="text-3xl font-bold text-green-700">
+                          {selectedSession.blockTwoData.fundingResults.stateFunding.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-green-600 mt-1">тис. грн</div>
+                      </div>
+                      <div className="text-center bg-gradient-to-br from-blue-100 to-blue-50 p-4 rounded-lg border-2 border-blue-300">
+                        <div className="text-sm font-semibold text-blue-900 mb-1">Місцеві дороги</div>
+                        <div className="text-3xl font-bold text-blue-700">
+                          {selectedSession.blockTwoData.fundingResults.localFunding.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-blue-600 mt-1">тис. грн</div>
+                      </div>
+                    </div>
+
+                    {/* Таблица нормативов государственных дорог */}
+                    <div className="mt-6">
+                      <h4 className="text-lg font-semibold mb-3">📊 Нормативи для державних доріг</h4>
+                      <div className="border-2 border-green-200 rounded-lg overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-green-100 hover:bg-green-100">
+                              <TableHead className="font-bold text-green-900">Показник</TableHead>
+                              <TableHead className="font-bold text-green-900 text-right">Значення</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            <TableRow className="bg-white">
+                              <TableCell className="font-medium">Базовий норматив</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {selectedSession.blockTwoData.stateRoadBaseRate.toFixed(3)} тис. грн/км
+                              </TableCell>
+                            </TableRow>
+                            <TableRow className="bg-green-50">
+                              <TableCell className="font-medium">Індекси інфляції</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {selectedSession.blockTwoData.stateInflationIndexes.join('%, ')}%
+                              </TableCell>
+                            </TableRow>
+                            <TableRow className="bg-white">
+                              <TableCell className="font-medium">Норматив категорії I</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {selectedSession.blockTwoData.stateRoadRates.category1.toFixed(2)} тис. грн/км
+                              </TableCell>
+                            </TableRow>
+                            <TableRow className="bg-green-50">
+                              <TableCell className="font-medium">Норматив категорії II</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {selectedSession.blockTwoData.stateRoadRates.category2.toFixed(2)} тис. грн/км
+                              </TableCell>
+                            </TableRow>
+                            <TableRow className="bg-white">
+                              <TableCell className="font-medium">Норматив категорії III</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {selectedSession.blockTwoData.stateRoadRates.category3.toFixed(2)} тис. грн/км
+                              </TableCell>
+                            </TableRow>
+                            <TableRow className="bg-green-50">
+                              <TableCell className="font-medium">Норматив категорії IV</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {selectedSession.blockTwoData.stateRoadRates.category4.toFixed(2)} тис. грн/км
+                              </TableCell>
+                            </TableRow>
+                            <TableRow className="bg-white">
+                              <TableCell className="font-medium">Норматив категорії V</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {selectedSession.blockTwoData.stateRoadRates.category5.toFixed(2)} тис. грн/км
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+
+                    {/* Таблица нормативов местных дорог */}
+                    <div className="mt-6">
+                      <h4 className="text-lg font-semibold mb-3">📊 Нормативи для місцевих доріг</h4>
+                      <div className="border-2 border-blue-200 rounded-lg overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-blue-100 hover:bg-blue-100">
+                              <TableHead className="font-bold text-blue-900">Показник</TableHead>
+                              <TableHead className="font-bold text-blue-900 text-right">Значення</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            <TableRow className="bg-white">
+                              <TableCell className="font-medium">Базовий норматив</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {selectedSession.blockTwoData.localRoadBaseRate.toFixed(3)} тис. грн/км
+                              </TableCell>
+                            </TableRow>
+                            <TableRow className="bg-blue-50">
+                              <TableCell className="font-medium">Індекси інфляції</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {selectedSession.blockTwoData.localInflationIndexes.join('%, ')}%
+                              </TableCell>
+                            </TableRow>
+                            <TableRow className="bg-white">
+                              <TableCell className="font-medium">Норматив категорії I</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {selectedSession.blockTwoData.localRoadRates.category1.toFixed(2)} тис. грн/км
+                              </TableCell>
+                            </TableRow>
+                            <TableRow className="bg-blue-50">
+                              <TableCell className="font-medium">Норматив категорії II</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {selectedSession.blockTwoData.localRoadRates.category2.toFixed(2)} тис. грн/км
+                              </TableCell>
+                            </TableRow>
+                            <TableRow className="bg-white">
+                              <TableCell className="font-medium">Норматив категорії III</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {selectedSession.blockTwoData.localRoadRates.category3.toFixed(2)} тис. грн/км
+                              </TableCell>
+                            </TableRow>
+                            <TableRow className="bg-blue-50">
+                              <TableCell className="font-medium">Норматив категорії IV</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {selectedSession.blockTwoData.localRoadRates.category4.toFixed(2)} тис. грн/км
+                              </TableCell>
+                            </TableRow>
+                            <TableRow className="bg-white">
+                              <TableCell className="font-medium">Норматив категорії V</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {selectedSession.blockTwoData.localRoadRates.category5.toFixed(2)} тис. грн/км
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
                       </div>
                     </div>
                   </CardContent>
@@ -895,24 +1018,168 @@ const HistoryComponent: React.FC = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Кількість секцій</p>
-                        <p className="text-lg font-semibold">{selectedSession.blockThreeData.sections.length}</p>
+                    {/* Сводка */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="text-center bg-gradient-to-br from-indigo-100 to-indigo-50 p-4 rounded-lg border-2 border-indigo-300">
+                        <div className="text-sm font-semibold text-indigo-900 mb-1">Кількість секцій</div>
+                        <div className="text-3xl font-bold text-indigo-700">
+                          {selectedSession.blockThreeData.sections.length}
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Використання бюджету</p>
-                        <p className="text-lg font-semibold">
-                          {selectedSession.blockThreeData.planningData.utilizationPercent.toFixed(1)}%
-                        </p>
+                        <div className="text-xs text-indigo-600 mt-1">доріг</div>
+                      </div>
+                      <div className="text-center bg-gradient-to-br from-purple-100 to-purple-50 p-4 rounded-lg border-2 border-purple-300">
+                        <div className="text-sm font-semibold text-purple-900 mb-1">Використання бюджету</div>
+                        <div className="text-3xl font-bold text-purple-700">
+                          {selectedSession.blockThreeData.planningData.utilizationPercent.toFixed(1)}
+                        </div>
+                        <div className="text-xs text-purple-600 mt-1">%</div>
+                      </div>
+                      <div className="text-center bg-gradient-to-br from-pink-100 to-pink-50 p-4 rounded-lg border-2 border-pink-300">
+                        <div className="text-sm font-semibold text-pink-900 mb-1">Бюджет</div>
+                        <div className="text-3xl font-bold text-pink-700">
+                          {selectedSession.blockThreeData.planningData.budget.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-pink-600 mt-1">тис. грн</div>
                       </div>
                     </div>
+
+                    {/* Таблица с секциями дорог */}
+                    {selectedSession.blockThreeData.sections && selectedSession.blockThreeData.sections.length > 0 && (
+                      <div className="mt-6">
+                        <h4 className="text-lg font-semibold mb-3">📊 Детальна інформація по секціях доріг</h4>
+                        <div className="border-2 border-indigo-200 rounded-lg overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-indigo-100 hover:bg-indigo-100">
+                                <TableHead className="font-bold text-indigo-900">Назва</TableHead>
+                                <TableHead className="font-bold text-indigo-900 text-center">Категорія</TableHead>
+                                <TableHead className="font-bold text-indigo-900 text-right">Протяжність (км)</TableHead>
+                                <TableHead className="font-bold text-indigo-900 text-center">Вид робіт</TableHead>
+                                <TableHead className="font-bold text-indigo-900 text-right">Вартість (тис. грн)</TableHead>
+                                <TableHead className="font-bold text-indigo-900 text-center">Статус</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {selectedSession.blockThreeData.sections.map((section: any, index: number) => (
+                                <TableRow key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-indigo-50'}>
+                                  <TableCell className="font-medium">{section.name}</TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge variant="outline">{section.category}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-right">{section.length.toFixed(2)}</TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge className={
+                                      section.workType === 'Поточний ремонт' ? 'bg-blue-100 text-blue-800' :
+                                      section.workType === 'Капітальний ремонт' ? 'bg-yellow-100 text-yellow-800' :
+                                      section.workType === 'Реконструкція' ? 'bg-red-100 text-red-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }>
+                                      {section.workType || '-'}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-right font-semibold">
+                                    {section.estimatedCost ? section.estimatedCost.toLocaleString() : '-'}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    {section.categoryCompliant ? (
+                                      <Badge className="bg-green-100 text-green-800">✓ Відповідає</Badge>
+                                    ) : (
+                                      <Badge className="bg-orange-100 text-orange-800">⚠ Потребує уваги</Badge>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Таблица статистики по видам робіт */}
+                    {selectedSession.blockThreeData.planningData.selectedProjects && (
+                      <div className="mt-6">
+                        <h4 className="text-lg font-semibold mb-3">📊 Розподіл проектів за видами робіт</h4>
+                        <div className="border-2 border-purple-200 rounded-lg overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-purple-100 hover:bg-purple-100">
+                                <TableHead className="font-bold text-purple-900">Вид робіт</TableHead>
+                                <TableHead className="font-bold text-purple-900 text-right">Кількість проектів</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              <TableRow className="bg-white">
+                                <TableCell className="font-medium">Поточний ремонт</TableCell>
+                                <TableCell className="text-right font-semibold">
+                                  {selectedSession.blockThreeData.planningData.selectedProjects.currentRepair}
+                                </TableCell>
+                              </TableRow>
+                              <TableRow className="bg-purple-50">
+                                <TableCell className="font-medium">Капітальний ремонт</TableCell>
+                                <TableCell className="text-right font-semibold">
+                                  {selectedSession.blockThreeData.planningData.selectedProjects.capitalRepair}
+                                </TableCell>
+                              </TableRow>
+                              <TableRow className="bg-white">
+                                <TableCell className="font-medium">Реконструкція</TableCell>
+                                <TableCell className="text-right font-semibold">
+                                  {selectedSession.blockThreeData.planningData.selectedProjects.reconstruction}
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Таблица аналізу відповідності */}
+                    {selectedSession.blockThreeData.complianceAnalysis && (
+                      <div className="mt-6">
+                        <h4 className="text-lg font-semibold mb-3">📊 Аналіз відповідності нормативам</h4>
+                        <div className="border-2 border-orange-200 rounded-lg overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-orange-100 hover:bg-orange-100">
+                                <TableHead className="font-bold text-orange-900">Критерій</TableHead>
+                                <TableHead className="font-bold text-orange-900 text-right">Кількість секцій</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              <TableRow className="bg-green-50">
+                                <TableCell className="font-medium text-green-800">✓ Відповідають нормам</TableCell>
+                                <TableCell className="text-right font-semibold text-green-700">
+                                  {selectedSession.blockThreeData.complianceAnalysis.compliantSections}
+                                </TableCell>
+                              </TableRow>
+                              <TableRow className="bg-orange-50">
+                                <TableCell className="font-medium text-orange-800">⚠ Не відповідають нормам</TableCell>
+                                <TableCell className="text-right font-semibold text-orange-700">
+                                  {selectedSession.blockThreeData.complianceAnalysis.nonCompliantSections}
+                                </TableCell>
+                              </TableRow>
+                              <TableRow className="bg-white">
+                                <TableCell className="font-medium">Проблеми з категорією</TableCell>
+                                <TableCell className="text-right font-semibold">
+                                  {selectedSession.blockThreeData.complianceAnalysis.categoryIssues}
+                                </TableCell>
+                              </TableRow>
+                              <TableRow className="bg-orange-50">
+                                <TableCell className="font-medium">Проблеми зі зчепленням</TableCell>
+                                <TableCell className="text-right font-semibold">
+                                  {selectedSession.blockThreeData.complianceAnalysis.frictionIssues}
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
                     
                     {selectedSession.blockThreeData.reportText && (
-                      <div className="mt-4">
-                        <p className="text-sm text-gray-600 mb-2">Звіт:</p>
-                        <div className="bg-gray-50 p-4 rounded-lg max-h-64 overflow-y-auto">
-                          <pre className="whitespace-pre-wrap text-sm">
+                      <div className="mt-6">
+                        <h4 className="text-lg font-semibold mb-3">📄 Текстовий звіт</h4>
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <pre className="whitespace-pre-wrap text-sm text-gray-700">
                             {selectedSession.blockThreeData.reportText}
                           </pre>
                         </div>

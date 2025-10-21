@@ -27,6 +27,8 @@ export interface BlockTwoState {
   fundingResults: FundingResults | null;
   worksheets: any[];
   selectedWorksheet: string;
+  regionalData: any[];
+  regionalResults: any[];
 }
 
 const initialState: BlockTwoState = {
@@ -53,6 +55,8 @@ const initialState: BlockTwoState = {
   fundingResults: null,
   worksheets: [],
   selectedWorksheet: '',
+  regionalData: [],
+  regionalResults: [],
 };
 
 const blockTwoSlice = createSlice({
@@ -114,6 +118,12 @@ const blockTwoSlice = createSlice({
     setSelectedWorksheet: (state, action: PayloadAction<string>) => {
       state.selectedWorksheet = action.payload;
     },
+    setRegionalData: (state, action: PayloadAction<any[]>) => {
+      state.regionalData = action.payload;
+    },
+    setRegionalResults: (state, action: PayloadAction<any[]>) => {
+      state.regionalResults = action.payload;
+    },
     resetBlockTwo: () => initialState,
   },
 });
@@ -136,6 +146,8 @@ export const {
   setFundingResults,
   setWorksheets,
   setSelectedWorksheet,
+  setRegionalData,
+  setRegionalResults,
   resetBlockTwo,
 } = blockTwoSlice.actions;
 

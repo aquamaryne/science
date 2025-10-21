@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,6 @@ import {
 const Block2StateRoads: React.FC = () => {
   const dispatch = useAppDispatch();
   const blockTwoState = useAppSelector(state => state.blockTwo);
-  const [isCalculated, setIsCalculated] = useState(false);
   
   const stateRoadBaseRate = blockTwoState.stateRoadBaseRate;
   const stateInflationIndexes = blockTwoState.stateInflationIndexes;
@@ -52,7 +51,6 @@ const Block2StateRoads: React.FC = () => {
     };
     
     dispatch(setStateRoadRates(rates));
-    setIsCalculated(true);
   };
 
   return (
@@ -132,7 +130,7 @@ const Block2StateRoads: React.FC = () => {
             </div>
           </div>
           
-          {isCalculated && (
+          {stateRoadRate.category1 > 0 && (
             <div className="grid grid-cols-5 gap-4 mt-6">
               <Card className="p-4">
                 <CardContent className="p-0 text-center">

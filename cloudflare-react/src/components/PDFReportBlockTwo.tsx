@@ -2,12 +2,19 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Font } from '@react-pdf/renderer';
+import { useAppSelector } from '../redux/hooks';
 
 interface PDFReportBlockTwoProps {
   className?: string;
 }
 
 const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
+  // Читаем данные из Redux
+  const blockTwoState = useAppSelector(state => state.blockTwo);
+  
+  // Проверяем наличие региональных результатов
+  const hasRegionalResults = blockTwoState.regionalResults && blockTwoState.regionalResults.length > 0;
+  
   // Register a font that supports Cyrillic (Ukrainian)
   Font.register({
     family: 'Roboto',
@@ -131,26 +138,215 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
       <Page size="A4" style={styles.page}>
         <Text style={styles.title}>Звіт з експлуатаційного утримання доріг</Text>
         
-        <Text style={styles.sectionTitle}>Інформація про розрахунки</Text>
+        {/* Блок 2.1: Державні дороги */}
+        <Text style={styles.sectionTitle}>2.1. Дороги державного значення</Text>
         <View style={styles.table}>
           <View style={[styles.tableRow, styles.tableHeader]}>
-            <Text style={styles.tableCellHeader}>Статус</Text>
-            <Text style={styles.tableCellHeader}>Опис</Text>
+            <Text style={styles.tableCellHeader}>Показник</Text>
+            <Text style={styles.tableCellHeader}>Значення</Text>
           </View>
           <View style={[styles.tableRow, styles.tableRowEven]}>
-            <Text style={styles.tableCell}>Збереження</Text>
-            <Text style={styles.tableCell}>Дані збережено в системі</Text>
+            <Text style={styles.tableCell}>Базовий норматив</Text>
+            <Text style={styles.tableCell}>{blockTwoState.stateRoadBaseRate.toFixed(3)} тис. грн/км</Text>
           </View>
           <View style={[styles.tableRow, styles.tableRowOdd]}>
-            <Text style={styles.tableCell}>Розрахунки</Text>
-            <Text style={styles.tableCell}>Розрахунки виконано успішно</Text>
+            <Text style={styles.tableCell}>Індекси інфляції</Text>
+            <Text style={styles.tableCell}>{blockTwoState.stateInflationIndexes.join('%, ')}%</Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowEven]}>
+            <Text style={styles.tableCell}>Сукупний індекс інфляції</Text>
+            <Text style={styles.tableCell}>
+              {blockTwoState.stateInflationIndexes.reduce((acc, curr) => acc * (1 + curr / 100), 1).toFixed(4)}
+            </Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowEven]}>
+            <Text style={styles.tableCell}>Категорія I</Text>
+            <Text style={styles.tableCell}>{blockTwoState.stateRoadRates.category1.toFixed(2)} тис. грн/км</Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowOdd]}>
+            <Text style={styles.tableCell}>Категорія II</Text>
+            <Text style={styles.tableCell}>{blockTwoState.stateRoadRates.category2.toFixed(2)} тис. грн/км</Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowEven]}>
+            <Text style={styles.tableCell}>Категорія III</Text>
+            <Text style={styles.tableCell}>{blockTwoState.stateRoadRates.category3.toFixed(2)} тис. грн/км</Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowOdd]}>
+            <Text style={styles.tableCell}>Категорія IV</Text>
+            <Text style={styles.tableCell}>{blockTwoState.stateRoadRates.category4.toFixed(2)} тис. грн/км</Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowEven]}>
+            <Text style={styles.tableCell}>Категорія V</Text>
+            <Text style={styles.tableCell}>{blockTwoState.stateRoadRates.category5.toFixed(2)} тис. грн/км</Text>
           </View>
         </View>
 
+        {/* Блок 2.2: Місцеві дороги */}
+        <Text style={styles.sectionTitle}>2.2. Дороги місцевого значення</Text>
+        <View style={styles.table}>
+          <View style={[styles.tableRow, styles.tableHeader]}>
+            <Text style={styles.tableCellHeader}>Показник</Text>
+            <Text style={styles.tableCellHeader}>Значення</Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowEven]}>
+            <Text style={styles.tableCell}>Базовий норматив</Text>
+            <Text style={styles.tableCell}>{blockTwoState.localRoadBaseRate.toFixed(3)} тис. грн/км</Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowOdd]}>
+            <Text style={styles.tableCell}>Індекси інфляції</Text>
+            <Text style={styles.tableCell}>{blockTwoState.localInflationIndexes.join('%, ')}%</Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowEven]}>
+            <Text style={styles.tableCell}>Сукупний індекс інфляції</Text>
+            <Text style={styles.tableCell}>
+              {blockTwoState.localInflationIndexes.reduce((acc, curr) => acc * (1 + curr / 100), 1).toFixed(4)}
+            </Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowEven]}>
+            <Text style={styles.tableCell}>Категорія I</Text>
+            <Text style={styles.tableCell}>{blockTwoState.localRoadRates.category1.toFixed(2)} тис. грн/км</Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowOdd]}>
+            <Text style={styles.tableCell}>Категорія II</Text>
+            <Text style={styles.tableCell}>{blockTwoState.localRoadRates.category2.toFixed(2)} тис. грн/км</Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowEven]}>
+            <Text style={styles.tableCell}>Категорія III</Text>
+            <Text style={styles.tableCell}>{blockTwoState.localRoadRates.category3.toFixed(2)} тис. грн/км</Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowOdd]}>
+            <Text style={styles.tableCell}>Категорія IV</Text>
+            <Text style={styles.tableCell}>{blockTwoState.localRoadRates.category4.toFixed(2)} тис. грн/км</Text>
+          </View>
+          <View style={[styles.tableRow, styles.tableRowEven]}>
+            <Text style={styles.tableCell}>Категорія V</Text>
+            <Text style={styles.tableCell}>{blockTwoState.localRoadRates.category5.toFixed(2)} тис. грн/км</Text>
+          </View>
+        </View>
+
+        {/* Результати фінансування (якщо є) */}
+        {blockTwoState.fundingResults && (
+          <>
+            <Text style={styles.sectionTitle}>Результати розрахунку фінансування</Text>
+            <View style={styles.table}>
+              <View style={[styles.tableRow, styles.tableHeader]}>
+                <Text style={styles.tableCellHeader}>Показник</Text>
+                <Text style={styles.tableCellHeader}>Значення</Text>
+              </View>
+              <View style={[styles.tableRow, styles.tableRowEven]}>
+                <Text style={styles.tableCell}>Регіон</Text>
+                <Text style={styles.tableCell}>{blockTwoState.selectedRegion}</Text>
+              </View>
+              <View style={[styles.tableRow, styles.tableRowOdd]}>
+                <Text style={styles.tableCell}>Фінансування держ. доріг</Text>
+                <Text style={styles.tableCell}>{blockTwoState.fundingResults.stateFunding.toLocaleString('uk-UA')} тис. грн</Text>
+              </View>
+              <View style={[styles.tableRow, styles.tableRowEven]}>
+                <Text style={styles.tableCell}>Фінансування місц. доріг</Text>
+                <Text style={styles.tableCell}>{blockTwoState.fundingResults.localFunding.toLocaleString('uk-UA')} тис. грн</Text>
+              </View>
+              <View style={[styles.tableRow, styles.tableRowOdd]}>
+                <Text style={styles.tableCell}>Загальне фінансування</Text>
+                <Text style={styles.tableCell}>{blockTwoState.fundingResults.totalFunding.toLocaleString('uk-UA')} тис. грн</Text>
+              </View>
+            </View>
+          </>
+        )}
+
+        {/* Регіональні результати (якщо є) */}
+        {hasRegionalResults && (
+          <>
+            <Text style={styles.sectionTitle}>Детальний розрахунок обсягу коштів по областях</Text>
+            <View style={styles.table}>
+              {/* Заголовок таблиці */}
+              <View style={[styles.tableRow, styles.tableHeader]}>
+                <Text style={{ width: '25%', padding: 5, fontSize: 9, fontWeight: 600, textAlign: 'center' }}>Область</Text>
+                <Text style={{ width: '10%', padding: 5, fontSize: 8, fontWeight: 600, textAlign: 'center' }}>Кат. I</Text>
+                <Text style={{ width: '10%', padding: 5, fontSize: 8, fontWeight: 600, textAlign: 'center' }}>Кат. II</Text>
+                <Text style={{ width: '10%', padding: 5, fontSize: 8, fontWeight: 600, textAlign: 'center' }}>Кат. III</Text>
+                <Text style={{ width: '10%', padding: 5, fontSize: 8, fontWeight: 600, textAlign: 'center' }}>Кат. IV</Text>
+                <Text style={{ width: '10%', padding: 5, fontSize: 8, fontWeight: 600, textAlign: 'center' }}>Кат. V</Text>
+                <Text style={{ width: '25%', padding: 5, fontSize: 9, fontWeight: 600, textAlign: 'center' }}>Разом (тис. грн)</Text>
+              </View>
+              
+              {/* Дані по областях */}
+              {blockTwoState.regionalResults.map((result: any, idx: number) => (
+                <View key={idx} style={[styles.tableRow, idx % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}>
+                  <Text style={{ width: '25%', padding: 5, fontSize: 8, textAlign: 'left' }}>{result.regionName}</Text>
+                  <Text style={{ width: '10%', padding: 5, fontSize: 7, textAlign: 'right' }}>
+                    {Math.round(result.fundingByCategory[1]).toLocaleString('uk-UA')}
+                  </Text>
+                  <Text style={{ width: '10%', padding: 5, fontSize: 7, textAlign: 'right' }}>
+                    {Math.round(result.fundingByCategory[2]).toLocaleString('uk-UA')}
+                  </Text>
+                  <Text style={{ width: '10%', padding: 5, fontSize: 7, textAlign: 'right' }}>
+                    {Math.round(result.fundingByCategory[3]).toLocaleString('uk-UA')}
+                  </Text>
+                  <Text style={{ width: '10%', padding: 5, fontSize: 7, textAlign: 'right' }}>
+                    {Math.round(result.fundingByCategory[4]).toLocaleString('uk-UA')}
+                  </Text>
+                  <Text style={{ width: '10%', padding: 5, fontSize: 7, textAlign: 'right' }}>
+                    {Math.round(result.fundingByCategory[5]).toLocaleString('uk-UA')}
+                  </Text>
+                  <Text style={{ width: '25%', padding: 5, fontSize: 8, fontWeight: 600, textAlign: 'right' }}>
+                    {Math.round(result.totalFunding).toLocaleString('uk-UA')}
+                  </Text>
+                </View>
+              ))}
+              
+              {/* Підсумковий рядок */}
+              <View style={[styles.tableRow, { backgroundColor: '#e8f5e9', borderTopWidth: 2, borderTopColor: '#4caf50' }]}>
+                <Text style={{ width: '25%', padding: 5, fontSize: 9, fontWeight: 700, textAlign: 'left' }}>ВСЬОГО ПО УКРАЇНІ</Text>
+                <Text style={{ width: '10%', padding: 5, fontSize: 8, fontWeight: 700, textAlign: 'right' }}>
+                  {Math.round(blockTwoState.regionalResults.reduce((sum: number, r: any) => sum + r.fundingByCategory[1], 0)).toLocaleString('uk-UA')}
+                </Text>
+                <Text style={{ width: '10%', padding: 5, fontSize: 8, fontWeight: 700, textAlign: 'right' }}>
+                  {Math.round(blockTwoState.regionalResults.reduce((sum: number, r: any) => sum + r.fundingByCategory[2], 0)).toLocaleString('uk-UA')}
+                </Text>
+                <Text style={{ width: '10%', padding: 5, fontSize: 8, fontWeight: 700, textAlign: 'right' }}>
+                  {Math.round(blockTwoState.regionalResults.reduce((sum: number, r: any) => sum + r.fundingByCategory[3], 0)).toLocaleString('uk-UA')}
+                </Text>
+                <Text style={{ width: '10%', padding: 5, fontSize: 8, fontWeight: 700, textAlign: 'right' }}>
+                  {Math.round(blockTwoState.regionalResults.reduce((sum: number, r: any) => sum + r.fundingByCategory[4], 0)).toLocaleString('uk-UA')}
+                </Text>
+                <Text style={{ width: '10%', padding: 5, fontSize: 8, fontWeight: 700, textAlign: 'right' }}>
+                  {Math.round(blockTwoState.regionalResults.reduce((sum: number, r: any) => sum + r.fundingByCategory[5], 0)).toLocaleString('uk-UA')}
+                </Text>
+                <Text style={{ width: '25%', padding: 5, fontSize: 9, fontWeight: 700, textAlign: 'right', color: '#2e7d32' }}>
+                  {Math.round(blockTwoState.regionalResults.reduce((sum: number, r: any) => sum + r.totalFunding, 0)).toLocaleString('uk-UA')}
+                </Text>
+              </View>
+            </View>
+            
+            {/* Статистика по категоріях */}
+            <Text style={{ ...styles.sectionTitle, fontSize: 14 }}>Підсумок по категоріях доріг</Text>
+            <View style={styles.table}>
+              <View style={[styles.tableRow, styles.tableHeader]}>
+                <Text style={styles.tableCellHeader}>Категорія</Text>
+                <Text style={styles.tableCellHeader}>Загальне фінансування (млн. грн)</Text>
+              </View>
+              {[1, 2, 3, 4, 5].map((cat: number, idx: number) => {
+                const total = blockTwoState.regionalResults.reduce((sum: number, r: any) => sum + r.fundingByCategory[cat], 0);
+                return (
+                  <View key={cat} style={[styles.tableRow, idx % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}>
+                    <Text style={styles.tableCell}>Категорія {['I', 'II', 'III', 'IV', 'V'][cat - 1]}</Text>
+                    <Text style={styles.tableCell}>{(total / 1000).toFixed(2)}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        )}
+
         <View style={styles.infoSection}>
-          <Text style={styles.infoItem}>✅ Всі дані успішно оброблено</Text>
-          <Text style={styles.infoItem}>✅ Розрахунки експлуатаційного утримання завершено</Text>
-          <Text style={styles.infoItem}>✅ Результати збережено в базі даних</Text>
+          <Text style={styles.infoItem}>✅ Розрахунки нормативів для державних доріг виконано</Text>
+          <Text style={styles.infoItem}>✅ Розрахунки нормативів для місцевих доріг виконано</Text>
+          {blockTwoState.fundingResults && (
+            <Text style={styles.infoItem}>✅ Розрахунки фінансування для регіону "{blockTwoState.selectedRegion}" виконано</Text>
+          )}
+          {hasRegionalResults && (
+            <Text style={styles.infoItem}>✅ Розраховано фінансування для {blockTwoState.regionalResults.length} областей України</Text>
+          )}
         </View>
 
         <Text style={styles.footer}>{`Звіт згенеровано: ${new Date().toLocaleString('uk-UA')}`}</Text>

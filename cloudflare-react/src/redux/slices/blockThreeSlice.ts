@@ -43,6 +43,11 @@ export interface BlockThreeState {
   sections: RoadSectionUI[];
   costStandards: CostStandards;
   currentPage: number;
+  // ✅ Статус завершення кожної сторінки
+  page1Complete: boolean;
+  page2Complete: boolean;
+  page3Complete: boolean;
+  page4Complete: boolean;
 }
 
 const initialState: BlockThreeState = {
@@ -53,6 +58,10 @@ const initialState: BlockThreeState = {
     current_repair: { 1: 3.5, 2: 2.5, 3: 1.8, 4: 1.2, 5: 0.9 }
   },
   currentPage: 1,
+  page1Complete: false,
+  page2Complete: false,
+  page3Complete: false,
+  page4Complete: false,
 };
 
 const blockThreeSlice = createSlice({
@@ -86,6 +95,19 @@ const blockThreeSlice = createSlice({
     previousPage: (state) => {
       if (state.currentPage > 1) state.currentPage -= 1;
     },
+    // ✅ Нові actions для відстеження завершення сторінок
+    setPage1Complete: (state, action: PayloadAction<boolean>) => {
+      state.page1Complete = action.payload;
+    },
+    setPage2Complete: (state, action: PayloadAction<boolean>) => {
+      state.page2Complete = action.payload;
+    },
+    setPage3Complete: (state, action: PayloadAction<boolean>) => {
+      state.page3Complete = action.payload;
+    },
+    setPage4Complete: (state, action: PayloadAction<boolean>) => {
+      state.page4Complete = action.payload;
+    },
     resetBlockThree: () => initialState,
   },
 });
@@ -98,6 +120,10 @@ export const {
   setCostStandards,
   setCurrentPage,
   nextPage,
+  setPage1Complete,
+  setPage2Complete,
+  setPage3Complete,
+  setPage4Complete,
   previousPage,
   resetBlockThree,
 } = blockThreeSlice.actions;

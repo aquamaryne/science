@@ -18,6 +18,11 @@ import {
 
 import { useAppDispatch } from '@/redux/hooks';
 import { setCalculatedRoads } from '@/store/roadDataSlice';
+import { setPage1Complete } from '@/redux/slices/blockThreeSlice';
+
+interface RoadTechnicalAssessmentProps {
+  onCompleted?: () => void;
+}
 
 interface InputRow {
   id: string;
@@ -52,7 +57,7 @@ const WORK_TYPE_NAMES: Record<string, string> = {
   '': '-'
 };
 
-export const RoadTechnicalAssessment: React.FC = () => {
+export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = ({ onCompleted }) => {
   const dispatch = useAppDispatch();
   const [inputRows, setInputRows] = useState<InputRow[]>([
     { 
@@ -200,6 +205,12 @@ export const RoadTechnicalAssessment: React.FC = () => {
       setCalculated(true);
       setShowResults(true);
       transferDataToRedux(results);
+      
+      // ✅ Позначаємо сторінку як завершену та викликаємо callback
+      dispatch(setPage1Complete(true));
+      if (onCompleted) {
+        setTimeout(() => onCompleted(), 600);
+      }
 
     } catch (err) {
       setError(`ПОМИЛКА розрахунку: ${err instanceof Error ? err.message : 'Невідома помилка'}`);

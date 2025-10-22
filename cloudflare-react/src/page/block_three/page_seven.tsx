@@ -1,12 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calculator, FileDown, AlertCircle, TrendingUp, Award } from 'lucide-react';
+import { Calculator, FileDown, AlertCircle, TrendingUp, Award, Save } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-import { useAppSelector } from '@/redux/hooks';
+import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { selectCalculatedRoads, selectHasCalculatedData } from '@/store/roadDataSlice';
+import { useHistory, useCurrentSession } from '@/redux/hooks';
+import { saveBlockThreeData } from '@/redux/slices/historySlice';
+import { 
+  resetBlockThree,
+  setCurrentPage,
+  setPage4Complete 
+} from '@/redux/slices/blockThreeSlice';
+import { setCalculatedRoads } from '@/store/roadDataSlice';
 
 import { 
   performDetailedCostBenefitAnalysis,
@@ -46,13 +54,18 @@ const WORK_TYPE_COLORS: Record<string, string> = {
 };
 
 export const RoadRankingTable: React.FC = () => {
+  const appDispatch = useAppDispatch();
   const calculatedRoadsFromRedux = useAppSelector(selectCalculatedRoads);
   const hasReduxData = useAppSelector(selectHasCalculatedData);
+  
+  const { createSession, dispatch: historyDispatch } = useHistory();
+  const { currentSession } = useCurrentSession();
 
   const [rankingData, setRankingData] = useState<RankingRow[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
   const [calculated, setCalculated] = useState(false);
   const [error, setError] = useState<string>('');
+  const [saveStatus, setSaveStatus] = useState<string>('');
 
   // Автоматичний розрахунок при наявності даних
   useEffect(() => {
@@ -152,6 +165,9 @@ export const RoadRankingTable: React.FC = () => {
 
       setRankingData(sortedResults);
       setCalculated(true);
+      
+      // ✅ Позначаємо сторінку 4 як завершену
+      appDispatch(setPage4Complete(true));
 
       console.log('=== Рангування завершено ===');
       console.log(`Всього об'єктів: ${sortedResults.length}`);
@@ -162,6 +178,128 @@ export const RoadRankingTable: React.FC = () => {
       setError(`Помилка розрахунку: ${err instanceof Error ? err.message : 'Невідома помилка'}`);
     } finally {
       setIsCalculating(false);
+    }
+  };
+
+  // ✅ ФУНКЦІЯ ЗБЕРЕЖЕННЯ ТА ОЧИЩЕННЯ
+  const handleSaveAndClear = async () => {
+    if (!calculated || rankingData.length === 0) {
+      alert('Немає даних для збереження. Спочатку виконайте розрахунок рангування.');
+      return;
+    }
+
+    setSaveStatus('Збереження...');
+
+    try {
+      // Створюємо сесію, якщо її немає
+      let sessionId = currentSession?.id;
+      if (!sessionId) {
+        await createSession(
+          `Планування ремонтів - ${new Date().toLocaleString('uk-UA')}`,
+          'Сесія розрахунків планування ремонтних робіт'
+        );
+        sessionId = currentSession?.id;
+      }
+
+      if (!sessionId) {
+        setSaveStatus('Помилка створення сесії');
+        setTimeout(() => setSaveStatus(''), 3000);
+        return;
+      }
+
+      // Підготовка даних для збереження
+      const sectionsWithResults = calculatedRoadsFromRedux.map((road) => {
+        const ranking = rankingData.find(r => r.id === road.id);
+        return {
+          id: road.id,
+          name: road.roadName,
+          length: road.length,
+          category: road.category,
+          trafficIntensity: road.actualIntensity,
+          strengthModulus: road.actualElasticModulus,
+          roughnessProfile: road.actualSurfaceEvenness,
+          roughnessBump: 0,
+          rutDepth: road.actualRutDepth,
+          frictionCoeff: road.actualFrictionValue,
+          significance: 'state' as const,
+          estimatedCost: ranking?.estimatedCost ? ranking.estimatedCost * 1000 : 0,
+          workType: ranking ? WORK_TYPE_NAMES[ranking.workType] : '-',
+          workTypeRaw: ranking?.workType as any,
+          intensityCoeff: road.detailedCondition.intensityCoefficient,
+          strengthCoeff: road.detailedCondition.strengthCoefficient,
+          evennessCoeff: road.detailedCondition.evennessCoefficient,
+          rutCoeff: road.detailedCondition.rutCoefficient,
+          frictionFactorCoeff: road.detailedCondition.frictionCoefficient,
+          enpv: ranking?.enpv ? ranking.enpv * 1000 : 0,
+          eirr: ranking?.eirr || 0,
+          bcr: ranking?.bcr || 0,
+          rank: ranking?.rank || 0
+        };
+      });
+
+      const planningData = {
+        totalProjects: statistics?.totalProjects || 0,
+        totalCost: statistics?.totalCost || 0,
+        viableProjects: statistics?.viableProjects || 0,
+        avgENPV: statistics?.avgENPV || 0,
+        avgBCR: statistics?.avgBCR || 0,
+        avgEIRR: statistics?.avgEIRR || 0,
+        byWorkType: statistics?.byWorkType || {
+          current_repair: 0,
+          capital_repair: 0,
+          reconstruction: 0
+        }
+      };
+
+      const complianceAnalysis = {
+        compliantSections: calculatedRoadsFromRedux.length,
+        nonCompliantSections: 0,
+        categoryIssues: 0,
+        frictionIssues: 0
+      };
+
+      const reportText = `Звіт з планування ремонтних робіт\n\n` +
+        `Оброблено секцій: ${sectionsWithResults.length}\n` +
+        `Потребують ремонту: ${rankingData.length}\n` +
+        `Економічно доцільних: ${statistics?.viableProjects || 0}\n` +
+        `Загальна вартість: ${(statistics?.totalCost || 0).toFixed(1)} млн грн\n` +
+        `Середній BCR: ${(statistics?.avgBCR || 0).toFixed(2)}`;
+
+      // Зберігаємо в історію
+      await historyDispatch(saveBlockThreeData({
+        sessionId,
+        sections: sectionsWithResults,
+        planningData,
+        complianceAnalysis,
+        reportText
+      }));
+
+      setSaveStatus('✅ Збережено!');
+      
+      // Очищення через 1 секунду
+      setTimeout(() => {
+        console.log('🧹 Очищення даних блоку 3...');
+        
+        // Очищаємо Redux state
+        appDispatch(resetBlockThree());
+        appDispatch(setCalculatedRoads([]));
+        appDispatch(setCurrentPage(1));
+        
+        // Очищаємо локальний state
+        setRankingData([]);
+        setCalculated(false);
+        setError('');
+        setSaveStatus('');
+        
+        console.log('✅ Дані очищено. Готово до нових розрахунків!');
+        alert('✅ Результати успішно збережено в історію!\n\n🧹 Всі дані очищено для нових розрахунків.');
+      }, 1000);
+
+    } catch (error) {
+      console.error('Помилка при збереженні:', error);
+      setSaveStatus('❌ Помилка збереження');
+      alert('Помилка при збереженні результатів: ' + (error instanceof Error ? error.message : 'Невідома помилка'));
+      setTimeout(() => setSaveStatus(''), 3000);
     }
   };
 
@@ -251,17 +389,49 @@ export const RoadRankingTable: React.FC = () => {
             )}
           </Button>
           {calculated && (
-            <Button 
-              onClick={exportToCSV}
-              variant="outline"
-              className="border-purple-600 text-purple-600 hover:bg-purple-50"
-            >
-              <FileDown className="h-4 w-4 mr-2" />
-              Експорт CSV
-            </Button>
+            <>
+              <Button 
+                onClick={exportToCSV}
+                variant="outline"
+                className="border-purple-600 text-purple-600 hover:bg-purple-50"
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                Експорт CSV
+              </Button>
+              <Button 
+                onClick={handleSaveAndClear}
+                disabled={saveStatus === 'Збереження...'}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {saveStatus === 'Збереження...' ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Збереження...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Зберегти та очистити
+                  </>
+                )}
+              </Button>
+            </>
           )}
         </div>
       </div>
+
+      {/* Статус збереження */}
+      {saveStatus && saveStatus.includes('✅') && (
+        <Alert className="bg-green-50 border-green-400">
+          <Save className="h-5 w-5 text-green-600" />
+          <AlertDescription className="text-green-800">
+            <strong>{saveStatus}</strong>
+            <div className="text-sm mt-1">
+              Результати збережено в історію. Підготовка до очищення даних...
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Попередження */}
       {!hasReduxData && (

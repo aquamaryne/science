@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { X, Plus, Calculator } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { X, Plus, Calculator, CheckCircle2 } from "lucide-react";
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { 
   setLocalRoadBaseRate,
@@ -13,7 +14,11 @@ import {
   setLocalRoadRates
 } from '@/redux/slices/blockTwoSlice';
 
-const Block2LocalRoads: React.FC = () => {
+interface Block2LocalRoadsProps {
+  onCalculated?: () => void;
+}
+
+const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = ({ onCalculated }) => {
   const dispatch = useAppDispatch();
   const blockTwoState = useAppSelector(state => state.blockTwo);
   
@@ -51,6 +56,11 @@ const Block2LocalRoads: React.FC = () => {
     };
     
     dispatch(setLocalRoadRates(rates));
+    
+    // ✅ Викликаємо callback після успішного розрахунку
+    if (onCalculated) {
+      setTimeout(() => onCalculated(), 500);
+    }
   };
 
   return (
@@ -131,7 +141,18 @@ const Block2LocalRoads: React.FC = () => {
           </div>
           
           {localRoadRate.category1 > 0 && (
-            <div className="grid grid-cols-5 gap-4 mt-6">
+            <>
+              <Alert className="bg-green-50 border-green-400">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  <strong>✅ Розрахунок завершено успішно!</strong>
+                  <div className="text-sm mt-1">
+                    Нормативи для місцевих доріг розраховано. Тепер ви можете перейти до наступного етапу.
+                  </div>
+                </AlertDescription>
+              </Alert>
+              
+              <div className="grid grid-cols-5 gap-4 mt-6">
               <Card className="p-4">
                 <CardContent className="p-0 text-center">
                   <h3 className="font-bold">Категорія I</h3>
@@ -197,6 +218,7 @@ const Block2LocalRoads: React.FC = () => {
                 </CardContent>
               </Card>
             </div>
+            </>
           )}
         </div>
       </CardContent>

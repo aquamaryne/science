@@ -5,11 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, Lock } from "lucide-react";
 import { useHistory, useCurrentSession } from '../../redux/hooks';
 import { saveBlockTwoData } from '../../redux/slices/historySlice';
-import { useAppSelector, useAppDispatch } from '../../redux/hooks';
-import { 
-  setStateRoadRates as setStateRoadRatesAction,
-  setLocalRoadRates as setLocalRoadRatesAction
-} from '../../redux/slices/blockTwoSlice';
+import { useAppSelector } from '../../redux/hooks';
 
 // Импорт компонентов
 import Block2StateRoads from '../../page/block_two/Block2StateRoads';
@@ -20,8 +16,6 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 
 // Импорт функций расчета
 import {
-  calculateStateRoadMaintenanceRate,
-  calculateLocalRoadMaintenanceRate,
   getRegionCoefficients,
   generateSampleRegionData,
 } from '../../modules/block_two';
@@ -32,7 +26,6 @@ import type {
 } from '../../modules/block_two';
 
 const Block2MaintenanceCalculator: React.FC = () => {
-  const appDispatch = useAppDispatch();
   const blockTwoState = useAppSelector(state => state.blockTwo);
   
   // ✅ АКТИВНА ВКЛАДКА
@@ -84,57 +77,6 @@ const Block2MaintenanceCalculator: React.FC = () => {
     setLocalInflationIndexes(blockTwoState.localInflationIndexes);
     setLocalRoadRates(blockTwoState.localRoadRates);
   }, [blockTwoState]);
-
-  // Расчет кумулятивного индекса инфляции
-  const calculateCumulativeInflationIndex = (indexes: number[]): number => {
-    return indexes.reduce((acc, curr) => {
-      return acc * (1 + curr / 100);
-    }, 1);
-  };
-
-  // Расчет нормативов для государственных дорог
-  const calculateStateRoadRates = () => {
-    const totalInflationIndex = calculateCumulativeInflationIndex(stateInflationIndexes);
-
-    const category1 = calculateStateRoadMaintenanceRate(1, totalInflationIndex);
-    const category2 = calculateStateRoadMaintenanceRate(2, totalInflationIndex);
-    const category3 = calculateStateRoadMaintenanceRate(3, totalInflationIndex);
-    const category4 = calculateStateRoadMaintenanceRate(4, totalInflationIndex);
-    const category5 = calculateStateRoadMaintenanceRate(5, totalInflationIndex);
-
-    const newRates = {
-      category1,
-      category2,
-      category3,
-      category4,
-      category5
-    };
-    
-    setStateRoadRates(newRates);
-    appDispatch(setStateRoadRatesAction(newRates));
-  };
-
-  // Расчет нормативов для местных дорог
-  const calculateLocalRoadRates = () => {
-    const totalInflationIndex = calculateCumulativeInflationIndex(localInflationIndexes);
-
-    const category1 = calculateLocalRoadMaintenanceRate(1, totalInflationIndex);
-    const category2 = calculateLocalRoadMaintenanceRate(2, totalInflationIndex);
-    const category3 = calculateLocalRoadMaintenanceRate(3, totalInflationIndex);
-    const category4 = calculateLocalRoadMaintenanceRate(4, totalInflationIndex);
-    const category5 = calculateLocalRoadMaintenanceRate(5, totalInflationIndex);
-
-    const newRates = {
-      category1,
-      category2,
-      category3,
-      category4,
-      category5
-    };
-    
-    setLocalRoadRates(newRates);
-    appDispatch(setLocalRoadRatesAction(newRates));
-  };
 
   return (
     <div className="mx-auto p-10">

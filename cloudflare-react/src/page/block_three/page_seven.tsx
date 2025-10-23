@@ -12,7 +12,8 @@ import { saveBlockThreeData } from '@/redux/slices/historySlice';
 import { 
   resetBlockThree,
   setCurrentPage,
-  setPage4Complete 
+  setPage4Complete,
+  clearENPVResults 
 } from '@/redux/slices/blockThreeSlice';
 import { setCalculatedRoads } from '@/store/roadDataSlice';
 
@@ -58,6 +59,10 @@ export const RoadRankingTable: React.FC = () => {
   const calculatedRoadsFromRedux = useAppSelector(selectCalculatedRoads);
   const hasReduxData = useAppSelector(selectHasCalculatedData);
   
+  // ✅ ЧИТАЄМО РЕЗУЛЬТАТИ ENPV З REDUX
+  const enpvResultsFromRedux = useAppSelector(state => state.blockThree.enpvResults || []);
+  const hasENPVResults = enpvResultsFromRedux.length > 0;
+  
   const { createSession, dispatch: historyDispatch } = useHistory();
   const { currentSession } = useCurrentSession();
 
@@ -67,14 +72,80 @@ export const RoadRankingTable: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [saveStatus, setSaveStatus] = useState<string>('');
 
-  // Автоматичний розрахунок при наявності даних
+  // Автоматичний розрахунок при наявності даних ENPV
   useEffect(() => {
-    if (hasReduxData && calculatedRoadsFromRedux.length > 0 && !calculated) {
-      console.log('✅ Автоматичний розрахунок рангування...');
-      calculateRanking();
+    if (hasENPVResults && !calculated) {
+      console.log('✅ Автоматичний розрахунок рангування з Redux даних...');
+      calculateRankingFromRedux();
     }
-  }, [hasReduxData, calculatedRoadsFromRedux, calculated]);
+  }, [hasENPVResults, enpvResultsFromRedux, calculated]);
 
+  // ✅ НОВА ФУНКЦІЯ: розрахунок рангування з Redux даних
+  const calculateRankingFromRedux = () => {
+    if (!hasENPVResults || enpvResultsFromRedux.length === 0) {
+      setError('Немає результатів ENPV. Спочатку виконайте розрахунки на Сторінці 3.');
+      return;
+    }
+
+    setIsCalculating(true);
+    setError('');
+
+    try {
+      console.log('=== Формування рангування з Redux даних ===');
+      console.log(`Знайдено ${enpvResultsFromRedux.length} результатів ENPV`);
+
+      const rankingResults: RankingRow[] = enpvResultsFromRedux
+        .filter(result => result.workType !== 'no_work_needed') // Пропускаємо об'єкти без робіт
+        .map(result => ({
+          id: result.sectionId,
+          roadName: result.sectionName,
+          length: result.length,
+          category: parseInt(result.roadCategory) as 1 | 2 | 3 | 4 | 5,
+          workType: result.workType,
+          estimatedCost: result.estimatedCost, // вже в млн грн
+          enpv: result.enpv, // вже в млн грн
+          eirr: result.eirr, // вже в десятковому форматі
+          bcr: result.bcr,
+          rank: 0 // Буде встановлено при сортуванні
+        }));
+
+      // Ранжування за ENPV (від найбільшого до найменшого)
+      const sortedResults = rankingResults
+        .sort((a, b) => {
+          // Спочатку сортуємо за BCR > 1 (економічно доцільні)
+          const aViable = a.bcr > 1;
+          const bViable = b.bcr > 1;
+          
+          if (aViable && !bViable) return -1;
+          if (!aViable && bViable) return 1;
+          
+          // Потім за ENPV
+          return b.enpv - a.enpv;
+        })
+        .map((row, index) => ({
+          ...row,
+          rank: index + 1
+        }));
+
+      setRankingData(sortedResults);
+      setCalculated(true);
+      
+      // ✅ Позначаємо сторінку 4 як завершену
+      appDispatch(setPage4Complete(true));
+
+      console.log('=== Рангування завершено (з Redux) ===');
+      console.log(`Всього об'єктів: ${sortedResults.length}`);
+      console.log(`Економічно доцільних (BCR > 1): ${sortedResults.filter(r => r.bcr > 1).length}`);
+
+    } catch (err) {
+      console.error('Помилка при формуванні рангування:', err);
+      setError(`Помилка: ${err instanceof Error ? err.message : 'Невідома помилка'}`);
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  // ✅ СТАРА ФУНКЦІЯ: розрахунок через модуль (залишаємо як fallback)
   const calculateRanking = async () => {
     if (!hasReduxData || calculatedRoadsFromRedux.length === 0) {
       setError('Немає даних для розрахунку. Спочатку розрахуйте дороги на Вкладці 1-2.');
@@ -188,6 +259,18 @@ export const RoadRankingTable: React.FC = () => {
       return;
     }
 
+    // ✅ ПІДТВЕРДЖЕННЯ ПЕРЕД ОЧИЩЕННЯМ
+    const confirmSave = window.confirm(
+      '📋 Зберегти результати в історію?\n\n' +
+      '✅ Результати будуть збережені в історію\n' +
+      '🧹 Всі введені дані на сторінках будуть очищені\n\n' +
+      'Продовжити?'
+    );
+
+    if (!confirmSave) {
+      return;
+    }
+
     setSaveStatus('Збереження...');
 
     try {
@@ -276,24 +359,44 @@ export const RoadRankingTable: React.FC = () => {
 
       setSaveStatus('✅ Збережено!');
       
-      // Очищення через 1 секунду
+      // Очищення через 1.5 секунди
       setTimeout(() => {
-        console.log('🧹 Очищення даних блоку 3...');
+        console.log('🧹 Початок очищення даних блоку 3...');
         
-        // Очищаємо Redux state
-        appDispatch(resetBlockThree());
-        appDispatch(setCalculatedRoads([]));
-        appDispatch(setCurrentPage(1));
+        // ✅ ПОВНЕ ОЧИЩЕННЯ ВСІХ ДАНИХ
+        console.log('  → Очищення Redux state блоку 3...');
+        appDispatch(resetBlockThree()); // Очищає sections, costStandards, статуси сторінок
         
-        // Очищаємо локальний state
+        console.log('  → Очищення результатів ENPV...');
+        appDispatch(clearENPVResults()); // Очищає всі ENPV результати
+        
+        console.log('  → Очищення розрахованих доріг...');
+        appDispatch(setCalculatedRoads([])); // Очищає дані зі сторінки 1-2
+        
+        console.log('  → Повернення на сторінку 1...');
+        appDispatch(setCurrentPage(1)); // Повертаємось на першу сторінку
+        
+        // Очищаємо локальний state компонента
+        console.log('  → Очищення локального state...');
         setRankingData([]);
         setCalculated(false);
         setError('');
         setSaveStatus('');
         
-        console.log('✅ Дані очищено. Готово до нових розрахунків!');
-        alert('✅ Результати успішно збережено в історію!\n\n🧹 Всі дані очищено для нових розрахунків.');
-      }, 1000);
+        console.log('✅ ОЧИЩЕННЯ ЗАВЕРШЕНО!');
+        console.log('📊 Статус:');
+        console.log('  - Результати збережено в історію ✓');
+        console.log('  - Всі введені дані очищено ✓');
+        console.log('  - Готово до нових розрахунків ✓');
+        
+        alert(
+          '✅ УСПІШНО ЗБЕРЕЖЕНО!\n\n' +
+          '📋 Результати збережено в історію\n' +
+          '🧹 Всі введені дані очищено\n' +
+          '🔄 Система готова до нових розрахунків\n\n' +
+          'Ви можете почати новий розрахунок з Сторінки 1.'
+        );
+      }, 1500);
 
     } catch (error) {
       console.error('Помилка при збереженні:', error);
@@ -372,8 +475,8 @@ export const RoadRankingTable: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <Button 
-            onClick={calculateRanking} 
-            disabled={!hasReduxData || isCalculating}
+            onClick={hasENPVResults ? calculateRankingFromRedux : calculateRanking} 
+            disabled={(!hasReduxData && !hasENPVResults) || isCalculating}
             className="bg-white border-1 border-green-700 text-black hover:bg-green-400"
           >
             {isCalculating ? (
@@ -401,7 +504,8 @@ export const RoadRankingTable: React.FC = () => {
               <Button 
                 onClick={handleSaveAndClear}
                 disabled={saveStatus === 'Збереження...'}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+                title="Зберегти результати в історію та очистити всі введені дані"
               >
                 {saveStatus === 'Збереження...' ? (
                   <>
@@ -411,7 +515,7 @@ export const RoadRankingTable: React.FC = () => {
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Зберегти та очистити
+                    💾 Зберегти в історію та очистити
                   </>
                 )}
               </Button>
@@ -427,21 +531,55 @@ export const RoadRankingTable: React.FC = () => {
           <AlertDescription className="text-green-800">
             <strong>{saveStatus}</strong>
             <div className="text-sm mt-1">
-              Результати збережено в історію. Підготовка до очищення даних...
+              Результати збережено в історію. Підготовка до очищення всіх введених даних...
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Інформація про збереження */}
+      {calculated && !saveStatus && (
+        <Alert className="bg-purple-50 border-purple-300">
+          <Save className="h-5 w-5 text-purple-600" />
+          <AlertDescription className="text-purple-800">
+            <strong>💾 Готово до збереження!</strong>
+            <div className="text-sm mt-2">
+              <p className="mb-1">Натисніть кнопку <strong>"Зберегти в історію та очистити"</strong> для:</p>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li>✅ Збереження результатів у розділ "Історія"</li>
+                <li>🧹 Очищення всіх введених даних на сторінках 1-4</li>
+                <li>🔄 Підготовки до нових розрахунків</li>
+              </ul>
+              <p className="mt-2 text-xs text-purple-700">
+                ⚠️ Після очищення ви зможете переглянути збережені результати в розділі "Історія"
+              </p>
             </div>
           </AlertDescription>
         </Alert>
       )}
 
       {/* Попередження */}
-      {!hasReduxData && (
+      {!hasENPVResults && !hasReduxData && (
         <Alert className="bg-yellow-50 border-yellow-400">
           <AlertCircle className="h-5 w-5 text-yellow-600" />
           <AlertDescription className="text-yellow-800">
             <strong>Немає даних для рангування!</strong>
             <div className="text-sm mt-1">
-              Спочатку перейдіть на вкладку "Визначення показників транспортно-експлуатаційного стану" 
-              та виконайте розрахунок для доріг.
+              Спочатку перейдіть на Сторінку 3 "Вихідні дані та розрахунок ENPV" 
+              та виконайте розрахунок ENPV для кожного об'єкту.
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {/* Інформація про доступні результати ENPV */}
+      {hasENPVResults && !calculated && (
+        <Alert className="bg-blue-50 border-blue-400">
+          <AlertCircle className="h-5 w-5 text-blue-600" />
+          <AlertDescription className="text-blue-800">
+            <strong>✓ Знайдено {enpvResultsFromRedux.length} розрахованих результатів ENPV</strong>
+            <div className="text-sm mt-1">
+              Натисніть "Розрахувати рангування" для формування таблиці.
             </div>
           </AlertDescription>
         </Alert>
@@ -631,7 +769,7 @@ export const RoadRankingTable: React.FC = () => {
       )}
 
       {/* Пусте повідомлення */}
-      {!calculated && hasReduxData && !isCalculating && (
+      {!calculated && (hasReduxData || hasENPVResults) && !isCalculating && (
         <Card>
           <CardContent className="py-12 text-center">
             <Calculator className="w-16 h-16 mx-auto text-gray-400 mb-4" />
@@ -639,7 +777,10 @@ export const RoadRankingTable: React.FC = () => {
               Готово до розрахунку
             </h3>
             <p className="text-gray-500 mb-4">
-              Натисніть "Розрахувати рангування" для створення таблиці з економічними показниками
+              {hasENPVResults 
+                ? `Знайдено ${enpvResultsFromRedux.length} результатів ENPV. Натисніть "Розрахувати рангування" для створення таблиці.`
+                : 'Натисніть "Розрахувати рангування" для створення таблиці з економічними показниками'
+              }
             </p>
           </CardContent>
         </Card>

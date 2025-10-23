@@ -39,6 +39,27 @@ interface CostStandards {
   current_repair: Record<number, number>;
 }
 
+// ✅ РЕЗУЛЬТАТИ ENPV ДЛЯ КОЖНОГО ОБ'ЄКТУ
+export interface ENPVResult {
+  sectionId: string;
+  sectionName: string;
+  roadCategory: string;
+  length: number;
+  workType: 'current_repair' | 'capital_repair' | 'reconstruction' | 'no_work_needed';
+  estimatedCost: number; // млн грн
+  enpv: number; // млн грн
+  eirr: number; // десяткове (0.15 = 15%)
+  bcr: number;
+  totalBenefits: number; // млн грн
+  totalCosts: number; // млн грн
+  vehicleFleetReduction: number; // млн грн
+  transportCostSavings: number; // млн грн
+  accidentReduction: number; // млн грн
+  environmentalBenefits: number; // млн грн
+  paybackPeriod: number; // років
+  calculatedAt: number; // timestamp
+}
+
 export interface BlockThreeState {
   sections: RoadSectionUI[];
   costStandards: CostStandards;
@@ -48,6 +69,8 @@ export interface BlockThreeState {
   page2Complete: boolean;
   page3Complete: boolean;
   page4Complete: boolean;
+  // ✅ Результати ENPV розрахунків
+  enpvResults: ENPVResult[];
 }
 
 const initialState: BlockThreeState = {
@@ -62,6 +85,7 @@ const initialState: BlockThreeState = {
   page2Complete: false,
   page3Complete: false,
   page4Complete: false,
+  enpvResults: [],
 };
 
 const blockThreeSlice = createSlice({
@@ -108,6 +132,27 @@ const blockThreeSlice = createSlice({
     setPage4Complete: (state, action: PayloadAction<boolean>) => {
       state.page4Complete = action.payload;
     },
+    // ✅ ACTIONS ДЛЯ РОБОТИ З ENPV РЕЗУЛЬТАТАМИ
+    addENPVResult: (state, action: PayloadAction<ENPVResult>) => {
+      // Перевіряємо чи вже є результат для цього об'єкту
+      const existingIndex = state.enpvResults.findIndex(r => r.sectionId === action.payload.sectionId);
+      if (existingIndex !== -1) {
+        // Оновлюємо існуючий результат
+        state.enpvResults[existingIndex] = action.payload;
+      } else {
+        // Додаємо новий результат
+        state.enpvResults.push(action.payload);
+      }
+      // ✅ Позначаємо сторінку 3 як завершену
+      state.page3Complete = true;
+    },
+    removeENPVResult: (state, action: PayloadAction<string>) => {
+      state.enpvResults = state.enpvResults.filter(r => r.sectionId !== action.payload);
+    },
+    clearENPVResults: (state) => {
+      state.enpvResults = [];
+      state.page3Complete = false;
+    },
     resetBlockThree: () => initialState,
   },
 });
@@ -125,6 +170,9 @@ export const {
   setPage3Complete,
   setPage4Complete,
   previousPage,
+  addENPVResult,
+  removeENPVResult,
+  clearENPVResults,
   resetBlockThree,
 } = blockThreeSlice.actions;
 

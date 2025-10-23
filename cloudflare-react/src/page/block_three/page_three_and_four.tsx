@@ -16,12 +16,13 @@ import {
   type BudgetAllocation
 } from '@/modules/block_three';
 
-import { useAppSelector } from '@/redux/hooks';
+import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { 
   selectCalculatedRoads, 
   selectHasCalculatedData, 
   selectLastCalculationTime 
 } from '@/store/roadDataSlice';
+import { setPage2Complete } from '@/redux/slices/blockThreeSlice';
 
 interface CostIndicators {
   reconstruction: { [key in 1 | 2 | 3 | 4 | 5]: number };
@@ -56,7 +57,7 @@ const WORK_TYPE_COLORS = {
 };
 
 export const RoadCostIndicators: React.FC = () => {
-
+  const appDispatch = useAppDispatch();
   const calculatedRoadsFromRedux = useAppSelector(selectCalculatedRoads);
   const hasReduxData = useAppSelector(selectHasCalculatedData);
   const lastCalculationTime = useAppSelector(selectLastCalculationTime);
@@ -170,6 +171,10 @@ export const RoadCostIndicators: React.FC = () => {
       setCostRows(calculatedRows);
       setCalculated(true);
       setShowResults(true);
+      
+      // ✅ Позначаємо сторінку 2 як завершену
+      appDispatch(setPage2Complete(true));
+      console.log('✅ Сторінка 2 позначена як завершена');
     } catch (err) {
       setError('Помилка при розрахунку вартості: ' + (err as Error).message);
     }

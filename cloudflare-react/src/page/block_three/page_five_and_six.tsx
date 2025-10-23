@@ -9,11 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // ✅ ІМПОРТ REDUX
-import { useAppSelector } from '@/redux/hooks';
+import { useAppSelector, useAppDispatch } from '@/redux/hooks';
+import { addENPVResult, type ENPVResult } from '@/redux/slices/blockThreeSlice';
 
 // ИМПОРТ ФУНКЦИЙ ИЗ МОДУЛЯ
 import { 
   performDetailedCostBenefitAnalysis,
+  determineWorkTypeByTechnicalCondition,
   type DetailedTechnicalCondition,
   type RoadSection as ModuleRoadSection
 } from '@/modules/block_three';
@@ -98,10 +100,15 @@ interface DetailedResults {
 }
 
 const ENPVCalculationTool: React.FC = () => {
-  // ✅ ЧИТАЄМО ДАНІ З REDUX
+  // ✅ REDUX
+  const appDispatch = useAppDispatch();
   const calculatedRoadsFromRedux = useAppSelector(state => state.roadData.calculatedRoads);
   const hasCalculatedData = calculatedRoadsFromRedux.length > 0;
   const lastCalculationTime = useAppSelector(state => state.roadData.lastCalculationTime);
+  
+  // ✅ ЧИТАЄМО ЗБЕРЕЖЕНІ РЕЗУЛЬТАТИ ENPV
+  const enpvResultsFromRedux = useAppSelector(state => state.blockThree.enpvResults || []);
+  const hasENPVResults = enpvResultsFromRedux.length > 0;
   
   // ✅ ЧИТАЄМО Q1 ТА Q2 З БЛОКУ 1
   const currentSession = useAppSelector(state => state.history.currentSession);
@@ -400,6 +407,47 @@ const ENPVCalculationTool: React.FC = () => {
   
       setDetailedResults(results);
       setCurrentTab('results');
+
+      // ✅ ЗБЕРІГАЄМО РЕЗУЛЬТАТИ В REDUX
+      const fullRoadData = calculatedRoadsFromRedux.find(r => r.id === currentData.sectionId);
+      const workType = fullRoadData?.detailedCondition 
+        ? determineWorkTypeByTechnicalCondition({
+            id: currentData.sectionId,
+            name: currentData.sectionName,
+            category: parseInt(currentData.roadCategory) as 1 | 2 | 3 | 4 | 5,
+            length: currentData.constructionPeriod,
+            significance: 'state',
+            region: currentData.region,
+            trafficIntensity: currentData.currentRepairPeriod,
+            detailedCondition: fullRoadData.detailedCondition as DetailedTechnicalCondition,
+            isDefenseRoad: currentData.isDefenseRoad,
+            isInternationalRoad: currentData.isInternationalRoad,
+            isEuropeanNetwork: currentData.isEuropeanNetwork
+          })
+        : 'no_work_needed' as const;
+
+      const enpvResult: ENPVResult = {
+        sectionId: currentData.sectionId,
+        sectionName: currentData.sectionName,
+        roadCategory: currentData.roadCategory,
+        length: currentData.constructionPeriod,
+        workType: workType,
+        estimatedCost: currentData.totalReconstructionCost,
+        enpv: results.summary.enpv,
+        eirr: results.summary.eirr,
+        bcr: results.summary.bcr,
+        totalBenefits: results.summary.totalBenefits,
+        totalCosts: results.summary.totalCosts,
+        vehicleFleetReduction: results.summary.vehicleFleetReduction,
+        transportCostSavings: results.summary.transportCostSavings,
+        accidentReduction: results.summary.accidentReduction,
+        environmentalBenefits: results.summary.environmentalBenefits,
+        paybackPeriod: results.summary.paybackPeriod,
+        calculatedAt: Date.now()
+      };
+
+      appDispatch(addENPVResult(enpvResult));
+      console.log('✅ Результати ENPV збережено в Redux:', enpvResult);
   
     } catch (error) {
       console.error('❌ Помилка при розрахунку:', error);
@@ -526,6 +574,19 @@ const ENPVCalculationTool: React.FC = () => {
                 Останній розрахунок: {new Date(lastCalculationTime).toLocaleString('uk-UA')}
               </div>
             )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* ✅ ПОКАЗУЄМО ЗБЕРЕЖЕНІ РЕЗУЛЬТАТИ ENPV */}
+      {hasENPVResults && (
+        <Alert className="bg-purple-50 border-purple-300">
+          <CheckCircle2 className="h-4 w-4 text-purple-600" />
+          <AlertDescription className="text-purple-800">
+            <strong>✓ Збережено {enpvResultsFromRedux.length} результатів ENPV</strong>
+            <div className="text-xs mt-1">
+              Ці результати будуть автоматично використані на Сторінці 4 (Ранжування об'єктів)
+            </div>
           </AlertDescription>
         </Alert>
       )}

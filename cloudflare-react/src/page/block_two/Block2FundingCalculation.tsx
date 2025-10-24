@@ -216,6 +216,9 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
             return;
           }
           
+          // ✅ ПЕРЕВІРЯЄМО ЧИ Є ВЖЕ РОЗРАХОВАНІ КОЕФІЦІЄНТИ (ВІДРЕДАГОВАНІ)
+          const existingResult = regionalResults.find(r => r.regionName === region.name);
+          
           // ✅ КОНВЕРТУЄМО ДАНІ В RoadSection[]
           const roadSections = convertToRoadSections(region);
           const totalLength = region.totalLength;
@@ -234,42 +237,43 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
             const kRepair = calculateRepairCoefficient(roadSections, totalLength);
             const kCriticalInfra = calculateCriticalInfrastructureCoefficient(region.criticalInfraCount);
             
+            // ✅ ВИКОРИСТОВУЄМО ВІДРЕДАГОВАНІ КОЕФІЦІЄНТИ ЯКЩО Є, ІНАКШЕ БАЗОВІ
             coefficients = {
-              mountainous: regionCoeff.mountainous,
-              operatingConditions: regionCoeff.operatingConditions,
-              trafficIntensity: kIntensity,
-              europeanRoad: kEuropean,
-              borderCrossing: kBorder,
-              lighting: kLighting,
-              repair: kRepair,
-              criticalInfra: kCriticalInfra,
+              mountainous: existingResult?.coefficients.mountainous || regionCoeff.mountainous,
+              operatingConditions: existingResult?.coefficients.operatingConditions || regionCoeff.operatingConditions,
+              trafficIntensity: existingResult?.coefficients.trafficIntensity || kIntensity,
+              europeanRoad: existingResult?.coefficients.europeanRoad || kEuropean,
+              borderCrossing: existingResult?.coefficients.borderCrossing || kBorder,
+              lighting: existingResult?.coefficients.lighting || kLighting,
+              repair: existingResult?.coefficients.repair || kRepair,
+              criticalInfra: existingResult?.coefficients.criticalInfra || kCriticalInfra,
               totalProduct: 0
             };
             
             // ✅ Добуток всіх коефіцієнтів для державних доріг (формула п.3.5 Методики)
             totalProduct = 
               1.16 * // K_д - коефіцієнт обслуговування держ. доріг (сталий)
-              regionCoeff.mountainous * 
-              regionCoeff.operatingConditions * 
-              kIntensity * 
-              kEuropean * 
-              kBorder * 
-              kLighting * 
-              kRepair * 
-              kCriticalInfra;
+              coefficients.mountainous * 
+              coefficients.operatingConditions * 
+              coefficients.trafficIntensity * 
+              coefficients.europeanRoad * 
+              coefficients.borderCrossing * 
+              coefficients.lighting * 
+              coefficients.repair * 
+              coefficients.criticalInfra;
           } else {
             // ДЛЯ МІСЦЕВИХ ДОРІГ - тільки K_г × K_уе × K_інт.м (формула п.3.6)
             coefficients = {
-              mountainous: regionCoeff.mountainous,
-              operatingConditions: regionCoeff.operatingConditions,
-              trafficIntensity: kIntensity,
+              mountainous: existingResult?.coefficients.mountainous || regionCoeff.mountainous,
+              operatingConditions: existingResult?.coefficients.operatingConditions || regionCoeff.operatingConditions,
+              trafficIntensity: existingResult?.coefficients.trafficIntensity || kIntensity,
               totalProduct: 0
             };
             
             totalProduct = 
-              regionCoeff.mountainous * 
-              regionCoeff.operatingConditions * 
-              kIntensity;
+              coefficients.mountainous * 
+              coefficients.operatingConditions * 
+              coefficients.trafficIntensity;
           }
           
           coefficients.totalProduct = totalProduct;
@@ -608,12 +612,12 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
               <div className="text-sm md:text-base">
                 Завантажте Excel шаблон з вихідними даними про дороги по областях
               </div>
-              <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
                 <Button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-sm md:text-base w-full sm:w-auto justify-center"
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-sm md:text-base w-full justify-center"
                 >
-                  <Upload className="h-3 w-3 md:h-4 md:w-4" />
+                  <Upload className="h-4 w-4" />
                   Завантажити таблицю
                 </Button>
                 <Button
@@ -624,10 +628,10 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                     link.click();
                   }}
                   variant="outline"
-                  className="flex items-center gap-2 border-blue-300 text-blue-700 hover:bg-blue-50 text-sm md:text-base w-full sm:w-auto justify-center"
+                  className="flex items-center gap-2 border-blue-300 text-blue-700 hover:bg-blue-50 text-sm md:text-base w-full justify-center"
                 >
-                  <Download className="h-3 w-3 md:h-4 md:w-4" />
-                  Шаблон державні дороги
+                  <Download className="h-4 w-4" />
+                  Шаблон державні
                 </Button>
                 <Button
                   onClick={() => {
@@ -637,10 +641,10 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                     link.click();
                   }}
                   variant="outline"
-                  className="flex items-center gap-2 border-green-300 text-green-700 hover:bg-green-50 text-sm md:text-base w-full sm:w-auto justify-center"
+                  className="flex items-center gap-2 border-green-300 text-green-700 hover:bg-green-50 text-sm md:text-base w-full justify-center sm:col-span-2 lg:col-span-1"
                 >
-                  <Download className="h-3 w-3 md:h-4 md:w-4" />
-                  Шаблон місцеві дороги
+                  <Download className="h-4 w-4" />
+                  Шаблон місцеві
                 </Button>
               </div>
             </div>
@@ -726,30 +730,33 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                         <p className="text-xs text-blue-600 mt-1">✏️ Режим редагування активний</p>
                       )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Button
                         onClick={() => setIsEditing(!isEditing)}
                         variant="outline"
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 w-full sm:w-auto justify-center"
                       >
                         <Edit className="h-4 w-4" />
-                        {isEditing ? 'Завершити редагування' : 'Редагувати дані'}
+                        <span className="hidden sm:inline">{isEditing ? 'Завершити редагування' : 'Редагувати дані'}</span>
+                        <span className="sm:hidden">{isEditing ? 'Завершити' : 'Редагувати'}</span>
                       </Button>
                       <Button
                         type="button"
                         onClick={calculateRegionalFinancing}
                         disabled={isCalculatingRegional}
-                        className="bg-green-600 hover:bg-green-700"
+                        className="bg-green-600 hover:bg-green-700 w-full sm:w-auto justify-center"
                       >
                         <Calculator className="h-4 w-4 mr-2" />
-                        {isCalculatingRegional ? 'Розраховуємо...' : 'Розрахувати обсяг коштів'}
+                        <span className="hidden sm:inline">{isCalculatingRegional ? 'Розраховуємо...' : 'Розрахувати обсяг коштів'}</span>
+                        <span className="sm:hidden">{isCalculatingRegional ? 'Розраховуємо...' : 'Розрахувати'}</span>
                       </Button>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-auto max-h-[400px] border-2 border-gray-300 rounded">
-                    <table className="w-full text-xs border-collapse">
+                    <div className="min-w-[800px]">
+                      <table className="w-full text-xs border-collapse">
                       <thead className="sticky top-0 bg-gray-200 z-10">
                         <tr>
                           <th className="border border-gray-400 p-2 text-left" rowSpan={2}>Найменування області</th>
@@ -993,6 +1000,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                           })}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -1020,7 +1028,8 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                     </CardHeader>
                     <CardContent>
                       <div className={`overflow-auto border rounded ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>
-                        <table className="w-full text-xs border-collapse">
+                        <div className="min-w-[600px]">
+                          <table className="w-full text-xs border-collapse">
                           <thead className={roadType === 'state' ? 'bg-blue-200' : 'bg-green-200'}>
                             <tr>
                               <th className={`border p-2 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>Область</th>
@@ -1075,51 +1084,65 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                   )}
                                   
                                   {/* Редаговані коефіцієнти */}
-                                  {['mountainous', 'operatingConditions', 'trafficIntensity'].map((key) => (
-                                    <td key={key} className={`border p-1 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>
-                                      {isEditing ? (
-                                        <input
-                                          type="number"
-                                          step="0.0001"
-                                          value={result.coefficients[key as keyof typeof result.coefficients]}
-                                          onChange={(e) => {
-                                            const newResults = [...regionalResults];
-                                            (newResults[realIdx].coefficients as any)[key] = parseFloat(e.target.value) || 1;
-                                            setRegionalResults(newResults);
-                                          }}
-                                          className={`w-full text-center p-1 border-0 rounded ${roadType === 'state' ? 'bg-blue-50 focus:bg-blue-100' : 'bg-green-50 focus:bg-green-100'}`}
-                                          style={{ fontSize: '11px' }}
-                                        />
-                                      ) : (
-                                        <div className="text-center">
-                                          {(result.coefficients[key as keyof typeof result.coefficients] as number).toFixed(4)}
-                                        </div>
-                                      )}
-                                    </td>
-                                  ))}
+                                  {['mountainous', 'operatingConditions', 'trafficIntensity'].map((key) => {
+                                    const regionCoeff = regionCoefficients.find(r => r.regionalName === result.regionName);
+                                    const originalValue = (regionCoeff?.[key as keyof typeof regionCoeff] as number) || 1;
+                                    const currentValue = result.coefficients[key as keyof typeof result.coefficients] as number;
+                                    const isEdited = Math.abs(currentValue - originalValue) > 0.0001;
+                                    
+                                    return (
+                                      <td key={key} className={`border p-1 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'} ${isEdited ? 'bg-yellow-50' : ''}`}>
+                                        {isEditing ? (
+                                          <input
+                                            type="number"
+                                            step="0.0001"
+                                            value={currentValue}
+                                            onChange={(e) => {
+                                              const newResults = [...regionalResults];
+                                              (newResults[realIdx].coefficients as any)[key] = parseFloat(e.target.value) || 1;
+                                              setRegionalResults(newResults);
+                                            }}
+                                            className={`w-full text-center p-1 border-0 rounded ${roadType === 'state' ? 'bg-blue-50 focus:bg-blue-100' : 'bg-green-50 focus:bg-green-100'} ${isEdited ? 'border-yellow-300' : ''}`}
+                                            style={{ fontSize: '11px' }}
+                                          />
+                                        ) : (
+                                          <div className={`text-center ${isEdited ? 'font-bold text-yellow-700' : ''}`}>
+                                            {currentValue.toFixed(4)}
+                                            {isEdited && <div className="text-xs text-yellow-600">*</div>}
+                                          </div>
+                                        )}
+                                      </td>
+                                    );
+                                  })}
                                   
-                                  {roadType === 'state' && ['europeanRoad', 'borderCrossing', 'lighting', 'repair', 'criticalInfra'].map((key) => (
-                                    <td key={key} className="border border-blue-300 p-1">
-                                      {isEditing ? (
-                                        <input
-                                          type="number"
-                                          step="0.0001"
-                                          value={result.coefficients[key as keyof typeof result.coefficients] || 1}
-                                          onChange={(e) => {
-                                            const newResults = [...regionalResults];
-                                            (newResults[realIdx].coefficients as any)[key] = parseFloat(e.target.value) || 1;
-                                            setRegionalResults(newResults);
-                                          }}
-                                          className="w-full text-center p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded"
-                                          style={{ fontSize: '11px' }}
-                                        />
-                                      ) : (
-                                        <div className="text-center">
-                                          {((result.coefficients[key as keyof typeof result.coefficients] as number) || 1).toFixed(4)}
-                                        </div>
-                                      )}
-                                    </td>
-                                  ))}
+                                  {roadType === 'state' && ['europeanRoad', 'borderCrossing', 'lighting', 'repair', 'criticalInfra'].map((key) => {
+                                    const currentValue = (result.coefficients[key as keyof typeof result.coefficients] as number) || 1;
+                                    const isEdited = Math.abs(currentValue - 1) > 0.0001; // Для этих коэффициентов базовое значение 1
+                                    
+                                    return (
+                                      <td key={key} className={`border border-blue-300 p-1 ${isEdited ? 'bg-yellow-50' : ''}`}>
+                                        {isEditing ? (
+                                          <input
+                                            type="number"
+                                            step="0.0001"
+                                            value={currentValue}
+                                            onChange={(e) => {
+                                              const newResults = [...regionalResults];
+                                              (newResults[realIdx].coefficients as any)[key] = parseFloat(e.target.value) || 1;
+                                              setRegionalResults(newResults);
+                                            }}
+                                            className={`w-full text-center p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded ${isEdited ? 'border-yellow-300' : ''}`}
+                                            style={{ fontSize: '11px' }}
+                                          />
+                                        ) : (
+                                          <div className={`text-center ${isEdited ? 'font-bold text-yellow-700' : ''}`}>
+                                            {currentValue.toFixed(4)}
+                                            {isEdited && <div className="text-xs text-yellow-600">*</div>}
+                                          </div>
+                                        )}
+                                      </td>
+                                    );
+                                  })}
                                   
                                   <td className={`border p-2 text-center bg-yellow-50 font-bold ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>
                                     {isEditing ? currentProduct.toFixed(4) : result.coefficients.totalProduct.toFixed(4)}
@@ -1129,6 +1152,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                             })}
                           </tbody>
                         </table>
+                        </div>
                       </div>
                       
                       {/* Пояснення */}
@@ -1148,6 +1172,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                 <div><strong>K<sub>кр.і</sub></strong> - критична інфраструктура</div>
                               </>
                             )}
+                          </div>
+                          <div className="mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
+                            <div className="text-yellow-800 font-semibold">💡 Пояснення:</div>
+                            <div className="text-yellow-700">
+                              • <strong>Жовтий фон</strong> - відредаговані коефіцієнти<br/>
+                              • <strong>Зірочка (*)</strong> - показує, що значення змінено вручну<br/>
+                              • При перерахунку використовуються відредаговані значення
+                            </div>
                           </div>
                         </AlertDescription>
                       </Alert>
@@ -1173,7 +1205,8 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                     <CardContent className="space-y-4">
                       <div className="bg-white border-2 border-gray-400 rounded-lg overflow-hidden">
                         <div className="overflow-auto max-h-[600px]">
-                          <table className="w-full text-xs border-collapse">
+                          <div className="min-w-[1000px]">
+                            <table className="w-full text-xs border-collapse">
                             <thead className="sticky top-0 z-20 bg-gray-200">
                               <tr>
                                 <th className="border-2 border-gray-400 p-3 text-center font-bold" colSpan={14}>
@@ -1286,39 +1319,40 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                               </tr>
                             </tbody>
                           </table>
+                          </div>
                         </div>
                       </div>
 
                       {/* СТАТИСТИКА */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                         <div className="text-center p-3 md:p-4 bg-white rounded-lg shadow">
-                          <div className="text-2xl md:text-3xl font-bold text-green-700">
+                          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-green-700">
                             {selectedRegion === 'all' 
                               ? regionalResults.length 
                               : regionalResults.filter(r => r.regionName === selectedRegion).length
                             }
                           </div>
-                          <div className="text-xs md:text-sm text-gray-600">
+                          <div className="text-xs sm:text-sm text-gray-600">
                             {selectedRegion === 'all' ? 'Областей проаналізовано' : 'Областей показано'}
                           </div>
                         </div>
                         <div className="text-center p-3 md:p-4 bg-white rounded-lg shadow">
-                          <div className="text-2xl md:text-3xl font-bold text-blue-700">
+                          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-700">
                             {regionalData
                               .filter(region => selectedRegion === 'all' || region.name === selectedRegion)
                               .reduce((sum, r) => sum + r.totalLength, 0).toFixed(0)}
                           </div>
-                          <div className="text-xs md:text-sm text-gray-600">
+                          <div className="text-xs sm:text-sm text-gray-600">
                             {selectedRegion === 'all' ? 'Загальна довжина (км)' : 'Довжина (км)'}
                           </div>
                         </div>
                         <div className="text-center p-3 md:p-4 bg-white rounded-lg shadow sm:col-span-2 lg:col-span-1">
-                          <div className="text-2xl md:text-3xl font-bold text-purple-700">
+                          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-700">
                             {(regionalResults
                               .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
                               .reduce((sum, r) => sum + r.totalFunding, 0) / 1000000).toFixed(2)}
                           </div>
-                          <div className="text-xs md:text-sm text-gray-600">
+                          <div className="text-xs sm:text-sm text-gray-600">
                             {selectedRegion === 'all' ? 'Млрд. грн (загалом)' : 'Млрд. грн'}
                           </div>
                         </div>
@@ -1337,11 +1371,11 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                       <CardContent>
                         <div className="space-y-4">
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                            <div className="text-center p-4 bg-white rounded border">
-                              <div className="text-sm text-gray-600 mb-1">
+                            <div className="text-center p-3 sm:p-4 bg-white rounded border">
+                              <div className="text-xs sm:text-sm text-gray-600 mb-1">
                                 {roadType === 'state' ? 'Q₁ (Державні дороги)' : 'Q₂ (Місцеві дороги)'}
                               </div>
-                              <div className="text-lg md:text-2xl font-bold text-blue-700 break-all">
+                              <div className="text-base sm:text-lg md:text-2xl font-bold text-blue-700 break-all">
                                 {roadType === 'state' ? 
                                   (q1Value ? q1Value.toLocaleString() : '—') : 
                                   (q2Value ? q2Value.toLocaleString() : '—')
@@ -1349,20 +1383,20 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                               </div>
                             </div>
                             
-                            <div className="text-center p-3 md:p-4 bg-white rounded border">
-                              <div className="text-xs md:text-sm text-gray-600 mb-1">
+                            <div className="text-center p-3 sm:p-4 bg-white rounded border">
+                              <div className="text-xs sm:text-sm text-gray-600 mb-1">
                                 {selectedRegion === 'all' ? 'Витрати на ЕУ' : 'Витрати на ЕУ (фільтр)'}
                               </div>
-                              <div className="text-lg md:text-2xl font-bold text-red-700 break-all">
+                              <div className="text-base sm:text-lg md:text-2xl font-bold text-red-700 break-all">
                                 {regionalResults
                                   .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
                                   .reduce((sum, r) => sum + r.totalFunding, 0).toLocaleString()} тис. грн
                               </div>
                             </div>
                             
-                            <div className="text-center p-3 md:p-4 bg-white rounded border sm:col-span-2 lg:col-span-1">
-                              <div className="text-xs md:text-sm text-gray-600 mb-1">Залишок на ремонти</div>
-                              <div className={`text-lg md:text-2xl font-bold break-all ${
+                            <div className="text-center p-3 sm:p-4 bg-white rounded border sm:col-span-2 lg:col-span-1">
+                              <div className="text-xs sm:text-sm text-gray-600 mb-1">Залишок на ремонти</div>
+                              <div className={`text-base sm:text-lg md:text-2xl font-bold break-all ${
                                 (() => {
                                   const totalEU = regionalResults
                                     .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)

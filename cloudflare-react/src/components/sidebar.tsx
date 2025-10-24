@@ -65,7 +65,7 @@ export const Sidebar: React.FC = () => {
             {/* Overlay for mobile */}
             {isSidebarOpen && (
                 <div 
-                    className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+                    className="fixed inset-0 bg-gray-600 bg-opacity-30 z-40 lg:hidden"
                     onClick={() => setIsSidebarOpen(false)}
                 />
             )}
@@ -182,7 +182,7 @@ export const Sidebar: React.FC = () => {
 
             {/* Confirmation Dialog */}
             {showConfirmDialog && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-30 flex items-center justify-center z-[100]">
                     <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl border border-red-200">
                         <div className="flex items-center mb-4">
                             <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">

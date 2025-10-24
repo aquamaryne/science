@@ -105,22 +105,12 @@ const Block2MaintenanceCalculator: React.FC = () => {
         
         {/* Вкладка 1: Государственные дороги */}
         <TabsContent value="step1">
-          <Block2StateRoads 
-            onCalculated={() => {
-              // ✅ Автоматично переходимо на наступну вкладку після розрахунку
-              setTimeout(() => setActiveTab('step2'), 600);
-            }}
-          />
+          <Block2StateRoads />
         </TabsContent>
         
         {/* Вкладка 2: Местные дороги */}
         <TabsContent value="step2">
-          <Block2LocalRoads 
-            onCalculated={() => {
-              // ✅ Автоматично переходимо на наступну вкладку після розрахунку
-              setTimeout(() => setActiveTab('step3'), 600);
-            }}
-          />
+          <Block2LocalRoads />
         </TabsContent>
         
         {/* Вкладка 3: Расчет финансирования */}

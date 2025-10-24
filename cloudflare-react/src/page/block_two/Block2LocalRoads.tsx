@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -15,10 +15,10 @@ import {
 } from '@/redux/slices/blockTwoSlice';
 
 interface Block2LocalRoadsProps {
-  onCalculated?: () => void;
+  // onCalculated?: () => void; // Убрано - автоматичні переходи відключені
 }
 
-const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = ({ onCalculated }) => {
+const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = () => {
   const dispatch = useAppDispatch();
   const blockTwoState = useAppSelector(state => state.blockTwo);
   
@@ -44,38 +44,43 @@ const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = ({ onCalculated }) => 
   };
 
   const calculateLocalRoadRates = () => {
-    const cumulativeInflation = calculateCumulativeInflationIndex(localInflationIndexes);
-    const adjustedBaseRate = localRoadBaseRate * cumulativeInflation;
+    // Валідація вхідних даних
+    if (localRoadBaseRate <= 0) {
+      alert('Будь ласка, введіть коректний норматив базової вартості (більше 0)');
+      return;
+    }
     
+    if (localInflationIndexes.length === 0 || localInflationIndexes.some(index => isNaN(index) || index < 0)) {
+      alert('Будь ласка, введіть коректні індекси інфляції (не менше 0)');
+      return;
+    }
+    
+    // Формула з методики: H_j^м = H^м × K_j^м × K_інф
+    const cumulativeInflation = calculateCumulativeInflationIndex(localInflationIndexes);
+    
+    // Коефіцієнти диференціювання згідно з Додатком 3 методики для місцевих доріг
     const rates = {
-      category1: adjustedBaseRate * 1.71,
-      category2: adjustedBaseRate * 1.00,
-      category3: adjustedBaseRate * 0.85,
-      category4: adjustedBaseRate * 0.64,
-      category5: adjustedBaseRate * 0.40
+      category1: localRoadBaseRate * 1.71 * cumulativeInflation, // I категорія
+      category2: localRoadBaseRate * 1.00 * cumulativeInflation, // II категорія (базова)
+      category3: localRoadBaseRate * 0.85 * cumulativeInflation, // III категорія
+      category4: localRoadBaseRate * 0.64 * cumulativeInflation, // IV категорія
+      category5: localRoadBaseRate * 0.40 * cumulativeInflation  // V категорія
     };
     
     dispatch(setLocalRoadRates(rates));
     
-    // ✅ Викликаємо callback після успішного розрахунку
-    if (onCalculated) {
-      setTimeout(() => onCalculated(), 500);
-    }
+    // ✅ Розрахунок завершено, але без автоматичного переходу
+    // Користувач сам вирішує, коли переходити до наступного етапу
   };
 
   return (
     <Card>
-      <CardHeader>
-        <CardDescription>
-          Приведений норматив річних фінансових витрат на експлуатаційне утримання автомобільних доріг місцевого значення
-        </CardDescription>
-      </CardHeader>
       <CardContent>
         <div className="grid gap-6">
           <div className="grid gap-4">
             <div>
               <Label htmlFor="localRoadBaseRate">
-                Встановлений норматив річних фінансових витрат на ЕУ 1 км дороги II кат. місцевого значення в цінах 2023 року
+                Встановлений норматив річних фінансових витрат на ЕУ 1 км дороги II кат. місцевого значення в цінах 20ХХ року
               </Label>
               <Input
                 id="localRoadBaseRate"
@@ -88,7 +93,7 @@ const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = ({ onCalculated }) => 
             
             <div>
               <div className="flex items-center justify-between">
-                <Label>Індекси інфляції для місцевих доріг</Label>
+                <Label>Індекси інфляції</Label>
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -97,29 +102,38 @@ const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = ({ onCalculated }) => 
                   <Plus className="h-4 w-4 mr-1" /> Додати індекс
                 </Button>
               </div>
+              <div className="text-sm text-gray-600 mb-2">
+                Вводиться вручну, але має бути можливість ввести кількість років і тоді з'являється така ж кількість комірок для внесення відповідних індексів за певні роки, бо їх може бути багато
+              </div>
               <div className="grid gap-2 mt-2">
                 {localInflationIndexes.map((index, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <Label className="min-w-[100px]">{`Індекс ${i+1}:`}</Label>
-                    <Input
-                      type="number"
-                      value={index}
-                      onChange={(e) => handleLocalInflationChange(i, e.target.value)}
-                    />
-                    <span>%</span>
-                    <span className="text-sm text-gray-500">
-                      (коеф.: {(1 + index / 100).toFixed(4)})
-                    </span>
-                    {localInflationIndexes.length > 1 && (
-                      <Button 
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeLocalInflationIndexHandler(i)}
-                        className="ml-2 p-1 h-auto"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
+                  <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <Label className="min-w-[80px] text-sm">{`Рік ${2023 + i + 1}:`}</Label>
+                      <Input
+                        type="number"
+                        value={index}
+                        onChange={(e) => handleLocalInflationChange(i, e.target.value)}
+                        placeholder="Введіть індекс"
+                        className="flex-1 sm:flex-none sm:w-24"
+                      />
+                      <span className="text-sm">%</span>
+                    </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <span className="text-xs text-gray-500">
+                        (коеф.: {(1 + index / 100).toFixed(4)})
+                      </span>
+                      {localInflationIndexes.length > 1 && (
+                        <Button 
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeLocalInflationIndexHandler(i)}
+                          className="p-1 h-auto text-red-600 hover:text-red-800"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
                 <div className="mt-2 p-2 bg-blue-50 rounded">
@@ -145,9 +159,9 @@ const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = ({ onCalculated }) => 
               <Alert className="bg-green-50 border-green-400">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
                 <AlertDescription className="text-green-800">
-                  <strong>✅ Розрахунок завершено успішно!</strong>
+                  <strong>✅ РЕЗУЛЬТАТ нормативи для I, II, III, IV, V категорій!</strong>
                   <div className="text-sm mt-1">
-                    Нормативи для місцевих доріг розраховано. Тепер ви можете перейти до наступного етапу.
+                    Має бути пораховано норматив для кожної категорії. Тепер ви можете перейти до наступного етапу.
                   </div>
                 </AlertDescription>
               </Alert>

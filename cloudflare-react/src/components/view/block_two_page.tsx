@@ -76,30 +76,30 @@ const Block2MaintenanceCalculator: React.FC = () => {
   }, [blockTwoState]);
 
   return (
-    <div className="mx-auto p-10">
-      <h1 className="text-2xl font-bold mb-2">Експлуатаційне утримання доріг</h1>
-      <p className="text-gray-600 mb-6">
+    <div className="mx-auto p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10">
+      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">Експлуатаційне утримання доріг</h1>
+      <p className="text-sm sm:text-base text-gray-600 mb-4 md:mb-6">
         Визначення загального обсягу бюджетних коштів на фінансове забезпечення заходів з експлуатаційного утримання
       </p>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8 w-full">
-        <TabsList className="w-full grid grid-cols-3">
-          <TabsTrigger value="step1" className="flex items-center gap-2">
-            {isStep1Complete && <CheckCircle2 className="h-4 w-4 text-green-600" />}
-            Дороги державного значення
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6 md:mb-8 w-full">
+        <TabsList className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-0 h-auto sm:h-10">
+          <TabsTrigger value="step1" className="flex items-center justify-center gap-2 text-xs sm:text-sm p-2 sm:p-0">
+            {isStep1Complete && <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />}
+            <span className="truncate">Дороги державного значення</span>
           </TabsTrigger>
           <TabsTrigger 
             value="step2" 
-            className="flex items-center gap-2"
+            className="flex items-center justify-center gap-2 text-xs sm:text-sm p-2 sm:p-0"
           >
-            {isStep2Complete && <CheckCircle2 className="h-4 w-4 text-green-600" />}
-            Дороги місцевого значення
+            {isStep2Complete && <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />}
+            <span className="truncate">Дороги місцевого значення</span>
           </TabsTrigger>
           <TabsTrigger 
             value="step3" 
-            className="flex items-center gap-2"
+            className="flex items-center justify-center gap-2 text-xs sm:text-sm p-2 sm:p-0"
           >
-            Розрахунок обсягу коштів
+            <span className="truncate">Розрахунок обсягу коштів</span>
           </TabsTrigger>
         </TabsList>
         
@@ -133,7 +133,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
       </Tabs>
 
       {/* Кнопка сохранения проекта */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
         <Button
           onClick={async () => {
             setSaveStatus("Збереження...");
@@ -180,17 +180,17 @@ const Block2MaintenanceCalculator: React.FC = () => {
             }
             setTimeout(() => setSaveStatus(""), 3000);
           }}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto text-sm md:text-base"
         >
           Зберегти проєкт
         </Button>
         {saveStatus && (
-          <span className="text-xs text-green-600">{saveStatus}</span>
+          <span className="text-xs md:text-sm text-green-600">{saveStatus}</span>
         )}
       </div>
 
       {/* PDF Звіт */}
-      <div className="mt-8">
+      <div className="mt-6 md:mt-8">
         <ErrorBoundary>
           <PDFReportBlockTwo />
         </ErrorBoundary>

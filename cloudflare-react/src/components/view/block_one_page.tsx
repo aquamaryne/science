@@ -695,17 +695,17 @@ const RoadFundingApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen p-6 w-full" style={{ background: 'rgb(var(--c-bg))' }}>
+    <div className="min-h-screen p-3 sm:p-4 md:p-5 lg:p-6 w-full" style={{ background: 'rgb(var(--c-bg))' }}>
       <div className="w-full mx-auto">
-        <Card className="glass-card mb-6 w-full shadow-lg">
-          <CardHeader className="glass-card-header bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-300">
-            <CardTitle className="text-3xl font-bold text-gray-900">
+        <Card className="glass-card mb-4 md:mb-6 w-full shadow-lg">
+          <CardHeader className="glass-card-header bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-300 p-4 md:p-6">
+            <CardTitle className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
               Визначення загального обсягу бюджетного фінансування розвитку та утримання автомобільних доріг державного та місцевого значення            
             </CardTitle>
             {sessionId && (
-              <div className="text-sm text-blue-700 mt-2 flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" />
-                Сесія розрахунків: <span className="font-mono bg-blue-100 px-2 py-1 rounded">{sessionId}</span>
+              <div className="text-xs sm:text-sm text-blue-700 mt-2 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="break-all">Сесія розрахунків: <span className="font-mono bg-blue-100 px-2 py-1 rounded text-xs">{sessionId}</span></span>
               </div>
             )}
           </CardHeader>
@@ -763,35 +763,35 @@ const RoadFundingApp: React.FC = () => {
 
         {/* Сводка и сохранение результатов */}
         {q1Results && q2Results && (
-          <Card className="mt-8 w-full border-green-500 shadow-lg rounded-lg overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-500">
-              <CardTitle className="text-2xl font-bold text-green-900 flex items-center gap-2">
-                <CheckCircle2 className="h-6 w-6" />
+          <Card className="mt-6 md:mt-8 w-full border-green-500 shadow-lg rounded-lg overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-500 p-4 md:p-6">
+              <CardTitle className="text-lg sm:text-xl md:text-2xl font-bold text-green-900 flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 md:h-6 md:w-6" />
                 Сводка результатів
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div className="text-center bg-gradient-to-br from-green-100 to-green-50 p-6 rounded-lg border-2 border-green-300">
-                  <div className="text-sm font-semibold text-green-900 mb-2">Q₁ - Державні дороги</div>
-                  <div className="text-4xl font-bold text-green-700">
+            <CardContent className="p-4 md:p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
+                <div className="text-center bg-gradient-to-br from-green-100 to-green-50 p-4 md:p-6 rounded-lg border-2 border-green-300">
+                  <div className="text-xs sm:text-sm font-semibold text-green-900 mb-2">Q₁ - Державні дороги</div>
+                  <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-green-700">
                     {q1Results.value.toLocaleString()}
                   </div>
-                  <div className="text-sm text-green-600 mt-1">тис. грн</div>
+                  <div className="text-xs sm:text-sm text-green-600 mt-1">тис. грн</div>
                 </div>
-                <div className="text-center bg-gradient-to-br from-blue-100 to-blue-50 p-6 rounded-lg border-2 border-blue-300">
-                  <div className="text-sm font-semibold text-blue-900 mb-2">Q₂ - Місцеві дороги</div>
-                  <div className="text-4xl font-bold text-blue-700">
+                <div className="text-center bg-gradient-to-br from-blue-100 to-blue-50 p-4 md:p-6 rounded-lg border-2 border-blue-300">
+                  <div className="text-xs sm:text-sm font-semibold text-blue-900 mb-2">Q₂ - Місцеві дороги</div>
+                  <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-blue-700">
                     {q2Results.value.toLocaleString()}
                   </div>
-                  <div className="text-sm text-blue-600 mt-1">тис. грн</div>
+                  <div className="text-xs sm:text-sm text-blue-600 mt-1">тис. грн</div>
                 </div>
-                <div className="text-center bg-gradient-to-br from-purple-100 to-purple-50 p-6 rounded-lg border-2 border-purple-400">
-                  <div className="text-sm font-semibold text-purple-900 mb-2">Q - Загальний бюджет</div>
-                  <div className="text-4xl font-bold text-purple-700">
+                <div className="text-center bg-gradient-to-br from-purple-100 to-purple-50 p-4 md:p-6 rounded-lg border-2 border-purple-400 sm:col-span-2 lg:col-span-1">
+                  <div className="text-xs sm:text-sm font-semibold text-purple-900 mb-2">Q - Загальний бюджет</div>
+                  <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-purple-700">
                     {(q1Results.value + q2Results.value).toLocaleString()}
                   </div>
-                  <div className="text-sm text-purple-600 mt-1">тис. грн</div>
+                  <div className="text-xs sm:text-sm text-purple-600 mt-1">тис. грн</div>
                 </div>
               </div>
               
@@ -804,9 +804,9 @@ const RoadFundingApp: React.FC = () => {
 
               <Button 
                 onClick={saveResults}
-                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl"
+                className="w-full h-12 sm:h-14 text-sm sm:text-base md:text-lg font-semibold bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl"
               >
-                <CheckCircle2 className="h-5 w-5 mr-2" />
+                <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5 mr-2" />
                 💾 Зберегти результати в сесію розрахунків
               </Button>
             </CardContent>
@@ -814,7 +814,7 @@ const RoadFundingApp: React.FC = () => {
         )}
 
         {/* PDF Звіт */}
-        <div className="mt-8">
+        <div className="mt-6 md:mt-8">
           <PDFReportBlockOne />
         </div>
       </div>

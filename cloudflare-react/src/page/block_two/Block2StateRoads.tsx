@@ -152,66 +152,66 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = ({ onCalculated }) => 
                 </AlertDescription>
               </Alert>
               
-              <div className="grid grid-cols-5 gap-4 mt-6">
-              <Card className="p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 mt-6">
+              <Card className="p-3 md:p-4">
                 <CardContent className="p-0 text-center">
-                  <h3 className="font-bold">Категорія I</h3>
-                  <div className="text-xl font-bold mt-2">
+                  <h3 className="font-bold text-sm md:text-base">Категорія I</h3>
+                  <div className="text-lg md:text-xl lg:text-2xl font-bold mt-2">
                     {stateRoadRate.category1.toFixed(2)}
                   </div>
-                  <div className="text-sm text-gray-500">тис. грн/км</div>
+                  <div className="text-xs md:text-sm text-gray-500">тис. грн/км</div>
                   <div className="text-xs text-blue-600 mt-1">
                     (коеф. 1.80)
                   </div>
                 </CardContent>
               </Card>
               
-              <Card className="p-4">
+              <Card className="p-3 md:p-4">
                 <CardContent className="p-0 text-center">
-                  <h3 className="font-bold">Категорія II</h3>
-                  <div className="text-xl font-bold mt-2">
+                  <h3 className="font-bold text-sm md:text-base">Категорія II</h3>
+                  <div className="text-lg md:text-xl lg:text-2xl font-bold mt-2">
                     {stateRoadRate.category2.toFixed(2)}
                   </div>
-                  <div className="text-sm text-gray-500">тис. грн/км</div>
+                  <div className="text-xs md:text-sm text-gray-500">тис. грн/км</div>
                   <div className="text-xs text-blue-600 mt-1">
                     (коеф. 1.00)
                   </div>
                 </CardContent>
               </Card>
               
-              <Card className="p-4">
+              <Card className="p-3 md:p-4">
                 <CardContent className="p-0 text-center">
-                  <h3 className="font-bold">Категорія III</h3>
-                  <div className="text-xl font-bold mt-2">
+                  <h3 className="font-bold text-sm md:text-base">Категорія III</h3>
+                  <div className="text-lg md:text-xl lg:text-2xl font-bold mt-2">
                     {stateRoadRate.category3.toFixed(2)}
                   </div>
-                  <div className="text-sm text-gray-500">тис. грн/км</div>
+                  <div className="text-xs md:text-sm text-gray-500">тис. грн/км</div>
                   <div className="text-xs text-blue-600 mt-1">
                     (коеф. 0.89)
                   </div>
                 </CardContent>
               </Card>
               
-              <Card className="p-4">
+              <Card className="p-3 md:p-4">
                 <CardContent className="p-0 text-center">
-                  <h3 className="font-bold">Категорія IV</h3>
-                  <div className="text-xl font-bold mt-2">
+                  <h3 className="font-bold text-sm md:text-base">Категорія IV</h3>
+                  <div className="text-lg md:text-xl lg:text-2xl font-bold mt-2">
                     {stateRoadRate.category4.toFixed(2)}
                   </div>
-                  <div className="text-sm text-gray-500">тис. грн/км</div>
+                  <div className="text-xs md:text-sm text-gray-500">тис. грн/км</div>
                   <div className="text-xs text-blue-600 mt-1">
                     (коеф. 0.61)
                   </div>
                 </CardContent>
               </Card>
               
-              <Card className="p-4">
+              <Card className="p-3 md:p-4">
                 <CardContent className="p-0 text-center">
-                  <h3 className="font-bold">Категорія V</h3>
-                  <div className="text-xl font-bold mt-2">
+                  <h3 className="font-bold text-sm md:text-base">Категорія V</h3>
+                  <div className="text-lg md:text-xl lg:text-2xl font-bold mt-2">
                     {stateRoadRate.category5.toFixed(2)}
                   </div>
-                  <div className="text-sm text-gray-500">тис. грн/км</div>
+                  <div className="text-xs md:text-sm text-gray-500">тис. грн/км</div>
                   <div className="text-xs text-blue-600 mt-1">
                     (коеф. 0.39)
                   </div>

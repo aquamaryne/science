@@ -531,6 +531,101 @@
     }
   }
 
+  /* === RESPONSIVE UTILITIES === */
+  
+  /* 1366x768 - базовый уровень (используется для md и выше) */
+  @media (min-width: 1024px) and (max-width: 1366px) {
+    .glass-card {
+      padding: 1.25rem;
+    }
+    .glass-panel {
+      padding: 1.5rem;
+    }
+    body {
+      font-size: 14px;
+    }
+  }
+
+  /* 1920x1080 - Full HD */
+  @media (min-width: 1367px) and (max-width: 1920px) {
+    .glass-card {
+      padding: 1.5rem;
+    }
+    .glass-panel {
+      padding: 2rem;
+    }
+    body {
+      font-size: 15px;
+    }
+  }
+
+  /* 2560x1440 - 2K */
+  @media (min-width: 1921px) {
+    .glass-card {
+      padding: 2rem;
+    }
+    .glass-panel {
+      padding: 2.5rem;
+    }
+    body {
+      font-size: 16px;
+    }
+    
+    /* Увеличиваем размер контейнеров для больших экранов */
+    .container-responsive {
+      max-width: 90%;
+      margin: 0 auto;
+    }
+  }
+
+  /* Мобильные устройства и планшеты */
+  @media (max-width: 1023px) {
+    .glass-card {
+      padding: 1rem;
+    }
+    .glass-panel {
+      padding: 1.25rem;
+    }
+    body {
+      font-size: 14px;
+    }
+    
+    /* Скрываем overflow для мобильных */
+    body {
+      overflow-x: hidden;
+    }
+  }
+
+  /* Адаптивные таблицы */
+  .responsive-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  @media (max-width: 1023px) {
+    .responsive-table-wrapper table {
+      font-size: 0.75rem;
+    }
+    
+    .responsive-table-wrapper th,
+    .responsive-table-wrapper td {
+      padding: 0.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) and (max-width: 1366px) {
+    .responsive-table-wrapper table {
+      font-size: 0.8125rem;
+    }
+  }
+
+  @media (min-width: 1367px) {
+    .responsive-table-wrapper table {
+      font-size: 0.875rem;
+    }
+  }
+
   /* === ТУЛТИПЫ === */
   .glass-tooltip {
     position: absolute;

@@ -580,19 +580,19 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
         <Alert className="bg-purple-50 border-purple-300">
           <AlertDescription>
             <div className="space-y-3">
-              <div className="font-semibold text-purple-900">Оберіть тип доріг для розрахунку:</div>
-              <div className="flex gap-4">
+              <div className="font-semibold text-purple-900 text-sm md:text-base">Оберіть тип доріг для розрахунку:</div>
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <Button
                   onClick={() => setRoadType('state')}
                   variant={roadType === 'state' ? 'default' : 'outline'}
-                  className={roadType === 'state' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                  className={`${roadType === 'state' ? 'bg-blue-600 hover:bg-blue-700' : ''} text-sm md:text-base flex-1 sm:flex-initial`}
                 >
                   🏛️ Державного значення
                 </Button>
                 <Button
                   onClick={() => setRoadType('local')}
                   variant={roadType === 'local' ? 'default' : 'outline'}
-                  className={roadType === 'local' ? 'bg-green-600 hover:bg-green-700' : ''}
+                  className={`${roadType === 'local' ? 'bg-green-600 hover:bg-green-700' : ''} text-sm md:text-base flex-1 sm:flex-initial`}
                 >
                   🏘️ Місцевого значення
                 </Button>
@@ -605,15 +605,15 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
         <Alert className="bg-blue-50 border-blue-200">
           <AlertDescription>
             <div className="space-y-4">
-              <div>
+              <div className="text-sm md:text-base">
                 Завантажте Excel шаблон з вихідними даними про дороги по областях
               </div>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3">
                 <Button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-sm md:text-base w-full sm:w-auto justify-center"
                 >
-                  <Upload className="h-4 w-4" />
+                  <Upload className="h-3 w-3 md:h-4 md:w-4" />
                   Завантажити таблицю
                 </Button>
                 <Button
@@ -624,9 +624,9 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                     link.click();
                   }}
                   variant="outline"
-                  className="flex items-center gap-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+                  className="flex items-center gap-2 border-blue-300 text-blue-700 hover:bg-blue-50 text-sm md:text-base w-full sm:w-auto justify-center"
                 >
-                  <Download className="h-4 w-4" />
+                  <Download className="h-3 w-3 md:h-4 md:w-4" />
                   Шаблон державні дороги
                 </Button>
                 <Button
@@ -637,9 +637,9 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                     link.click();
                   }}
                   variant="outline"
-                  className="flex items-center gap-2 border-green-300 text-green-700 hover:bg-green-50"
+                  className="flex items-center gap-2 border-green-300 text-green-700 hover:bg-green-50 text-sm md:text-base w-full sm:w-auto justify-center"
                 >
-                  <Download className="h-4 w-4" />
+                  <Download className="h-3 w-3 md:h-4 md:w-4" />
                   Шаблон місцеві дороги
                 </Button>
               </div>
@@ -1290,35 +1290,35 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                       </div>
 
                       {/* СТАТИСТИКА */}
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="text-center p-4 bg-white rounded-lg shadow">
-                          <div className="text-3xl font-bold text-green-700">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                        <div className="text-center p-3 md:p-4 bg-white rounded-lg shadow">
+                          <div className="text-2xl md:text-3xl font-bold text-green-700">
                             {selectedRegion === 'all' 
                               ? regionalResults.length 
                               : regionalResults.filter(r => r.regionName === selectedRegion).length
                             }
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-xs md:text-sm text-gray-600">
                             {selectedRegion === 'all' ? 'Областей проаналізовано' : 'Областей показано'}
                           </div>
                         </div>
-                        <div className="text-center p-4 bg-white rounded-lg shadow">
-                          <div className="text-3xl font-bold text-blue-700">
+                        <div className="text-center p-3 md:p-4 bg-white rounded-lg shadow">
+                          <div className="text-2xl md:text-3xl font-bold text-blue-700">
                             {regionalData
                               .filter(region => selectedRegion === 'all' || region.name === selectedRegion)
                               .reduce((sum, r) => sum + r.totalLength, 0).toFixed(0)}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-xs md:text-sm text-gray-600">
                             {selectedRegion === 'all' ? 'Загальна довжина (км)' : 'Довжина (км)'}
                           </div>
                         </div>
-                        <div className="text-center p-4 bg-white rounded-lg shadow">
-                          <div className="text-3xl font-bold text-purple-700">
+                        <div className="text-center p-3 md:p-4 bg-white rounded-lg shadow sm:col-span-2 lg:col-span-1">
+                          <div className="text-2xl md:text-3xl font-bold text-purple-700">
                             {(regionalResults
                               .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
                               .reduce((sum, r) => sum + r.totalFunding, 0) / 1000000).toFixed(2)}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-xs md:text-sm text-gray-600">
                             {selectedRegion === 'all' ? 'Млрд. грн (загалом)' : 'Млрд. грн'}
                           </div>
                         </div>
@@ -1336,12 +1336,12 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                             <div className="text-center p-4 bg-white rounded border">
                               <div className="text-sm text-gray-600 mb-1">
                                 {roadType === 'state' ? 'Q₁ (Державні дороги)' : 'Q₂ (Місцеві дороги)'}
                               </div>
-                              <div className="text-2xl font-bold text-blue-700">
+                              <div className="text-lg md:text-2xl font-bold text-blue-700 break-all">
                                 {roadType === 'state' ? 
                                   (q1Value ? q1Value.toLocaleString() : '—') : 
                                   (q2Value ? q2Value.toLocaleString() : '—')
@@ -1349,20 +1349,20 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                               </div>
                             </div>
                             
-                            <div className="text-center p-4 bg-white rounded border">
-                              <div className="text-sm text-gray-600 mb-1">
+                            <div className="text-center p-3 md:p-4 bg-white rounded border">
+                              <div className="text-xs md:text-sm text-gray-600 mb-1">
                                 {selectedRegion === 'all' ? 'Витрати на ЕУ' : 'Витрати на ЕУ (фільтр)'}
                               </div>
-                              <div className="text-2xl font-bold text-red-700">
+                              <div className="text-lg md:text-2xl font-bold text-red-700 break-all">
                                 {regionalResults
                                   .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
                                   .reduce((sum, r) => sum + r.totalFunding, 0).toLocaleString()} тис. грн
                               </div>
                             </div>
                             
-                            <div className="text-center p-4 bg-white rounded border">
-                              <div className="text-sm text-gray-600 mb-1">Залишок на ремонти</div>
-                              <div className={`text-2xl font-bold ${
+                            <div className="text-center p-3 md:p-4 bg-white rounded border sm:col-span-2 lg:col-span-1">
+                              <div className="text-xs md:text-sm text-gray-600 mb-1">Залишок на ремонти</div>
+                              <div className={`text-lg md:text-2xl font-bold break-all ${
                                 (() => {
                                   const totalEU = regionalResults
                                     .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)

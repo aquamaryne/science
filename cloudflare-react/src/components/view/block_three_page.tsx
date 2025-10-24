@@ -204,31 +204,31 @@ export const Block3MultiPageApp: React.FC = () => {
 
   return (
     <ErrorBoundary>
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-3 sm:p-4 md:p-5 lg:p-6 bg-gray-50 min-h-screen">
       {/* Заголовок */}
-      <div className="mb-8 flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+      <div className="mb-6 md:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
           Планування ремонтів автомобільних доріг
         </h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <Button
             onClick={handleSave}
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 flex-1 sm:flex-initial text-sm md:text-base"
             disabled={false}
           >
-            <Save className="h-4 w-4" />
+            <Save className="h-3 w-3 md:h-4 md:w-4" />
             Зберегти
           </Button>
           {saveStatus && (
-            <span className="text-sm text-green-600">{saveStatus}</span>
+            <span className="text-xs sm:text-sm text-green-600">{saveStatus}</span>
           )}
         </div>
       </div>
 
       {/* Навігація по сторінках */}
-      <div className="mb-6">
-        <nav className="flex justify-center">
-          <ol className="flex items-center space-x-2">
+      <div className="mb-4 md:mb-6">
+        <nav className="flex justify-center overflow-x-auto pb-2">
+          <ol className="flex items-center space-x-1 sm:space-x-2 min-w-max px-2">
             {pages.map((page, index) => {
               const pageNum = index + 1;
               const isActive = currentPage === pageNum;
@@ -244,7 +244,7 @@ export const Block3MultiPageApp: React.FC = () => {
                 <li key={pageNum} className="flex items-center">
                   <button
                     onClick={() => handlePageSelect(pageNum)}
-                    className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    className={`flex items-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
                       isActive 
                         ? 'bg-blue-600 text-white' 
                         : isCompleted 
@@ -252,7 +252,7 @@ export const Block3MultiPageApp: React.FC = () => {
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
-                    <span className={`mr-2 w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                    <span className={`mr-1 sm:mr-2 w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${
                       isActive 
                         ? 'bg-white text-blue-600' 
                         : isCompleted 
@@ -264,7 +264,7 @@ export const Block3MultiPageApp: React.FC = () => {
                     <span className="hidden md:inline">{page}</span>
                   </button>
                   {index < pages.length - 1 && (
-                    <ArrowRight className="h-4 w-4 mx-2 text-gray-400" />
+                    <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 mx-1 sm:mx-2 text-gray-400 flex-shrink-0" />
                   )}
                 </li>
               );
@@ -274,8 +274,8 @@ export const Block3MultiPageApp: React.FC = () => {
       </div>
 
       {/* Прогрес */}
-      <div className="mb-6">
-        <Progress value={(currentPage / pages.length) * 100} className="h-2" />
+      <div className="mb-4 md:mb-6">
+        <Progress value={(currentPage / pages.length) * 100} className="h-1.5 md:h-2" />
       </div>
 
       {/* Контент сторінок */}
@@ -296,7 +296,7 @@ export const Block3MultiPageApp: React.FC = () => {
       {currentPage === 4 && <RoadRankingTable />}
 
       {/* PDF Звіт */}
-      <div className="mt-8">
+      <div className="mt-6 md:mt-8">
         <PDFReportBlockThree />
       </div>
     </div>

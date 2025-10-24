@@ -9,9 +9,9 @@ import HistoryComponent from './components/view/history';
 function App() {
   return (
     <Router>
-      <div className="flex">
+      <div className="flex min-h-screen">
         <Sidebar />
-        <main className='flex-1 ml-80 p-6 min-h-screen'>
+        <main className='flex-1 w-full lg:ml-80 p-3 sm:p-4 md:p-5 lg:p-6 min-h-screen overflow-x-hidden pt-16 lg:pt-6'>
            <Routes>
              <Route path='/' element={ <UserManual />} />
              <Route path='/block_one_page' element={ <RoadFundingCalculator />} />

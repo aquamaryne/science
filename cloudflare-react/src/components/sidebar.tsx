@@ -25,6 +25,7 @@ const navItems: NavItem[] = [
 export const Sidebar: React.FC = () => {
     const dispatch = useAppDispatch();
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const handleClearAllData = async () => {
         try {
@@ -45,7 +46,35 @@ export const Sidebar: React.FC = () => {
     };
 
     return (
-        <aside className="w-80 h-screen fixed left-0 top-0 z-50">
+        <>
+            {/* Mobile Burger Menu Button */}
+            <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="fixed top-4 left-4 z-[60] lg:hidden bg-white rounded-lg shadow-lg p-3 hover:bg-gray-50 transition-all"
+                aria-label="Toggle Menu"
+            >
+                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {isSidebarOpen ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    )}
+                </svg>
+            </button>
+
+            {/* Overlay for mobile */}
+            {isSidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
+        <aside className={`
+            w-80 h-screen fixed left-0 top-0 z-50 transform transition-transform duration-300 ease-in-out
+            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            lg:translate-x-0
+        `}>
             {/* Background with animated blobs */}
             <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-gray-100">
                 {/* Morphing blob 1 */}
@@ -430,5 +459,6 @@ export const Sidebar: React.FC = () => {
                 }
             `}</style>
         </aside>
+        </>
     );
 }

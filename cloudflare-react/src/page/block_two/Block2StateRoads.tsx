@@ -102,9 +102,6 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = () => {
                   <Plus className="h-4 w-4 mr-1" /> Додати індекс
                 </Button>
               </div>
-              <div className="text-sm text-gray-600 mb-2">
-                Вводиться вручну, але має бути можливість ввести кількість років і тоді з'являється така ж кількість комірок для внесення відповідних індексів за певні роки, бо їх може бути багато
-              </div>
               <div className="grid gap-2 mt-2">
                 {stateInflationIndexes.map((index, i) => (
                   <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 bg-gray-50 rounded-lg">

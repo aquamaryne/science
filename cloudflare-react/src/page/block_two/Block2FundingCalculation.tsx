@@ -718,17 +718,19 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
               {/* 1. ЗАВАНТАЖЕНІ ДАНІ ПО ОБЛАСТЯХ - З РЕДАГУВАННЯМ */}
               <Card className="bg-white">
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">
-                        Завантажені дані по областях України 
-                        <span className={roadType === 'state' ? 'text-blue-600' : 'text-green-600'}>
-                          ({roadType === 'state' ? 'державні дороги' : 'місцеві дороги'})
-                        </span>
-                      </CardTitle>
-                      {isEditing && (
-                        <p className="text-xs text-blue-600 mt-1">✏️ Режим редагування активний</p>
-                      )}
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-base sm:text-lg">
+                          Завантажені дані по областях України
+                          <span className={roadType === 'state' ? 'text-blue-600' : 'text-green-600'}>
+                            ({roadType === 'state' ? 'державні дороги' : 'місцеві дороги'})
+                          </span>
+                        </CardTitle>
+                        {isEditing && (
+                          <p className="text-xs text-blue-600 mt-1">✏️ Режим редагування активний</p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <Button
@@ -754,49 +756,49 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-auto max-h-[400px] border-2 border-gray-300 rounded">
-                    <div className="min-w-[800px]">
-                      <table className="w-full text-xs border-collapse">
+                  <div className="overflow-x-auto border-2 border-gray-300 rounded">
+                    <div className="overflow-y-auto max-h-[400px]" style={{minWidth: '100%'}}>
+                      <table className="w-full text-xs border-collapse" style={{minWidth: '1200px'}}>
                       <thead className="sticky top-0 bg-gray-200 z-10">
                         <tr>
-                          <th className="border border-gray-400 p-2 text-left" rowSpan={2}>Найменування області</th>
-                          <th className="border border-gray-400 p-2 text-center" colSpan={6}>
+                          <th className="border border-gray-400 p-2 text-left whitespace-nowrap min-w-[150px]" rowSpan={2}>Найменування області</th>
+                          <th className="border border-gray-400 p-2 text-center whitespace-normal" colSpan={6}>
                             Протяжність доріг {roadType === 'state' ? 'державного' : 'місцевого'} значення (км)
                           </th>
                           {roadType === 'state' && (
-                            <th className="border border-gray-400 p-2 text-center">
+                            <th className="border border-gray-400 p-2 text-center whitespace-normal min-w-[80px]">
                               Протяжність доріг з індексом Е
                             </th>
                           )}
-                          <th className="border border-gray-400 p-2 text-center" colSpan={3}>
+                          <th className="border border-gray-400 p-2 text-center whitespace-normal" colSpan={3}>
                             Протяжність доріг з середньодобовою інтенсивністю
                           </th>
                           {roadType === 'state' && (
-                            <th className="border border-gray-400 p-2 text-center" colSpan={5}>
+                            <th className="border border-gray-400 p-2 text-center whitespace-nowrap" colSpan={5}>
                               Інші показники
                             </th>
                           )}
                         </tr>
                         <tr>
-                          <th className="border border-gray-400 p-1 text-center">I</th>
-                          <th className="border border-gray-400 p-1 text-center">II</th>
-                          <th className="border border-gray-400 p-1 text-center">III</th>
-                          <th className="border border-gray-400 p-1 text-center">IV</th>
-                          <th className="border border-gray-400 p-1 text-center">V</th>
-                          <th className="border border-gray-400 p-1 text-center bg-yellow-50">Разом</th>
+                          <th className="border border-gray-400 p-1 text-center min-w-[60px]">I</th>
+                          <th className="border border-gray-400 p-1 text-center min-w-[60px]">II</th>
+                          <th className="border border-gray-400 p-1 text-center min-w-[60px]">III</th>
+                          <th className="border border-gray-400 p-1 text-center min-w-[60px]">IV</th>
+                          <th className="border border-gray-400 p-1 text-center min-w-[60px]">V</th>
+                          <th className="border border-gray-400 p-1 text-center bg-yellow-50 min-w-[80px]">Разом</th>
                           {roadType === 'state' && (
-                            <th className="border border-gray-400 p-1 text-center"></th>
+                            <th className="border border-gray-400 p-1 text-center min-w-[80px]"></th>
                           )}
-                          <th className="border border-gray-400 p-1 text-center text-[10px]">15000-20000</th>
-                          <th className="border border-gray-400 p-1 text-center text-[10px]">20001-30000</th>
-                          <th className="border border-gray-400 p-1 text-center text-[10px]">30001 і більше</th>
+                          <th className="border border-gray-400 p-1 text-center text-[10px] whitespace-nowrap min-w-[80px]">15000-20000</th>
+                          <th className="border border-gray-400 p-1 text-center text-[10px] whitespace-nowrap min-w-[80px]">20001-30000</th>
+                          <th className="border border-gray-400 p-1 text-center text-[10px] whitespace-nowrap min-w-[90px]">30001 і більше</th>
                           {roadType === 'state' && (
                             <>
-                              <th className="border border-gray-400 p-1 text-center text-[10px]">Євро</th>
-                              <th className="border border-gray-400 p-1 text-center text-[10px]">МПП</th>
-                              <th className="border border-gray-400 p-1 text-center text-[10px]">Освітл.</th>
-                              <th className="border border-gray-400 p-1 text-center text-[10px]">Ремонт</th>
-                              <th className="border border-gray-400 p-1 text-center text-[10px]">Кр.інф.</th>
+                              <th className="border border-gray-400 p-1 text-center text-[10px] min-w-[60px]">Євро</th>
+                              <th className="border border-gray-400 p-1 text-center text-[10px] min-w-[60px]">МПП</th>
+                              <th className="border border-gray-400 p-1 text-center text-[10px] min-w-[60px]">Освітл.</th>
+                              <th className="border border-gray-400 p-1 text-center text-[10px] min-w-[70px]">Ремонт</th>
+                              <th className="border border-gray-400 p-1 text-center text-[10px] min-w-[70px]">Кр.інф.</th>
                             </>
                           )}
                         </tr>
@@ -809,10 +811,10 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                             const realIdx = regionalData.findIndex(r => r.name === region.name);
                             return (
                           <tr key={realIdx} className={filteredIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                            <td className="border border-gray-300 p-2">{region.name}</td>
-                            
+                            <td className="border border-gray-300 p-2 whitespace-nowrap sticky left-0 bg-inherit">{region.name}</td>
+
                             {([1, 2, 3, 4, 5] as const).map(cat => (
-                              <td key={`cat-${cat}`} className="border border-gray-300 p-1">
+                              <td key={`cat-${cat}`} className="border border-gray-300 p-1 min-w-[60px]">
                                 {isEditing ? (
                                   <input
                                     type="number"
@@ -823,19 +825,19 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       newData[realIdx].totalLength = Object.values(newData[realIdx].lengthByCategory).reduce((sum, val) => sum + val, 0);
                                       setRegionalData(newData);
                                     }}
-                                    className="w-full text-right p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded"
+                                    className="w-full text-right p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded min-w-[50px]"
                                     style={{ fontSize: '11px' }}
                                   />
                                 ) : (
-                                  <div className="text-right">{region.lengthByCategory[cat]}</div>
+                                  <div className="text-right whitespace-nowrap">{region.lengthByCategory[cat]}</div>
                                 )}
                               </td>
                             ))}
-                            
-                            <td className="border border-gray-300 p-2 text-right font-bold bg-yellow-50">{region.totalLength.toFixed(0)}</td>
+
+                            <td className="border border-gray-300 p-2 text-right font-bold bg-yellow-50 whitespace-nowrap min-w-[80px]">{region.totalLength.toFixed(0)}</td>
                             
                             {roadType === 'state' && (
-                              <td className="border border-gray-300 p-1">
+                              <td className="border border-gray-300 p-1 min-w-[80px]">
                                 {isEditing ? (
                                   <input
                                     type="number"
@@ -845,16 +847,16 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       newData[realIdx].europeanIndexLength = parseFloat(e.target.value) || 0;
                                       setRegionalData(newData);
                                     }}
-                                    className="w-full text-right p-1 border-0 bg-orange-50 focus:bg-orange-100 rounded"
+                                    className="w-full text-right p-1 border-0 bg-orange-50 focus:bg-orange-100 rounded min-w-[50px]"
                                     style={{ fontSize: '11px' }}
                                   />
                                 ) : (
-                                  <div className="text-right">{region.europeanIndexLength}</div>
+                                  <div className="text-right whitespace-nowrap">{region.europeanIndexLength}</div>
                                 )}
                               </td>
                             )}
-                            
-                            <td className="border border-gray-300 p-1">
+
+                            <td className="border border-gray-300 p-1 min-w-[80px]">
                               {isEditing ? (
                                 <input
                                   type="number"
@@ -864,14 +866,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     newData[realIdx].lengthByIntensity.medium = parseFloat(e.target.value) || 0;
                                     setRegionalData(newData);
                                   }}
-                                  className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded"
+                                  className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded min-w-[50px]"
                                   style={{ fontSize: '11px' }}
                                 />
                               ) : (
-                                <div className="text-right">{region.lengthByIntensity.medium}</div>
+                                <div className="text-right whitespace-nowrap">{region.lengthByIntensity.medium}</div>
                               )}
                             </td>
-                            <td className="border border-gray-300 p-1">
+                            <td className="border border-gray-300 p-1 min-w-[80px]">
                               {isEditing ? (
                                 <input
                                   type="number"
@@ -881,14 +883,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     newData[realIdx].lengthByIntensity.high = parseFloat(e.target.value) || 0;
                                     setRegionalData(newData);
                                   }}
-                                  className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded"
+                                  className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded min-w-[50px]"
                                   style={{ fontSize: '11px' }}
                                 />
                               ) : (
-                                <div className="text-right">{region.lengthByIntensity.high}</div>
+                                <div className="text-right whitespace-nowrap">{region.lengthByIntensity.high}</div>
                               )}
                             </td>
-                            <td className="border border-gray-300 p-1">
+                            <td className="border border-gray-300 p-1 min-w-[90px]">
                               {isEditing ? (
                                 <input
                                   type="number"
@@ -898,17 +900,17 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     newData[realIdx].lengthByIntensity.veryHigh = parseFloat(e.target.value) || 0;
                                     setRegionalData(newData);
                                   }}
-                                  className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded"
+                                  className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded min-w-[50px]"
                                   style={{ fontSize: '11px' }}
                                 />
                               ) : (
-                                <div className="text-right">{region.lengthByIntensity.veryHigh}</div>
+                                <div className="text-right whitespace-nowrap">{region.lengthByIntensity.veryHigh}</div>
                               )}
                             </td>
                             
                             {roadType === 'state' && (
                               <>
-                                <td className="border border-gray-300 p-1">
+                                <td className="border border-gray-300 p-1 min-w-[60px]">
                                   {isEditing ? (
                                     <input
                                       type="number"
@@ -918,14 +920,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                         newData[realIdx].europeanRoadsLength = parseFloat(e.target.value) || 0;
                                         setRegionalData(newData);
                                       }}
-                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
+                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded min-w-[50px]"
                                       style={{ fontSize: '11px' }}
                                     />
                                   ) : (
-                                    <div className="text-right">{region.europeanRoadsLength}</div>
+                                    <div className="text-right whitespace-nowrap">{region.europeanRoadsLength}</div>
                                   )}
                                 </td>
-                                <td className="border border-gray-300 p-1">
+                                <td className="border border-gray-300 p-1 min-w-[60px]">
                                   {isEditing ? (
                                     <input
                                       type="number"
@@ -935,14 +937,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                         newData[realIdx].borderCrossingLength = parseFloat(e.target.value) || 0;
                                         setRegionalData(newData);
                                       }}
-                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
+                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded min-w-[50px]"
                                       style={{ fontSize: '11px' }}
                                     />
                                   ) : (
-                                    <div className="text-right">{region.borderCrossingLength}</div>
+                                    <div className="text-right whitespace-nowrap">{region.borderCrossingLength}</div>
                                   )}
                                 </td>
-                                <td className="border border-gray-300 p-1">
+                                <td className="border border-gray-300 p-1 min-w-[60px]">
                                   {isEditing ? (
                                     <input
                                       type="number"
@@ -952,14 +954,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                         newData[realIdx].lightingLength = parseFloat(e.target.value) || 0;
                                         setRegionalData(newData);
                                       }}
-                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
+                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded min-w-[50px]"
                                       style={{ fontSize: '11px' }}
                                     />
                                   ) : (
-                                    <div className="text-right">{region.lightingLength}</div>
+                                    <div className="text-right whitespace-nowrap">{region.lightingLength}</div>
                                   )}
                                 </td>
-                                <td className="border border-gray-300 p-1">
+                                <td className="border border-gray-300 p-1 min-w-[70px]">
                                   {isEditing ? (
                                     <input
                                       type="number"
@@ -969,14 +971,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                         newData[realIdx].repairedLength = parseFloat(e.target.value) || 0;
                                         setRegionalData(newData);
                                       }}
-                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
+                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded min-w-[50px]"
                                       style={{ fontSize: '11px' }}
                                     />
                                   ) : (
-                                    <div className="text-right">{region.repairedLength}</div>
+                                    <div className="text-right whitespace-nowrap">{region.repairedLength}</div>
                                   )}
                                 </td>
-                                <td className="border border-gray-300 p-1">
+                                <td className="border border-gray-300 p-1 min-w-[70px]">
                                   {isEditing ? (
                                     <input
                                       type="number"
@@ -986,11 +988,11 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                         newData[realIdx].criticalInfraCount = parseFloat(e.target.value) || 0;
                                         setRegionalData(newData);
                                       }}
-                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded"
+                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded min-w-[50px]"
                                       style={{ fontSize: '11px' }}
                                     />
                                   ) : (
-                                    <div className="text-right">{region.criticalInfraCount}</div>
+                                    <div className="text-right whitespace-nowrap">{region.criticalInfraCount}</div>
                                   )}
                                 </td>
                               </>
@@ -1027,28 +1029,28 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className={`overflow-auto border rounded ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>
-                        <div className="min-w-[600px]">
-                          <table className="w-full text-xs border-collapse">
-                          <thead className={roadType === 'state' ? 'bg-blue-200' : 'bg-green-200'}>
+                      <div className={`overflow-x-auto border rounded ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>
+                        <div className="overflow-y-auto max-h-[500px]" style={{minWidth: '100%'}}>
+                          <table className="w-full text-xs border-collapse" style={{minWidth: roadType === 'state' ? '1000px' : '600px'}}>
+                          <thead className={`sticky top-0 z-10 ${roadType === 'state' ? 'bg-blue-200' : 'bg-green-200'}`}>
                             <tr>
-                              <th className={`border p-2 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>Область</th>
-                              {roadType === 'state' && <th className="border border-blue-300 p-2">K<sub>д</sub></th>}
-                              <th className={`border p-2 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>K<sub>г</sub></th>
-                              <th className={`border p-2 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>K<sub>уе</sub></th>
-                              <th className={`border p-2 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>
+                              <th className={`border p-2 whitespace-nowrap min-w-[150px] ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>Область</th>
+                              {roadType === 'state' && <th className="border border-blue-300 p-2 min-w-[70px]">K<sub>д</sub></th>}
+                              <th className={`border p-2 min-w-[70px] ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>K<sub>г</sub></th>
+                              <th className={`border p-2 min-w-[70px] ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>K<sub>уе</sub></th>
+                              <th className={`border p-2 whitespace-nowrap min-w-[80px] ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>
                                 K<sub>інт.{roadType === 'state' ? 'д' : 'м'}</sub>
                               </th>
                               {roadType === 'state' && (
                                 <>
-                                  <th className="border border-blue-300 p-2">K<sub>е.д</sub></th>
-                                  <th className="border border-blue-300 p-2">K<sub>мпп.д</sub></th>
-                                  <th className="border border-blue-300 p-2">K<sub>осв</sub></th>
-                                  <th className="border border-blue-300 p-2">K<sub>рем</sub></th>
-                                  <th className="border border-blue-300 p-2">K<sub>кр.і</sub></th>
+                                  <th className="border border-blue-300 p-2 whitespace-nowrap min-w-[70px]">K<sub>е.д</sub></th>
+                                  <th className="border border-blue-300 p-2 whitespace-nowrap min-w-[80px]">K<sub>мпп.д</sub></th>
+                                  <th className="border border-blue-300 p-2 min-w-[70px]">K<sub>осв</sub></th>
+                                  <th className="border border-blue-300 p-2 min-w-[70px]">K<sub>рем</sub></th>
+                                  <th className="border border-blue-300 p-2 whitespace-nowrap min-w-[70px]">K<sub>кр.і</sub></th>
                                 </>
                               )}
-                              <th className={`border p-2 bg-yellow-100 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>Добуток</th>
+                              <th className={`border p-2 bg-yellow-100 whitespace-nowrap min-w-[100px] ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>Добуток</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1078,9 +1080,9 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
 
                               return (
                                 <tr key={realIdx} className={filteredIdx % 2 === 0 ? 'bg-white' : roadType === 'state' ? 'bg-blue-50' : 'bg-green-50'}>
-                                  <td className={`border p-2 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>{result.regionName}</td>
+                                  <td className={`border p-2 whitespace-nowrap min-w-[150px] ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>{result.regionName}</td>
                                   {roadType === 'state' && (
-                                    <td className="border border-blue-300 p-2 text-center bg-gray-100">1.1600</td>
+                                    <td className="border border-blue-300 p-2 text-center bg-gray-100 whitespace-nowrap min-w-[70px]">1.1600</td>
                                   )}
                                   
                                   {/* Редаговані коефіцієнти */}
@@ -1091,7 +1093,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     const isEdited = Math.abs(currentValue - originalValue) > 0.0001;
                                     
                                     return (
-                                      <td key={key} className={`border p-1 ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'} ${isEdited ? 'bg-yellow-50' : ''}`}>
+                                      <td key={key} className={`border p-1 whitespace-nowrap min-w-[70px] ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'} ${isEdited ? 'bg-yellow-50' : ''}`}>
                                         {isEditing ? (
                                           <input
                                             type="number"
@@ -1102,7 +1104,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                               (newResults[realIdx].coefficients as any)[key] = parseFloat(e.target.value) || 1;
                                               setRegionalResults(newResults);
                                             }}
-                                            className={`w-full text-center p-1 border-0 rounded ${roadType === 'state' ? 'bg-blue-50 focus:bg-blue-100' : 'bg-green-50 focus:bg-green-100'} ${isEdited ? 'border-yellow-300' : ''}`}
+                                            className={`w-full text-center p-1 border-0 rounded min-w-[60px] ${roadType === 'state' ? 'bg-blue-50 focus:bg-blue-100' : 'bg-green-50 focus:bg-green-100'} ${isEdited ? 'border-yellow-300' : ''}`}
                                             style={{ fontSize: '11px' }}
                                           />
                                         ) : (
@@ -1118,9 +1120,9 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                   {roadType === 'state' && ['europeanRoad', 'borderCrossing', 'lighting', 'repair', 'criticalInfra'].map((key) => {
                                     const currentValue = (result.coefficients[key as keyof typeof result.coefficients] as number) || 1;
                                     const isEdited = Math.abs(currentValue - 1) > 0.0001; // Для этих коэффициентов базовое значение 1
-                                    
+
                                     return (
-                                      <td key={key} className={`border border-blue-300 p-1 ${isEdited ? 'bg-yellow-50' : ''}`}>
+                                      <td key={key} className={`border border-blue-300 p-1 whitespace-nowrap min-w-[70px] ${isEdited ? 'bg-yellow-50' : ''}`}>
                                         {isEditing ? (
                                           <input
                                             type="number"
@@ -1131,7 +1133,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                               (newResults[realIdx].coefficients as any)[key] = parseFloat(e.target.value) || 1;
                                               setRegionalResults(newResults);
                                             }}
-                                            className={`w-full text-center p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded ${isEdited ? 'border-yellow-300' : ''}`}
+                                            className={`w-full text-center p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded min-w-[60px] ${isEdited ? 'border-yellow-300' : ''}`}
                                             style={{ fontSize: '11px' }}
                                           />
                                         ) : (
@@ -1143,8 +1145,8 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       </td>
                                     );
                                   })}
-                                  
-                                  <td className={`border p-2 text-center bg-yellow-50 font-bold ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>
+
+                                  <td className={`border p-2 text-center bg-yellow-50 font-bold whitespace-nowrap min-w-[100px] ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>
                                     {isEditing ? currentProduct.toFixed(4) : result.coefficients.totalProduct.toFixed(4)}
                                   </td>
                                 </tr>
@@ -1204,9 +1206,9 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="bg-white border-2 border-gray-400 rounded-lg overflow-hidden">
-                        <div className="overflow-auto max-h-[600px]">
-                          <div className="min-w-[1000px]">
-                            <table className="w-full text-xs border-collapse">
+                        <div className="overflow-x-auto">
+                          <div className="overflow-y-auto max-h-[600px]" style={{minWidth: '100%'}}>
+                            <table className="w-full text-xs border-collapse" style={{minWidth: '1400px'}}>
                             <thead className="sticky top-0 z-20 bg-gray-200">
                               <tr>
                                 <th className="border-2 border-gray-400 p-3 text-center font-bold" colSpan={14}>
@@ -1214,30 +1216,30 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                 </th>
                               </tr>
                               <tr>
-                                <th className="border border-gray-400 p-2 font-bold" rowSpan={2}>
+                                <th className="border border-gray-400 p-2 font-bold whitespace-nowrap min-w-[150px]" rowSpan={2}>
                                   Найменування<br/>області
                                 </th>
-                                <th className="border border-gray-400 p-2 bg-blue-100 font-bold text-center" colSpan={6}>
+                                <th className="border border-gray-400 p-2 bg-blue-100 font-bold text-center whitespace-normal" colSpan={6}>
                                   Протяжність доріг {roadType === 'state' ? 'державного' : 'місцевого'} значення (км)
                                 </th>
-                                <th className="border border-gray-400 p-2 bg-green-100 font-bold text-center" colSpan={7}>
+                                <th className="border border-gray-400 p-2 bg-green-100 font-bold text-center whitespace-normal" colSpan={7}>
                                   Мінімальна потреба в фінансових ресурсах на 20ХХ рік, тис.грн
                                 </th>
                               </tr>
                               <tr>
-                                <th className="border border-gray-400 p-1 text-center bg-blue-50">I</th>
-                                <th className="border border-gray-400 p-1 text-center bg-blue-50">II</th>
-                                <th className="border border-gray-400 p-1 text-center bg-blue-50">III</th>
-                                <th className="border border-gray-400 p-1 text-center bg-blue-50">IV</th>
-                                <th className="border border-gray-400 p-1 text-center bg-blue-50">V</th>
-                                <th className="border border-gray-400 p-1 text-center bg-blue-100 font-bold">Разом</th>
-                                <th className="border border-gray-400 p-1 text-center bg-green-50">I</th>
-                                <th className="border border-gray-400 p-1 text-center bg-green-50">II</th>
-                                <th className="border border-gray-400 p-1 text-center bg-green-50">III</th>
-                                <th className="border border-gray-400 p-1 text-center bg-green-50">IV</th>
-                                <th className="border border-gray-400 p-1 text-center bg-green-50">V</th>
-                                <th className="border border-gray-400 p-1 text-center bg-green-100 font-bold">Разом<br/>потреб</th>
-                                <th className="border border-gray-400 p-1 text-center bg-yellow-100 font-bold">%</th>
+                                <th className="border border-gray-400 p-1 text-center bg-blue-50 min-w-[70px]">I</th>
+                                <th className="border border-gray-400 p-1 text-center bg-blue-50 min-w-[70px]">II</th>
+                                <th className="border border-gray-400 p-1 text-center bg-blue-50 min-w-[70px]">III</th>
+                                <th className="border border-gray-400 p-1 text-center bg-blue-50 min-w-[70px]">IV</th>
+                                <th className="border border-gray-400 p-1 text-center bg-blue-50 min-w-[70px]">V</th>
+                                <th className="border border-gray-400 p-1 text-center bg-blue-100 font-bold min-w-[100px]">Разом</th>
+                                <th className="border border-gray-400 p-1 text-center bg-green-50 min-w-[100px]">I</th>
+                                <th className="border border-gray-400 p-1 text-center bg-green-50 min-w-[100px]">II</th>
+                                <th className="border border-gray-400 p-1 text-center bg-green-50 min-w-[100px]">III</th>
+                                <th className="border border-gray-400 p-1 text-center bg-green-50 min-w-[100px]">IV</th>
+                                <th className="border border-gray-400 p-1 text-center bg-green-50 min-w-[100px]">V</th>
+                                <th className="border border-gray-400 p-1 text-center bg-green-100 font-bold whitespace-nowrap min-w-[120px]">Разом<br/>потреб</th>
+                                <th className="border border-gray-400 p-1 text-center bg-yellow-100 font-bold min-w-[80px]">%</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1252,68 +1254,68 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                 
                                 return (
                                   <tr key={realIdx} className={filteredIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                    <td className="border border-gray-400 p-2 font-medium sticky left-0 bg-inherit z-10">
+                                    <td className="border border-gray-400 p-2 font-medium sticky left-0 bg-inherit z-10 whitespace-nowrap min-w-[150px]">
                                       {region.name}
                                     </td>
                                     {([1, 2, 3, 4, 5] as const).map(cat => (
-                                      <td key={`length-${cat}`} className="border border-gray-400 p-2 text-right">
+                                      <td key={`length-${cat}`} className="border border-gray-400 p-2 text-right whitespace-nowrap min-w-[70px]">
                                         {region.lengthByCategory[cat] || '-'}
                                       </td>
                                     ))}
-                                    <td className="border border-gray-400 p-2 text-right font-bold bg-blue-50">
+                                    <td className="border border-gray-400 p-2 text-right font-bold bg-blue-50 whitespace-nowrap min-w-[100px]">
                                       {region.totalLength.toFixed(0)}
                                     </td>
                                     {([1, 2, 3, 4, 5] as const).map(cat => (
-                                      <td key={`funding-${cat}`} className="border border-gray-400 p-2 text-right">
-                                        {regionResult?.fundingByCategory?.[cat] 
+                                      <td key={`funding-${cat}`} className="border border-gray-400 p-2 text-right whitespace-nowrap min-w-[100px]">
+                                        {regionResult?.fundingByCategory?.[cat]
                                           ? regionResult.fundingByCategory[cat].toLocaleString('uk-UA', {maximumFractionDigits: 0})
                                           : '-'
                                         }
                                       </td>
                                     ))}
-                                    <td className="border border-gray-400 p-2 text-right font-bold bg-green-50">
-                                      {regionResult?.totalFunding 
+                                    <td className="border border-gray-400 p-2 text-right font-bold bg-green-50 whitespace-nowrap min-w-[120px]">
+                                      {regionResult?.totalFunding
                                         ? regionResult.totalFunding.toLocaleString('uk-UA', {maximumFractionDigits: 0})
                                         : '-'
                                       }
                                     </td>
-                                    <td className="border border-gray-400 p-2 text-right font-bold bg-yellow-50">
+                                    <td className="border border-gray-400 p-2 text-right font-bold bg-yellow-50 whitespace-nowrap min-w-[80px]">
                                       {percentage.toFixed(2)}
                                     </td>
                                   </tr>
                                 );
                               })}
                               <tr className="bg-gray-300 font-bold">
-                                <td className="border-2 border-gray-400 p-3">
+                                <td className="border-2 border-gray-400 p-3 whitespace-nowrap min-w-[150px]">
                                   {selectedRegion === 'all' ? 'ВСЬОГО ПО УКРАЇНІ' : `ВСЬОГО ПО ${selectedRegion.toUpperCase()}`}
                                 </td>
                                 {([1, 2, 3, 4, 5] as const).map(cat => (
-                                  <td key={`total-length-${cat}`} className="border-2 border-gray-400 p-2 text-right">
+                                  <td key={`total-length-${cat}`} className="border-2 border-gray-400 p-2 text-right whitespace-nowrap min-w-[70px]">
                                     {regionalData
                                       .filter(region => selectedRegion === 'all' || region.name === selectedRegion)
                                       .reduce((sum, r) => sum + r.lengthByCategory[cat], 0).toFixed(0)}
                                   </td>
                                 ))}
-                                <td className="border-2 border-gray-400 p-2 text-right bg-blue-100 text-base">
+                                <td className="border-2 border-gray-400 p-2 text-right bg-blue-100 text-base whitespace-nowrap min-w-[100px]">
                                   {regionalData
                                     .filter(region => selectedRegion === 'all' || region.name === selectedRegion)
                                     .reduce((sum, r) => sum + r.totalLength, 0).toFixed(0)}
                                 </td>
                                 {([1, 2, 3, 4, 5] as const).map(cat => (
-                                  <td key={`total-funding-${cat}`} className="border-2 border-gray-400 p-2 text-right">
+                                  <td key={`total-funding-${cat}`} className="border-2 border-gray-400 p-2 text-right whitespace-nowrap min-w-[100px]">
                                     {regionalResults
                                       .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
                                       .reduce((sum, r) => sum + (r.fundingByCategory?.[cat] || 0), 0)
                                       .toLocaleString('uk-UA', {maximumFractionDigits: 0})}
                                   </td>
                                 ))}
-                                <td className="border-2 border-gray-400 p-2 text-right bg-green-100 text-lg">
+                                <td className="border-2 border-gray-400 p-2 text-right bg-green-100 text-lg whitespace-nowrap min-w-[120px]">
                                   {regionalResults
                                     .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
                                     .reduce((sum, r) => sum + r.totalFunding, 0)
                                     .toLocaleString('uk-UA', {maximumFractionDigits: 0})}
                                 </td>
-                                <td className="border-2 border-gray-400 p-2 text-right bg-yellow-100 text-base">
+                                <td className="border-2 border-gray-400 p-2 text-right bg-yellow-100 text-base whitespace-nowrap min-w-[80px]">
                                   {selectedRegion === 'all' ? '100.00' : '100.00'}
                                 </td>
                               </tr>

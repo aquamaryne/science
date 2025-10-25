@@ -10,5 +10,21 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Розділяємо великі бібліотеки на окремі чанки
+          'react-vendor': ['react', 'react-dom', 'react-redux'],
+          'redux-vendor': ['@reduxjs/toolkit'],
+          'ui-vendor': ['lucide-react'],
+          'pdf-vendor': ['@react-pdf/renderer'],
+          'excel-vendor': ['xlsx'],
+          'chart-vendor': ['recharts'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000, // Збільшуємо ліміт до 1MB
   }
 })

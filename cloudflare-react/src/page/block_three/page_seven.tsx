@@ -75,7 +75,7 @@ export const RoadRankingTable: React.FC = () => {
   // Автоматичний розрахунок при наявності даних ENPV
   useEffect(() => {
     if (hasENPVResults && !calculated) {
-      console.log('✅ Автоматичний розрахунок рангування з Redux даних...');
+      // Автоматичний розрахунок рангування з Redux даних
       calculateRankingFromRedux();
     }
   }, [hasENPVResults, enpvResultsFromRedux, calculated]);
@@ -91,8 +91,7 @@ export const RoadRankingTable: React.FC = () => {
     setError('');
 
     try {
-      console.log('=== Формування рангування з Redux даних ===');
-      console.log(`Знайдено ${enpvResultsFromRedux.length} результатів ENPV`);
+      // Формування рангування з Redux даних
 
       const rankingResults: RankingRow[] = enpvResultsFromRedux
         .filter(result => result.workType !== 'no_work_needed') // Пропускаємо об'єкти без робіт
@@ -133,9 +132,7 @@ export const RoadRankingTable: React.FC = () => {
       // ✅ Позначаємо сторінку 4 як завершену
       appDispatch(setPage4Complete(true));
 
-      console.log('=== Рангування завершено (з Redux) ===');
-      console.log(`Всього об'єктів: ${sortedResults.length}`);
-      console.log(`Економічно доцільних (BCR > 1): ${sortedResults.filter(r => r.bcr > 1).length}`);
+      // Рангування завершено
 
     } catch (err) {
       console.error('Помилка при формуванні рангування:', err);
@@ -160,7 +157,6 @@ export const RoadRankingTable: React.FC = () => {
 
       // Розрахунок для кожної дороги
       for (const road of calculatedRoadsFromRedux) {
-        console.log(`Розрахунок для: ${road.roadName}`);
 
         // Створюємо ModuleRoadSection для передачі в функції
         const moduleRoadSection: ModuleRoadSection = {
@@ -181,7 +177,7 @@ export const RoadRankingTable: React.FC = () => {
 
         // Пропускаємо якщо не потрібно робіт
         if (workType === 'no_work_needed') {
-          console.log(`${road.roadName}: не потребує робіт, пропускаємо`);
+          // Дорога не потребує робіт, пропускаємо
           continue;
         }
 
@@ -213,7 +209,7 @@ export const RoadRankingTable: React.FC = () => {
           rank: 0 // Буде встановлено при сортуванні
         });
 
-        console.log(`✓ ${road.roadName}: ENPV=${costBenefitAnalysis.enpv.toFixed(0)} тис.грн, BCR=${costBenefitAnalysis.bcr.toFixed(2)}`);
+        // Розрахунок завершено успішно
       }
 
       // Ранжування за ENPV (від найбільшого до найменшого)
@@ -240,9 +236,7 @@ export const RoadRankingTable: React.FC = () => {
       // ✅ Позначаємо сторінку 4 як завершену
       appDispatch(setPage4Complete(true));
 
-      console.log('=== Рангування завершено ===');
-      console.log(`Всього об'єктів: ${sortedResults.length}`);
-      console.log(`Економічно доцільних (BCR > 1): ${sortedResults.filter(r => r.bcr > 1).length}`);
+      // Рангування завершено
 
     } catch (err) {
       console.error('Помилка при розрахунку рангування:', err);
@@ -361,33 +355,17 @@ export const RoadRankingTable: React.FC = () => {
       
       // Очищення через 1.5 секунди
       setTimeout(() => {
-        console.log('🧹 Початок очищення даних блоку 3...');
-        
         // ✅ ПОВНЕ ОЧИЩЕННЯ ВСІХ ДАНИХ
-        console.log('  → Очищення Redux state блоку 3...');
         appDispatch(resetBlockThree()); // Очищає sections, costStandards, статуси сторінок
-        
-        console.log('  → Очищення результатів ENPV...');
         appDispatch(clearENPVResults()); // Очищає всі ENPV результати
-        
-        console.log('  → Очищення розрахованих доріг...');
         appDispatch(setCalculatedRoads([])); // Очищає дані зі сторінки 1-2
-        
-        console.log('  → Повернення на сторінку 1...');
         appDispatch(setCurrentPage(1)); // Повертаємось на першу сторінку
-        
+
         // Очищаємо локальний state компонента
-        console.log('  → Очищення локального state...');
         setRankingData([]);
         setCalculated(false);
         setError('');
         setSaveStatus('');
-        
-        console.log('✅ ОЧИЩЕННЯ ЗАВЕРШЕНО!');
-        console.log('📊 Статус:');
-        console.log('  - Результати збережено в історію ✓');
-        console.log('  - Всі введені дані очищено ✓');
-        console.log('  - Готово до нових розрахунків ✓');
         
         alert(
           '✅ УСПІШНО ЗБЕРЕЖЕНО!\n\n' +

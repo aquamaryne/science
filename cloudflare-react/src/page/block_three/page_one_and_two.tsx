@@ -262,8 +262,6 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
     // ВІДПРАВКА В REDUX STORE
     dispatch(setCalculatedRoads(dataToTransfer));
     setDataTransferred(true);
-    
-    console.log('✅ Дані передані в Redux:', dataToTransfer);
   };
 
   const exportToCSV = () => {

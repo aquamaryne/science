@@ -57,7 +57,6 @@ export const Block3MultiPageApp: React.FC = () => {
   const blockThreeState = useAppSelector(state => state.blockThree);
   
   const [currentPage, setCurrentPage] = useState(blockThreeState.currentPage);
-  const [sections, setSections] = useState<RoadSectionUI[]>(blockThreeState.sections);
   const [saveStatus, setSaveStatus] = useState<string>("");
 
   // ✅ ПЕРЕВІРКА ЗАВЕРШЕННЯ СТОРІНОК (лише для індикаторів)
@@ -70,16 +69,10 @@ export const Block3MultiPageApp: React.FC = () => {
   const { createSession, dispatch } = useHistory();
   const { currentSession } = useCurrentSession();
 
-  // Синхронизация с Redux при загрузке
+  // Синхронизация з Redux при загрузке
   useEffect(() => {
     setCurrentPage(blockThreeState.currentPage);
-    setSections(blockThreeState.sections);
-  }, [blockThreeState]);
-
-  React.useEffect(() => {
-    console.log('Головний стан sections оновлено:', sections.length, 'секцій');
-    console.log('Секції з розрахованими даними:', sections.filter(s => s.workType).length);
-  }, [sections]);
+  }, [blockThreeState.currentPage]);
 
   const pages = [
     'Показники та коефіцієнти',
@@ -138,7 +131,7 @@ export const Block3MultiPageApp: React.FC = () => {
       }
     ];
 
-    setSections(mockSections);
+    // mockSections вже в Redux через blockThreeState.sections
 
     try {
       setSaveStatus("Збереження...");
@@ -193,7 +186,6 @@ export const Block3MultiPageApp: React.FC = () => {
       }));
 
       setSaveStatus("✅ Збережено в історію!");
-      console.log('Результати планування ремонтів збережено в Redux історію');
     } catch (error) {
       console.error('Помилка при збереженні результатів:', error);
       setSaveStatus("❌ Помилка збереження");

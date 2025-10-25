@@ -152,7 +152,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as (string | number)[][];
         
         const parsedData: RegionalRoadData[] = [];
         
@@ -212,7 +212,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
         regionalData.forEach(region => {
           const regionCoeff = regionCoefficients.find(r => r.regionalName === region.name);
           if (!regionCoeff) {
-            console.warn(`Коефіцієнти для області ${region.name} не знайдено`);
+            // Коефіцієнти для області не знайдено
             return;
           }
           
@@ -277,9 +277,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
           }
           
           coefficients.totalProduct = totalProduct;
-          
-          console.log(`📊 Коефіцієнти для ${region.name} (${roadType === 'state' ? 'державні' : 'місцеві'}):`, coefficients);
-          
+
           // ✅ Розрахунок фінансування по категоріях
           const stateTotalInflationIndex = calculateCumulativeInflationIndex(stateInflationIndexes);
           
@@ -1101,7 +1099,8 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                             value={currentValue}
                                             onChange={(e) => {
                                               const newResults = [...regionalResults];
-                                              (newResults[realIdx].coefficients as any)[key] = parseFloat(e.target.value) || 1;
+                                              const keyTyped = key as keyof typeof newResults[number]['coefficients'];
+                                              (newResults[realIdx].coefficients[keyTyped] as number) = parseFloat(e.target.value) || 1;
                                               setRegionalResults(newResults);
                                             }}
                                             className={`w-full text-center p-1 border-0 rounded min-w-[60px] ${roadType === 'state' ? 'bg-blue-50 focus:bg-blue-100' : 'bg-green-50 focus:bg-green-100'} ${isEdited ? 'border-yellow-300' : ''}`}
@@ -1130,7 +1129,8 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                             value={currentValue}
                                             onChange={(e) => {
                                               const newResults = [...regionalResults];
-                                              (newResults[realIdx].coefficients as any)[key] = parseFloat(e.target.value) || 1;
+                                              const keyTyped = key as keyof typeof newResults[number]['coefficients'];
+                                              (newResults[realIdx].coefficients[keyTyped] as number) = parseFloat(e.target.value) || 1;
                                               setRegionalResults(newResults);
                                             }}
                                             className={`w-full text-center p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded min-w-[60px] ${isEdited ? 'border-yellow-300' : ''}`}

@@ -4,61 +4,61 @@ import { Download } from 'lucide-react';
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Font } from '@react-pdf/renderer';
 import { useAppSelector } from '../redux/hooks';
 
+// Типи для результатів
+interface RegionalResult {
+  regionName: string;
+  totalFunding: number;
+  fundingByCategory?: Record<number, number>;
+  coefficients?: Record<string, number>;
+}
+
 interface PDFReportBlockTwoProps {
   className?: string;
 }
+
+// Register a font that supports Cyrillic (Ukrainian) - ONE TIME ONLY
+Font.register({
+  family: 'Roboto',
+  fonts: [
+    {
+      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-light-webfont.ttf',
+      fontWeight: 300,
+    },
+    {
+      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf',
+      fontWeight: 400,
+    },
+    {
+      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-medium-webfont.ttf',
+      fontWeight: 500,
+    },
+    {
+      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf',
+      fontWeight: 700,
+    },
+  ]
+});
 
 const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
   // Читаем данные из Redux
   const blockTwoState = useAppSelector(state => state.blockTwo);
   const currentSession = useAppSelector(state => state.history.currentSession);
   const blockTwoData = currentSession?.blockTwoData;
-  
+
   // Проверяем наличие региональных результатов (из blockTwo state ИЛИ из истории)
-  const allRegionalResults: any[] = blockTwoState?.regionalResults || blockTwoData?.regionalResults || [];
+  const allRegionalResults: RegionalResult[] = blockTwoState?.regionalResults || blockTwoData?.regionalResults || [];
   const selectedRegion = blockTwoState?.selectedRegion || blockTwoData?.selectedRegion || 'all';
   const roadType = blockTwoState?.regionalResultsRoadType || blockTwoData?.roadType || null;
   const roadTypeLabel = roadType === 'state' ? 'ДЕРЖАВНИХ' : roadType === 'local' ? 'МІСЦЕВИХ' : '';
-  
-  console.log('📊 PDF Debug:', {
-    hasBlockTwoState: !!blockTwoState,
-    stateRoadBaseRate: blockTwoState?.stateRoadBaseRate,
-    localRoadBaseRate: blockTwoState?.localRoadBaseRate,
-    hasBlockTwoData: !!blockTwoData,
-    allRegionalResultsCount: allRegionalResults.length,
-    selectedRegion,
-    roadType
-  });
-  
+
+  // Debug info removed for production
+
   // Фильтруем результаты по выбранной области
-  const regionalResults: any[] = selectedRegion === 'all' || selectedRegion === 'Україна'
+  const regionalResults: RegionalResult[] = selectedRegion === 'all' || selectedRegion === 'Україна'
     ? allRegionalResults
-    : allRegionalResults.filter((result: any) => result.regionName === selectedRegion);
-  
+    : allRegionalResults.filter((result) => result.regionName === selectedRegion);
+
   const hasRegionalResults = Boolean(regionalResults.length > 0);
-  
-  // Register a font that supports Cyrillic (Ukrainian)
-  Font.register({
-    family: 'Roboto',
-    fonts: [
-      {
-        src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-light-webfont.ttf',
-        fontWeight: 300,
-      },
-      {
-        src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf',
-        fontWeight: 400,
-      },
-      {
-        src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-medium-webfont.ttf',
-        fontWeight: 500,
-      },
-      {
-        src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf',
-        fontWeight: 700,
-      },
-    ]
-  });
 
   const styles = StyleSheet.create({
     page: { padding: 30, fontFamily: 'Roboto', backgroundColor: '#ffffff' },

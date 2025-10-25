@@ -87,7 +87,7 @@ export const RoadCostIndicators: React.FC = () => {
 
   useEffect(() => {
     if (hasReduxData && calculatedRoadsFromRedux.length > 0) {
-      console.log('✅ Автоматичне завантаження з Redux...');
+      // ✅ Автоматичне завантаження з Redux
       loadDataFromRedux();
     }
   }, [hasReduxData, calculatedRoadsFromRedux]);
@@ -131,7 +131,7 @@ export const RoadCostIndicators: React.FC = () => {
     setRoadSections(sectionsFromRedux);
     setError('');
     
-    console.log('✅ Завантажено з Redux:', sectionsFromRedux.length, 'доріг');
+    // ✅ Завантажено з Redux
   };
 
   const calculateEstimatedCosts = () => {
@@ -174,7 +174,7 @@ export const RoadCostIndicators: React.FC = () => {
       
       // ✅ Позначаємо сторінку 2 як завершену
       appDispatch(setPage2Complete(true));
-      console.log('✅ Сторінка 2 позначена як завершена');
+      // ✅ Сторінка 2 позначена як завершена
     } catch (err) {
       setError('Помилка при розрахунку вартості: ' + (err as Error).message);
     }

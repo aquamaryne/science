@@ -100,7 +100,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
   const [selectedRegion, setSelectedRegion] = React.useState<string>('all');
 
   // ==================== ДОПОМІЖНІ ФУНКЦІЇ ====================
-  
+
   const calculateCumulativeInflationIndex = (indexes: number[]): number => {
     return indexes.reduce((acc, curr) => acc * (1 + curr / 100), 1);
   };
@@ -223,14 +223,20 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
           const roadSections = convertToRoadSections(region);
           const totalLength = region.totalLength;
           
-          // ✅ ВИКОРИСТОВУЄМО ФУНКЦІЇ З МОДУЛЯ
+          // ✅ ВИКОРИСТОВУЄМО ФУНКЦІЇ З МОДУЛЯ block_two.ts
+          // ✅ ЗГІДНО З П.3.5 МЕТОДИКИ (ФОРМУЛА ДЛЯ ДЕРЖАВНИХ ДОРІГ):
+          // Qiд = Σ(Hjд × Lijд) × Kд × Kг × Kуе × Kінт.д × Kе.д × Kмпп.д × Kосв × Kрем × Kкр.і
+          //
+          // ✅ ЗГІДНО З П.3.6 МЕТОДИКИ (ФОРМУЛА ДЛЯ МІСЦЕВИХ ДОРІГ):
+          // Qiм = Σ(Hjм × Lijм) × Kг × Kуе × Kінт.м
+
           const kIntensity = calculateTrafficIntensityCoefficient(roadSections, totalLength);
-          
+
           let totalProduct: number;
           let coefficients: any;
-          
+
           if (roadType === 'state') {
-            // ДЛЯ ДЕРЖАВНИХ ДОРІГ - всі коефіцієнти
+            // ✅ ДЛЯ ДЕРЖАВНИХ ДОРІГ - ВСІ КОЕФІЦІЄНТИ З П.3.5 МЕТОДИКИ
             const kEuropean = calculateEuropeanRoadCoefficient(roadSections, totalLength);
             const kBorder = calculateBorderCrossingCoefficient(roadSections, totalLength);
             const kLighting = calculateLightingCoefficient(roadSections, totalLength);
@@ -1095,12 +1101,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                         {isEditing ? (
                                           <input
                                             type="number"
-                                            step="0.0001"
+                                            step="0.01"
+                                            min="0"
                                             value={currentValue}
                                             onChange={(e) => {
                                               const newResults = [...regionalResults];
                                               const keyTyped = key as keyof typeof newResults[number]['coefficients'];
-                                              (newResults[realIdx].coefficients[keyTyped] as number) = parseFloat(e.target.value) || 1;
+                                              const parsedValue = parseFloat(e.target.value);
+                                              (newResults[realIdx].coefficients[keyTyped] as number) = isNaN(parsedValue) ? 1 : parsedValue;
                                               setRegionalResults(newResults);
                                             }}
                                             className={`w-full text-center p-1 border-0 rounded min-w-[60px] ${roadType === 'state' ? 'bg-blue-50 focus:bg-blue-100' : 'bg-green-50 focus:bg-green-100'} ${isEdited ? 'border-yellow-300' : ''}`}
@@ -1125,12 +1133,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                         {isEditing ? (
                                           <input
                                             type="number"
-                                            step="0.0001"
+                                            step="0.01"
+                                            min="0"
                                             value={currentValue}
                                             onChange={(e) => {
                                               const newResults = [...regionalResults];
                                               const keyTyped = key as keyof typeof newResults[number]['coefficients'];
-                                              (newResults[realIdx].coefficients[keyTyped] as number) = parseFloat(e.target.value) || 1;
+                                              const parsedValue = parseFloat(e.target.value);
+                                              (newResults[realIdx].coefficients[keyTyped] as number) = isNaN(parsedValue) ? 1 : parsedValue;
                                               setRegionalResults(newResults);
                                             }}
                                             className={`w-full text-center p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded min-w-[60px] ${isEdited ? 'border-yellow-300' : ''}`}

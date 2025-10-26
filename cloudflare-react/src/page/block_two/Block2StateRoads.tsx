@@ -49,26 +49,33 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = () => {
       alert('Будь ласка, введіть коректний норматив базової вартості (більше 0)');
       return;
     }
-    
+
     if (stateInflationIndexes.length === 0 || stateInflationIndexes.some(index => isNaN(index) || index < 0)) {
       alert('Будь ласка, введіть коректні індекси інфляції (не менше 0)');
       return;
     }
-    
-    // Формула з методики: H_j^д = H^д × K_j^д × K_інф
+
+    // ✅ ЗГІДНО З П.3.2 МЕТОДИКИ (РОЗДІЛ 3 - ВИЗНАЧЕННЯ ФІНАНСУВАННЯ НА ЕУ ДОРІГ)
+    // Формула: H_j^д = H^д × K_j^д × K_інф
+    // де:
+    //   H_j^д - норматив для j-ї категорії державних доріг
+    //   H^д - базовий норматив для II категорії державних доріг (stateRoadBaseRate)
+    //   K_j^д - коефіцієнт диференціювання для j-ї категорії (з Додатку 3 методики)
+    //   K_інф - сукупний індекс інфляції (добуток всіх річних індексів)
     const cumulativeInflation = calculateCumulativeInflationIndex(stateInflationIndexes);
-    
-    // Коефіцієнти диференціювання згідно з Додатком 3 методики
+
+    // ✅ Коефіцієнти диференціювання K_j^д згідно з Додатком 3 методики
+    // для ДЕРЖАВНИХ доріг (стор. 33 Додаток 3 PDF):
     const rates = {
-      category1: stateRoadBaseRate * 1.80 * cumulativeInflation, // I категорія
-      category2: stateRoadBaseRate * 1.00 * cumulativeInflation, // II категорія (базова)
-      category3: stateRoadBaseRate * 0.89 * cumulativeInflation, // III категорія
-      category4: stateRoadBaseRate * 0.61 * cumulativeInflation, // IV категорія
-      category5: stateRoadBaseRate * 0.39 * cumulativeInflation  // V категорія
+      category1: stateRoadBaseRate * 1.80 * cumulativeInflation, // I категорія (K_1^д = 1.80)
+      category2: stateRoadBaseRate * 1.00 * cumulativeInflation, // II категорія базова (K_2^д = 1.00)
+      category3: stateRoadBaseRate * 0.89 * cumulativeInflation, // III категорія (K_3^д = 0.89)
+      category4: stateRoadBaseRate * 0.61 * cumulativeInflation, // IV категорія (K_4^д = 0.61)
+      category5: stateRoadBaseRate * 0.39 * cumulativeInflation  // V категорія (K_5^д = 0.39)
     };
-    
+
     dispatch(setStateRoadRates(rates));
-    
+
     // ✅ Розрахунок завершено, але без автоматичного переходу
     // Користувач сам вирішує, коли переходити до наступного етапу
   };
@@ -121,7 +128,7 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = () => {
                         (коеф.: {(1 + index / 100).toFixed(4)})
                       </span>
                       {stateInflationIndexes.length > 1 && (
-                        <Button 
+                        <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => removeStateInflationIndexHandler(i)}

@@ -49,26 +49,33 @@ const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = () => {
       alert('Будь ласка, введіть коректний норматив базової вартості (більше 0)');
       return;
     }
-    
+
     if (localInflationIndexes.length === 0 || localInflationIndexes.some(index => isNaN(index) || index < 0)) {
       alert('Будь ласка, введіть коректні індекси інфляції (не менше 0)');
       return;
     }
-    
-    // Формула з методики: H_j^м = H^м × K_j^м × K_інф
+
+    // ✅ ЗГІДНО З П.3.3 МЕТОДИКИ (РОЗДІЛ 3 - ВИЗНАЧЕННЯ ФІНАНСУВАННЯ НА ЕУ ДОРІГ)
+    // Формула: H_j^м = H^м × K_j^м × K_інф
+    // де:
+    //   H_j^м - норматив для j-ї категорії місцевих доріг
+    //   H^м - базовий норматив для II категорії місцевих доріг (localRoadBaseRate)
+    //   K_j^м - коефіцієнт диференціювання для j-ї категорії (з Додатку 3 методики)
+    //   K_інф - сукупний індекс інфляції (добуток всіх річних індексів)
     const cumulativeInflation = calculateCumulativeInflationIndex(localInflationIndexes);
-    
-    // Коефіцієнти диференціювання згідно з Додатком 3 методики для місцевих доріг
+
+    // ✅ Коефіцієнти диференціювання K_j^м згідно з Додатком 3 методики
+    // для МІСЦЕВИХ доріг (стор. 33 Додаток 3 PDF):
     const rates = {
-      category1: localRoadBaseRate * 1.71 * cumulativeInflation, // I категорія
-      category2: localRoadBaseRate * 1.00 * cumulativeInflation, // II категорія (базова)
-      category3: localRoadBaseRate * 0.85 * cumulativeInflation, // III категорія
-      category4: localRoadBaseRate * 0.64 * cumulativeInflation, // IV категорія
-      category5: localRoadBaseRate * 0.40 * cumulativeInflation  // V категорія
+      category1: localRoadBaseRate * 1.71 * cumulativeInflation, // I категорія (K_1^м = 1.71)
+      category2: localRoadBaseRate * 1.00 * cumulativeInflation, // II категорія базова (K_2^м = 1.00)
+      category3: localRoadBaseRate * 0.85 * cumulativeInflation, // III категорія (K_3^м = 0.85)
+      category4: localRoadBaseRate * 0.64 * cumulativeInflation, // IV категорія (K_4^м = 0.64)
+      category5: localRoadBaseRate * 0.40 * cumulativeInflation  // V категорія (K_5^м = 0.40)
     };
-    
+
     dispatch(setLocalRoadRates(rates));
-    
+
     // ✅ Розрахунок завершено, але без автоматичного переходу
     // Користувач сам вирішує, коли переходити до наступного етапу
   };
@@ -121,7 +128,7 @@ const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = () => {
                         (коеф.: {(1 + index / 100).toFixed(4)})
                       </span>
                       {localInflationIndexes.length > 1 && (
-                        <Button 
+                        <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => removeLocalInflationIndexHandler(i)}

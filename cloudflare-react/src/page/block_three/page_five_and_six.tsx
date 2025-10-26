@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { parseNumberInput } from '@/utils/numberInput';
 
 // ✅ ІМПОРТ REDUX
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
@@ -728,7 +729,7 @@ const ENPVCalculationTool: React.FC = () => {
                             type="number"
                             step="0.01"
                             value={currentData.totalReconstructionCost}
-                            onChange={(e) => handleFieldChange('totalReconstructionCost', parseFloat(e.target.value))}
+                            onChange={(e) => handleFieldChange('totalReconstructionCost', parseNumberInput(e.target.value, 0))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
                             placeholder="Введіть вартість"
                             />
@@ -836,7 +837,7 @@ const ENPVCalculationTool: React.FC = () => {
                                 type="number"
                                 step="0.01"
                                 value={currentData.discountRate}
-                                onChange={(e) => handleFieldChange('discountRate', parseFloat(e.target.value))}
+                                onChange={(e) => handleFieldChange('discountRate', parseNumberInput(e.target.value, 0))}
                                 className="w-full border-0 text-xs text-center h-5 rounded-none"
                             />
                             <Input
@@ -879,14 +880,14 @@ const ENPVCalculationTool: React.FC = () => {
                                 type="number"
                                 step="0.01"
                                 value={currentData.averageAnnualCapitalInvestments}
-                                onChange={(e) => handleFieldChange('averageAnnualCapitalInvestments', parseFloat(e.target.value))}
+                                onChange={(e) => handleFieldChange('averageAnnualCapitalInvestments', parseNumberInput(e.target.value, 0))}
                                 className="w-full border-0 text-xs text-center h-5 rounded-none"
                             />
                             <Input
                                 type="number"
                                 step="0.01"
                                 value={currentData.capitalInvestmentsDuringConstruction}
-                                onChange={(e) => handleFieldChange('capitalInvestmentsDuringConstruction', parseFloat(e.target.value))}
+                                onChange={(e) => handleFieldChange('capitalInvestmentsDuringConstruction', parseNumberInput(e.target.value, 0))}
                                 className="w-full border-0 text-xs text-center h-5 rounded-none"
                             />
                             <Input
@@ -928,7 +929,7 @@ const ENPVCalculationTool: React.FC = () => {
                             type="number"
                             step="0.01"
                             value={currentData.capitalInvestmentsInGarage1}
-                            onChange={(e) => handleFieldChange('capitalInvestmentsInGarage1', parseFloat(e.target.value))}
+                            onChange={(e) => handleFieldChange('capitalInvestmentsInGarage1', parseNumberInput(e.target.value, 0))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
                             />
                         </td>
@@ -947,7 +948,7 @@ const ENPVCalculationTool: React.FC = () => {
                             type="number"
                             step="0.01"
                             value={currentData.capitalInvestmentsInGarageAuto}
-                            onChange={(e) => handleFieldChange('capitalInvestmentsInGarageAuto', parseFloat(e.target.value))}
+                            onChange={(e) => handleFieldChange('capitalInvestmentsInGarageAuto', parseNumberInput(e.target.value, 0))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
                             />
                         </td>
@@ -984,7 +985,7 @@ const ENPVCalculationTool: React.FC = () => {
                             type="number"
                             step="0.01"
                             value={currentData.passengerUsageCoefficient}
-                            onChange={(e) => handleFieldChange('passengerUsageCoefficient', parseFloat(e.target.value))}
+                            onChange={(e) => handleFieldChange('passengerUsageCoefficient', parseNumberInput(e.target.value, 0))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
                             />
                         </td>
@@ -1019,7 +1020,7 @@ const ENPVCalculationTool: React.FC = () => {
                             type="number"
                             step="0.01"
                             value={currentData.lightVehicleUsageCoefficient}
-                            onChange={(e) => handleFieldChange('lightVehicleUsageCoefficient', parseFloat(e.target.value))}
+                            onChange={(e) => handleFieldChange('lightVehicleUsageCoefficient', parseNumberInput(e.target.value, 0))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
                             />
                         </td>
@@ -1037,7 +1038,7 @@ const ENPVCalculationTool: React.FC = () => {
                             type="number"
                             step="0.01"
                             value={currentData.averageTravelTimeReduction}
-                            onChange={(e) => handleFieldChange('averageTravelTimeReduction', parseFloat(e.target.value))}
+                            onChange={(e) => handleFieldChange('averageTravelTimeReduction', parseNumberInput(e.target.value, 0))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
                             />
                         </td>
@@ -1055,7 +1056,7 @@ const ENPVCalculationTool: React.FC = () => {
                             type="number"
                             step="0.01"
                             value={currentData.trafficFlowIntensityCoefficient}
-                            onChange={(e) => handleFieldChange('trafficFlowIntensityCoefficient', parseFloat(e.target.value))}
+                            onChange={(e) => handleFieldChange('trafficFlowIntensityCoefficient', parseNumberInput(e.target.value, 0))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
                             />
                         </td>
@@ -1073,7 +1074,7 @@ const ENPVCalculationTool: React.FC = () => {
                             type="number"
                             step="0.01"
                             value={currentData.postReconstructionIntensityCoefficient}
-                            onChange={(e) => handleFieldChange('postReconstructionIntensityCoefficient', parseFloat(e.target.value))}
+                            onChange={(e) => handleFieldChange('postReconstructionIntensityCoefficient', parseNumberInput(e.target.value, 0))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
                             />
                         </td>
@@ -1106,14 +1107,14 @@ const ENPVCalculationTool: React.FC = () => {
                                 type="number"
                                 step="0.01"
                                 value={currentData.trafficVolume1Percent}
-                                onChange={(e) => handleFieldChange('trafficVolume1Percent', parseFloat(e.target.value))}
+                                onChange={(e) => handleFieldChange('trafficVolume1Percent', parseNumberInput(e.target.value, 0))}
                                 className="w-full border-0 text-xs text-center h-5 rounded-none"
                             />
                             <Input
                                 type="number"
                                 step="0.01"
                                 value={currentData.trafficVolume13Percent}
-                                onChange={(e) => handleFieldChange('trafficVolume13Percent', parseFloat(e.target.value))}
+                                onChange={(e) => handleFieldChange('trafficVolume13Percent', parseNumberInput(e.target.value, 0))}
                                 className="w-full border-0 text-xs text-center h-5 rounded-none"
                             />
                             </div>
@@ -1132,7 +1133,7 @@ const ENPVCalculationTool: React.FC = () => {
                             type="number"
                             step="0.01"
                             value={currentData.toxicityReductionCoefficient}
-                            onChange={(e) => handleFieldChange('toxicityReductionCoefficient', parseFloat(e.target.value))}
+                            onChange={(e) => handleFieldChange('toxicityReductionCoefficient', parseNumberInput(e.target.value, 0))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
                             />
                         </td>
@@ -1150,7 +1151,7 @@ const ENPVCalculationTool: React.FC = () => {
                             type="number"
                             step="0.01"
                             value={currentData.averageAccidentsBeforeRepair}
-                            onChange={(e) => handleFieldChange('averageAccidentsBeforeRepair', parseFloat(e.target.value))}
+                            onChange={(e) => handleFieldChange('averageAccidentsBeforeRepair', parseNumberInput(e.target.value, 0))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
                             />
                         </td>
@@ -1168,7 +1169,7 @@ const ENPVCalculationTool: React.FC = () => {
                             type="number"
                             step="0.01"
                             value={currentData.averageAccidentsAfterRepair}
-                            onChange={(e) => handleFieldChange('averageAccidentsAfterRepair', parseFloat(e.target.value))}
+                            onChange={(e) => handleFieldChange('averageAccidentsAfterRepair', parseNumberInput(e.target.value, 0))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
                             />
                         </td>
@@ -1203,7 +1204,7 @@ const ENPVCalculationTool: React.FC = () => {
                             type="number"
                             step="0.01"
                             value={currentData.averageSchoolAge}
-                            onChange={(e) => handleFieldChange('averageSchoolAge', parseFloat(e.target.value))}
+                            onChange={(e) => handleFieldChange('averageSchoolAge', parseNumberInput(e.target.value, 0))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
                             />
                         </td>
@@ -1221,7 +1222,7 @@ const ENPVCalculationTool: React.FC = () => {
                             type="number"
                             step="0.01"
                             value={currentData.averageDTIAge}
-                            onChange={(e) => handleFieldChange('averageDTIAge', parseFloat(e.target.value))}
+                            onChange={(e) => handleFieldChange('averageDTIAge', parseNumberInput(e.target.value, 0))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
                             />
                         </td>
@@ -1256,7 +1257,7 @@ const ENPVCalculationTool: React.FC = () => {
                             type="number"
                             step="0.01"
                             value={currentData.maintenanceCostsBefore}
-                            onChange={(e) => handleFieldChange('maintenanceCostsBefore', parseFloat(e.target.value))}
+                            onChange={(e) => handleFieldChange('maintenanceCostsBefore', parseNumberInput(e.target.value, 0))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
                             />
                         </td>
@@ -1274,7 +1275,7 @@ const ENPVCalculationTool: React.FC = () => {
                             type="number"
                             step="0.01"
                             value={currentData.maintenanceCostsAfter}
-                            onChange={(e) => handleFieldChange('maintenanceCostsAfter', parseFloat(e.target.value))}
+                            onChange={(e) => handleFieldChange('maintenanceCostsAfter', parseNumberInput(e.target.value, 0))}
                             className="w-full h-full border-0 text-xs text-center bg-transparent rounded-none"
                             />
                         </td>

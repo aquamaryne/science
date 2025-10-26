@@ -30,6 +30,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { handleNumberPaste, parseNumberInput } from '@/utils/numberInput';
 
 interface Block2StateRoadsProps {
   // onCalculated?: () => void; // Убрано - автоматичні переходи відключені
@@ -52,7 +53,14 @@ const InflationIndexField = React.memo(({
   onRemove: (index: number) => void;
 }) => {
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(index, e.target.value);
+    const normalized = e.target.value.replace(',', '.');
+    onChange(index, normalized);
+  }, [index, onChange]);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+    handleNumberPaste(e, (normalized) => {
+      onChange(index, normalized);
+    });
   }, [index, onChange]);
 
   const handleRemove = useCallback(() => {
@@ -70,6 +78,7 @@ const InflationIndexField = React.memo(({
           max="1000"
           value={value}
           onChange={handleChange}
+          onPaste={handlePaste}
           placeholder="наприклад: 5.0"
           className="flex-1 sm:flex-none sm:w-28"
         />
@@ -133,7 +142,18 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = () => {
   }, [dispatch, stateInflationIndexes.length]);
 
   const handleStateInflationChange = useCallback((index: number, value: string) => {
-    dispatch(updateStateInflationIndex({ index, value: parseFloat(value) || 0 }));
+    dispatch(updateStateInflationIndex({ index, value: parseNumberInput(value, 0) }));
+  }, [dispatch]);
+
+  const handleBaseRateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const normalized = e.target.value.replace(',', '.');
+    dispatch(setStateRoadBaseRate(parseNumberInput(normalized, 604.761)));
+  }, [dispatch]);
+
+  const handleBaseRatePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+    handleNumberPaste(e, (normalized) => {
+      dispatch(setStateRoadBaseRate(parseNumberInput(normalized, 604.761)));
+    });
   }, [dispatch]);
 
   const applyYearRange = useCallback(() => {
@@ -239,7 +259,8 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = () => {
                 id="stateRoadBaseRate"
                 type="number"
                 value={stateRoadBaseRate}
-                onChange={(e) => dispatch(setStateRoadBaseRate(parseFloat(e.target.value) || 604.761))}
+                onChange={handleBaseRateChange}
+                onPaste={handleBaseRatePaste}
                 className="mt-2"
               />
             </div>

@@ -4,14 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle, Download, Calculator, AlertTriangle, Construction, Upload, Edit } from "lucide-react";
 import * as XLSX from 'xlsx';
+import { parseNumberInput, handleNativeInputPaste } from '@/utils/numberInput';
 
 // ✅ ІМПОРТ REDUX
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { saveBlockTwoData } from '@/redux/slices/historySlice';
-import { 
-  setRegionalResults as setRegionalResultsAction, 
+import {
+  setRegionalResults as setRegionalResultsAction,
   setRegionalResultsRoadType as setRegionalResultsRoadTypeAction,
-  setSelectedRegion as setSelectedRegionAction 
+  setSelectedRegion as setSelectedRegionAction
 } from '@/redux/slices/blockTwoSlice';
 
 // ✅ ІМПОРТИ З МОДУЛЯ
@@ -825,10 +826,11 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     value={region.lengthByCategory[cat]}
                                     onChange={(e) => {
                                       const newData = [...regionalData];
-                                      newData[realIdx].lengthByCategory[cat] = parseFloat(e.target.value) || 0;
+                                      newData[realIdx].lengthByCategory[cat] = parseNumberInput(e.target.value, 0);
                                       newData[realIdx].totalLength = Object.values(newData[realIdx].lengthByCategory).reduce((sum, val) => sum + val, 0);
                                       setRegionalData(newData);
                                     }}
+                                    onPaste={handleNativeInputPaste}
                                     className="w-full text-right p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded min-w-[50px]"
                                     style={{ fontSize: '11px' }}
                                   />
@@ -848,9 +850,10 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     value={region.europeanIndexLength}
                                     onChange={(e) => {
                                       const newData = [...regionalData];
-                                      newData[realIdx].europeanIndexLength = parseFloat(e.target.value) || 0;
+                                      newData[realIdx].europeanIndexLength = parseNumberInput(e.target.value, 0);
                                       setRegionalData(newData);
                                     }}
+                                    onPaste={handleNativeInputPaste}
                                     className="w-full text-right p-1 border-0 bg-orange-50 focus:bg-orange-100 rounded min-w-[50px]"
                                     style={{ fontSize: '11px' }}
                                   />
@@ -867,9 +870,10 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                   value={region.lengthByIntensity.medium}
                                   onChange={(e) => {
                                     const newData = [...regionalData];
-                                    newData[realIdx].lengthByIntensity.medium = parseFloat(e.target.value) || 0;
+                                    newData[realIdx].lengthByIntensity.medium = parseNumberInput(e.target.value, 0);
                                     setRegionalData(newData);
                                   }}
+                                  onPaste={handleNativeInputPaste}
                                   className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded min-w-[50px]"
                                   style={{ fontSize: '11px' }}
                                 />
@@ -884,9 +888,10 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                   value={region.lengthByIntensity.high}
                                   onChange={(e) => {
                                     const newData = [...regionalData];
-                                    newData[realIdx].lengthByIntensity.high = parseFloat(e.target.value) || 0;
+                                    newData[realIdx].lengthByIntensity.high = parseNumberInput(e.target.value, 0);
                                     setRegionalData(newData);
                                   }}
+                                  onPaste={handleNativeInputPaste}
                                   className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded min-w-[50px]"
                                   style={{ fontSize: '11px' }}
                                 />
@@ -901,9 +906,10 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                   value={region.lengthByIntensity.veryHigh}
                                   onChange={(e) => {
                                     const newData = [...regionalData];
-                                    newData[realIdx].lengthByIntensity.veryHigh = parseFloat(e.target.value) || 0;
+                                    newData[realIdx].lengthByIntensity.veryHigh = parseNumberInput(e.target.value, 0);
                                     setRegionalData(newData);
                                   }}
+                                  onPaste={handleNativeInputPaste}
                                   className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded min-w-[50px]"
                                   style={{ fontSize: '11px' }}
                                 />
@@ -921,9 +927,10 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       value={region.europeanRoadsLength}
                                       onChange={(e) => {
                                         const newData = [...regionalData];
-                                        newData[realIdx].europeanRoadsLength = parseFloat(e.target.value) || 0;
+                                        newData[realIdx].europeanRoadsLength = parseNumberInput(e.target.value, 0);
                                         setRegionalData(newData);
                                       }}
+                                      onPaste={handleNativeInputPaste}
                                       className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded min-w-[50px]"
                                       style={{ fontSize: '11px' }}
                                     />
@@ -938,9 +945,10 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       value={region.borderCrossingLength}
                                       onChange={(e) => {
                                         const newData = [...regionalData];
-                                        newData[realIdx].borderCrossingLength = parseFloat(e.target.value) || 0;
+                                        newData[realIdx].borderCrossingLength = parseNumberInput(e.target.value, 0);
                                         setRegionalData(newData);
                                       }}
+                                      onPaste={handleNativeInputPaste}
                                       className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded min-w-[50px]"
                                       style={{ fontSize: '11px' }}
                                     />
@@ -955,9 +963,10 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       value={region.lightingLength}
                                       onChange={(e) => {
                                         const newData = [...regionalData];
-                                        newData[realIdx].lightingLength = parseFloat(e.target.value) || 0;
+                                        newData[realIdx].lightingLength = parseNumberInput(e.target.value, 0);
                                         setRegionalData(newData);
                                       }}
+                                      onPaste={handleNativeInputPaste}
                                       className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded min-w-[50px]"
                                       style={{ fontSize: '11px' }}
                                     />
@@ -972,9 +981,10 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       value={region.repairedLength}
                                       onChange={(e) => {
                                         const newData = [...regionalData];
-                                        newData[realIdx].repairedLength = parseFloat(e.target.value) || 0;
+                                        newData[realIdx].repairedLength = parseNumberInput(e.target.value, 0);
                                         setRegionalData(newData);
                                       }}
+                                      onPaste={handleNativeInputPaste}
                                       className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded min-w-[50px]"
                                       style={{ fontSize: '11px' }}
                                     />
@@ -989,9 +999,10 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       value={region.criticalInfraCount}
                                       onChange={(e) => {
                                         const newData = [...regionalData];
-                                        newData[realIdx].criticalInfraCount = parseFloat(e.target.value) || 0;
+                                        newData[realIdx].criticalInfraCount = parseNumberInput(e.target.value, 0);
                                         setRegionalData(newData);
                                       }}
+                                      onPaste={handleNativeInputPaste}
                                       className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded min-w-[50px]"
                                       style={{ fontSize: '11px' }}
                                     />
@@ -1107,10 +1118,11 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                             onChange={(e) => {
                                               const newResults = [...regionalResults];
                                               const keyTyped = key as keyof typeof newResults[number]['coefficients'];
-                                              const parsedValue = parseFloat(e.target.value);
-                                              (newResults[realIdx].coefficients[keyTyped] as number) = isNaN(parsedValue) ? 1 : parsedValue;
+                                              const parsedValue = parseNumberInput(e.target.value, 1);
+                                              (newResults[realIdx].coefficients[keyTyped] as number) = parsedValue;
                                               setRegionalResults(newResults);
                                             }}
+                                            onPaste={handleNativeInputPaste}
                                             className={`w-full text-center p-1 border-0 rounded min-w-[60px] ${roadType === 'state' ? 'bg-blue-50 focus:bg-blue-100' : 'bg-green-50 focus:bg-green-100'} ${isEdited ? 'border-yellow-300' : ''}`}
                                             style={{ fontSize: '11px' }}
                                           />
@@ -1139,10 +1151,11 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                             onChange={(e) => {
                                               const newResults = [...regionalResults];
                                               const keyTyped = key as keyof typeof newResults[number]['coefficients'];
-                                              const parsedValue = parseFloat(e.target.value);
-                                              (newResults[realIdx].coefficients[keyTyped] as number) = isNaN(parsedValue) ? 1 : parsedValue;
+                                              const parsedValue = parseNumberInput(e.target.value, 1);
+                                              (newResults[realIdx].coefficients[keyTyped] as number) = parsedValue;
                                               setRegionalResults(newResults);
                                             }}
+                                            onPaste={handleNativeInputPaste}
                                             className={`w-full text-center p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded min-w-[60px] ${isEdited ? 'border-yellow-300' : ''}`}
                                             style={{ fontSize: '11px' }}
                                           />

@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { parseNumberInput } from '@/utils/numberInput';
 
-import { 
+import {
   BASE_REPAIR_COSTS,
   calculateDetailedWorkCost,
   determineWorkTypeByTechnicalCondition,
@@ -334,7 +335,7 @@ export const RoadCostIndicators: React.FC = () => {
                       <Input
                         type="number"
                         value={costIndicators.reconstruction[cat]}
-                        onChange={(e) => updateCostIndicator('reconstruction', cat, parseFloat(e.target.value) || 0)}
+                        onChange={(e) => updateCostIndicator('reconstruction', cat, parseNumberInput(e.target.value, 0) || 0)}
                         className="h-8 text-center"
                         step="1000"
                       />
@@ -348,7 +349,7 @@ export const RoadCostIndicators: React.FC = () => {
                       <Input
                         type="number"
                         value={costIndicators.capitalRepair[cat]}
-                        onChange={(e) => updateCostIndicator('capitalRepair', cat, parseFloat(e.target.value) || 0)}
+                        onChange={(e) => updateCostIndicator('capitalRepair', cat, parseNumberInput(e.target.value, 0) || 0)}
                         className="h-8 text-center"
                         step="1000"
                       />
@@ -362,7 +363,7 @@ export const RoadCostIndicators: React.FC = () => {
                       <Input
                         type="number"
                         value={costIndicators.currentRepair[cat]}
-                        onChange={(e) => updateCostIndicator('currentRepair', cat, parseFloat(e.target.value) || 0)}
+                        onChange={(e) => updateCostIndicator('currentRepair', cat, parseNumberInput(e.target.value, 0) || 0)}
                         className="h-8 text-center"
                         step="100"
                       />

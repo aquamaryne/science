@@ -4,7 +4,11 @@
       "Bash(npm run build:*)",
       "Bash(git add:*)",
       "Bash(npm test:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Read(//c/**)",
+      "Bash(for f in page_*.tsx)",
+      "Bash(do echo \"$f:\")",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

@@ -6,8 +6,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { parseNumberInput } from '@/utils/numberInput';
 
-import { 
+import {
   determineWorkTypeByTechnicalCondition,
   MAX_DESIGN_INTENSITY_BY_CATEGORY,
   MIN_STRENGTH_COEFFICIENT_BY_CATEGORY,
@@ -406,7 +407,7 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
                       <Input
                         type="number"
                         value={row.length || ''}
-                        onChange={(e) => updateInputRow(row.id, 'length', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => updateInputRow(row.id, 'length', parseNumberInput(e.target.value, 0) || 0)}
                         placeholder="0"
                         step="0.1"
                         className="h-8 w-20"
@@ -433,7 +434,7 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
                       <Input
                         type="number"
                         value={row.actualIntensity || ''}
-                        onChange={(e) => updateInputRow(row.id, 'actualIntensity', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => updateInputRow(row.id, 'actualIntensity', parseNumberInput(e.target.value, 0) || 0)}
                         placeholder="5000"
                         className="h-8 w-20"
                       />
@@ -442,7 +443,7 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
                       <Input
                         type="number"
                         value={row.actualElasticModulus || ''}
-                        onChange={(e) => updateInputRow(row.id, 'actualElasticModulus', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => updateInputRow(row.id, 'actualElasticModulus', parseNumberInput(e.target.value, 0) || 0)}
                         placeholder="180"
                         className="h-8 w-20"
                       />
@@ -451,7 +452,7 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
                       <Input
                         type="number"
                         value={row.actualSurfaceEvenness || ''}
-                        onChange={(e) => updateInputRow(row.id, 'actualSurfaceEvenness', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => updateInputRow(row.id, 'actualSurfaceEvenness', parseNumberInput(e.target.value, 0) || 0)}
                         placeholder="3.5"
                         step="0.1"
                         className="h-8 w-20"
@@ -464,7 +465,7 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
                       <Input
                         type="number"
                         value={row.actualRutDepth || ''}
-                        onChange={(e) => updateInputRow(row.id, 'actualRutDepth', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => updateInputRow(row.id, 'actualRutDepth', parseNumberInput(e.target.value, 0) || 0)}
                         placeholder="25"
                         className="h-8 w-20"
                       />
@@ -473,7 +474,7 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
                       <Input
                         type="number"
                         value={row.actualFrictionValue || ''}
-                        onChange={(e) => updateInputRow(row.id, 'actualFrictionValue', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => updateInputRow(row.id, 'actualFrictionValue', parseNumberInput(e.target.value, 0) || 0)}
                         placeholder="0.35"
                         step="0.01"
                         min="0"

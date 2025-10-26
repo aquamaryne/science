@@ -10,7 +10,7 @@ import { calculationResultsService } from '../../service/resultLocalStorage';
 import { useHistory, useCurrentSession } from '../../redux/hooks';
 import { saveBlockOneData } from '../../redux/slices/historySlice';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
-import { 
+import {
   setStateRoadBudget,
   setLocalRoadBudget,
   setQ1Result,
@@ -18,6 +18,7 @@ import {
   updateStateRoadItem,
   updateLocalRoadItem
 } from '../../redux/slices/blockOneSlice';
+import { parseNumberInput, handleNumberPaste } from '@/utils/numberInput';
 // shadcn/ui components
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -199,8 +200,9 @@ const StateRoadFundingBlock = ({
 
   // Обработчик изменения значений полей ввода
   const handleInputChange = (id: string, value: string) => {
-    const newValue = value === "" ? null : parseFloat(value);
-    const updatedItems = stateRoadBudget.map(item => 
+    const normalized = value.replace(',', '.');
+    const newValue = normalized === "" ? null : parseNumberInput(normalized, 0);
+    const updatedItems = stateRoadBudget.map(item =>
       item.id === id ? { ...item, value: newValue } : item
     );
     setStateRoadBudget(updatedItems);
@@ -303,10 +305,13 @@ const StateRoadFundingBlock = ({
                   </TableCell>
                   <TableCell className="text-center font-medium py-3">{item.id}</TableCell>
                   <TableCell>
-                    <Input 
-                      type="number" 
+                    <Input
+                      type="number"
                       value={item.value === null ? "" : item.value.toString()}
                       onChange={(e) => handleInputChange(item.id, e.target.value)}
+                      onPaste={(e) => handleNumberPaste(e, (normalized) => {
+                        handleInputChange(item.id, normalized);
+                      })}
                       placeholder="0"
                       className="glass-input"
                     />
@@ -384,8 +389,9 @@ const LocalRoadFundingBlock = ({
   }, [blockOneState.localRoadBudget, blockOneState.q2Result]);
 
   const handleInputChange = (id: string, value: string) => {
-    const newValue = value === "" ? null : parseFloat(value);
-    const updatedItems = localRoadBudget.map(item => 
+    const normalized = value.replace(',', '.');
+    const newValue = normalized === "" ? null : parseNumberInput(normalized, 0);
+    const updatedItems = localRoadBudget.map(item =>
       item.id === id ? { ...item, value: newValue } : item
     );
     setLocalRoadBudget(updatedItems);
@@ -484,10 +490,13 @@ const LocalRoadFundingBlock = ({
                   </TableCell>
                   <TableCell className="text-center font-medium py-3">{item.id}</TableCell>
                   <TableCell>
-                    <Input 
-                      type="number" 
+                    <Input
+                      type="number"
                       value={item.value === null ? "" : item.value.toString()}
                       onChange={(e) => handleInputChange(item.id, e.target.value)}
+                      onPaste={(e) => handleNumberPaste(e, (normalized) => {
+                        handleInputChange(item.id, normalized);
+                      })}
                       placeholder="0"
                       className="glass-input"
                     />

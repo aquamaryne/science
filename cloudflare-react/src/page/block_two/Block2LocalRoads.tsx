@@ -30,6 +30,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { handleNumberPaste, parseNumberInput } from '@/utils/numberInput';
 
 interface Block2LocalRoadsProps {
   // onCalculated?: () => void; // Убрано - автоматичні переходи відключені
@@ -52,7 +53,14 @@ const InflationIndexField = React.memo(({
   onRemove: (index: number) => void;
 }) => {
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(index, e.target.value);
+    const normalized = e.target.value.replace(',', '.');
+    onChange(index, normalized);
+  }, [index, onChange]);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+    handleNumberPaste(e, (normalized) => {
+      onChange(index, normalized);
+    });
   }, [index, onChange]);
 
   const handleRemove = useCallback(() => {
@@ -70,6 +78,7 @@ const InflationIndexField = React.memo(({
           max="1000"
           value={value}
           onChange={handleChange}
+          onPaste={handlePaste}
           placeholder="наприклад: 5.0"
           className="flex-1 sm:flex-none sm:w-28"
         />
@@ -133,7 +142,18 @@ const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = () => {
   }, [dispatch, localInflationIndexes.length]);
 
   const handleLocalInflationChange = useCallback((index: number, value: string) => {
-    dispatch(updateLocalInflationIndex({ index, value: parseFloat(value) || 0 }));
+    dispatch(updateLocalInflationIndex({ index, value: parseNumberInput(value, 0) }));
+  }, [dispatch]);
+
+  const handleBaseRateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const normalized = e.target.value.replace(',', '.');
+    dispatch(setLocalRoadBaseRate(parseNumberInput(normalized, 360.544)));
+  }, [dispatch]);
+
+  const handleBaseRatePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+    handleNumberPaste(e, (normalized) => {
+      dispatch(setLocalRoadBaseRate(parseNumberInput(normalized, 360.544)));
+    });
   }, [dispatch]);
 
   const applyYearRange = useCallback(() => {
@@ -239,7 +259,8 @@ const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = () => {
                 id="localRoadBaseRate"
                 type="number"
                 value={localRoadBaseRate}
-                onChange={(e) => dispatch(setLocalRoadBaseRate(parseFloat(e.target.value) || 360.544))}
+                onChange={handleBaseRateChange}
+                onPaste={handleBaseRatePaste}
                 className="mt-2"
               />
             </div>

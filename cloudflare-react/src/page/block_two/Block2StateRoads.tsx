@@ -1,58 +1,204 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { X, Plus, Calculator, CheckCircle2 } from "lucide-react";
-import { useAppSelector, useAppDispatch } from '@/redux/hooks';
-import { 
+import { X, Plus, Calculator, CheckCircle2, Calendar } from "lucide-react";
+import { toast } from "sonner";
+import { useAppDispatch } from '@/redux/hooks';
+import { useSelector } from 'react-redux';
+import {
   setStateRoadBaseRate,
   addStateInflationIndex,
   removeStateInflationIndex,
   updateStateInflationIndex,
-  setStateRoadRates
+  setStateRoadRates,
+  setStateInflationIndexes
 } from '@/redux/slices/blockTwoSlice';
+import {
+  selectStateRoadBaseRate,
+  selectStateInflationIndexes,
+  selectStateRoadRates,
+  selectStateCumulativeInflation
+} from '@/redux/selectors/blockTwoSelectors';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface Block2StateRoadsProps {
   // onCalculated?: () => void; // Убрано - автоматичні переходи відключені
 }
 
+// ✅ ОПТИМІЗАЦІЯ: Мемоізований компонент для кожного поля інфляції
+const InflationIndexField = React.memo(({
+  index,
+  yearNumber,
+  value,
+  canRemove,
+  onChange,
+  onRemove
+}: {
+  index: number;
+  yearNumber: number;
+  value: number;
+  canRemove: boolean;
+  onChange: (index: number, value: string) => void;
+  onRemove: (index: number) => void;
+}) => {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange(index, e.target.value);
+  }, [index, onChange]);
+
+  const handleRemove = useCallback(() => {
+    onRemove(index);
+  }, [index, onRemove]);
+
+  return (
+    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 bg-gray-50 rounded-lg">
+      <div className="flex items-center gap-2 w-full sm:w-auto">
+        <Label className="min-w-[80px] text-sm">{`Рік ${yearNumber}:`}</Label>
+        <Input
+          type="number"
+          step="0.1"
+          min="0"
+          max="1000"
+          value={value}
+          onChange={handleChange}
+          placeholder="наприклад: 5.0"
+          className="flex-1 sm:flex-none sm:w-28"
+        />
+        <span className="text-sm font-medium">%</span>
+      </div>
+      <div className="flex items-center gap-2 w-full sm:w-auto">
+        <span className="text-xs text-gray-500">
+          коеф.: {(1 + value / 100).toFixed(4)}
+        </span>
+        {canRemove && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRemove}
+            className="p-1 h-auto text-red-600 hover:text-red-800"
+            title="Видалити цей рік"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // ✅ ОПТИМІЗАЦІЯ: Кастомна функція порівняння для запобігання зайвим ре-рендерам
+  return (
+    prevProps.index === nextProps.index &&
+    prevProps.yearNumber === nextProps.yearNumber &&
+    prevProps.value === nextProps.value &&
+    prevProps.canRemove === nextProps.canRemove &&
+    prevProps.onChange === nextProps.onChange &&
+    prevProps.onRemove === nextProps.onRemove
+  );
+});
+
+InflationIndexField.displayName = 'InflationIndexField';
+
 const Block2StateRoads: React.FC<Block2StateRoadsProps> = () => {
   const dispatch = useAppDispatch();
-  const blockTwoState = useAppSelector(state => state.blockTwo);
-  
-  const stateRoadBaseRate = blockTwoState.stateRoadBaseRate;
-  const stateInflationIndexes = blockTwoState.stateInflationIndexes;
-  const stateRoadRate = blockTwoState.stateRoadRates;
-  const addStateInflationIndexHandler = () => {
-    dispatch(addStateInflationIndex(0));
-  };
 
-  const removeStateInflationIndexHandler = (index: number) => {
+  // ✅ ОПТИМІЗАЦІЯ: Використовуємо мемоізовані селектори
+  const stateRoadBaseRate = useSelector(selectStateRoadBaseRate);
+  const stateInflationIndexes = useSelector(selectStateInflationIndexes);
+  const stateRoadRate = useSelector(selectStateRoadRates);
+  const cumulativeInflationMemoized = useSelector(selectStateCumulativeInflation);
+
+  const [isYearSelectorOpen, setIsYearSelectorOpen] = React.useState(false);
+  const [selectedStartYear, setSelectedStartYear] = React.useState<number>(2020);
+  const [selectedEndYear, setSelectedEndYear] = React.useState<number>(new Date().getFullYear() - 1);
+  const [appliedStartYear, setAppliedStartYear] = React.useState<number>(2024); // Зберігаємо застосований початковий рік
+
+  // ✅ ОПТИМІЗАЦІЯ: useCallback для запобігання ре-рендерам
+  const addStateInflationIndexHandler = useCallback(() => {
+    dispatch(addStateInflationIndex(0));
+  }, [dispatch]);
+
+  const removeStateInflationIndexHandler = useCallback((index: number) => {
     if (stateInflationIndexes.length > 1) {
       dispatch(removeStateInflationIndex(index));
     }
-  };
+  }, [dispatch, stateInflationIndexes.length]);
 
-  const handleStateInflationChange = (index: number, value: string) => {
+  const handleStateInflationChange = useCallback((index: number, value: string) => {
     dispatch(updateStateInflationIndex({ index, value: parseFloat(value) || 0 }));
-  };
+  }, [dispatch]);
 
-  const calculateCumulativeInflationIndex = (indexes: number[]): number => {
-    return indexes.reduce((acc, curr) => acc * (1 + curr / 100), 1);
-  };
-
-  const calculateStateRoadRates = () => {
-    // Валідація вхідних даних
-    if (stateRoadBaseRate <= 0) {
-      alert('Будь ласка, введіть коректний норматив базової вартості (більше 0)');
+  const applyYearRange = useCallback(() => {
+    if (selectedStartYear > selectedEndYear) {
+      toast.error('Помилка', {
+        description: 'Початковий рік не може бути більшим за кінцевий',
+      });
       return;
     }
 
-    if (stateInflationIndexes.length === 0 || stateInflationIndexes.some(index => isNaN(index) || index < 0)) {
-      alert('Будь ласка, введіть коректні індекси інфляції (не менше 0)');
+    const yearsToAdd = selectedEndYear - selectedStartYear + 1;
+
+    // ✅ ОПТИМІЗАЦІЯ: Один dispatch замість багатьох
+    const emptyYears = new Array(yearsToAdd).fill(0);
+    dispatch(setStateInflationIndexes(emptyYears));
+
+    // ✅ Зберігаємо вибраний початковий рік для правильного відображення
+    setAppliedStartYear(selectedStartYear);
+
+    setIsYearSelectorOpen(false);
+    toast.success('Роки додано', {
+      description: `Додано ${yearsToAdd} років (${selectedStartYear}-${selectedEndYear}). Введіть індекси інфляції вручну.`,
+    });
+  }, [selectedStartYear, selectedEndYear, dispatch]);
+
+  // ✅ ОПТИМІЗАЦІЯ: useMemo - генерувати список років тільки один раз
+  const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let year = 2000; year <= currentYear; year++) {
+      years.push(year);
+    }
+    return years;
+  }, []); // Порожній масив - обчислюється тільки один раз при монтуванні
+
+  // ✅ ОПТИМІЗАЦІЯ: Використовуємо вже мемоізований результат із селектора
+  const cumulativeInflation = cumulativeInflationMemoized;
+
+  const calculateStateRoadRates = () => {
+    // ✅ Валідація вхідних даних
+    if (stateRoadBaseRate <= 0) {
+      toast.error('Помилка валідації', {
+        description: 'Норматив базової вартості має бути більше 0',
+      });
       return;
+    }
+
+    if (stateInflationIndexes.length === 0) {
+      toast.error('Помилка валідації', {
+        description: 'Додайте хоча б один індекс інфляції',
+      });
+      return;
+    }
+
+    if (stateInflationIndexes.some(index => isNaN(index) || index < 0)) {
+      toast.error('Помилка валідації', {
+        description: 'Індекси інфляції мають бути невід\'ємними числами (0 або більше)',
+      });
+      return;
+    }
+
+    if (stateInflationIndexes.some(index => index > 1000)) {
+      toast.warning('Попередження', {
+        description: 'Один або декілька індексів інфляції перевищують 1000%. Переконайтеся, що дані введені правильно.',
+      });
     }
 
     // ✅ ЗГІДНО З П.3.2 МЕТОДИКИ (РОЗДІЛ 3 - ВИЗНАЧЕННЯ ФІНАНСУВАННЯ НА ЕУ ДОРІГ)
@@ -62,7 +208,7 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = () => {
     //   H^д - базовий норматив для II категорії державних доріг (stateRoadBaseRate)
     //   K_j^д - коефіцієнт диференціювання для j-ї категорії (з Додатку 3 методики)
     //   K_інф - сукупний індекс інфляції (добуток всіх річних індексів)
-    const cumulativeInflation = calculateCumulativeInflationIndex(stateInflationIndexes);
+    // ✅ ОПТИМІЗАЦІЯ: використовуємо мемоізований результат
 
     // ✅ Коефіцієнти диференціювання K_j^д згідно з Додатком 3 методики
     // для ДЕРЖАВНИХ доріг (стор. 33 Додаток 3 PDF):
@@ -99,49 +245,101 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = () => {
             </div>
             
             <div>
-              <div className="flex items-center justify-between">
-                <Label>Індекси інфляції</Label>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={addStateInflationIndexHandler}
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Додати індекс
-                </Button>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div>
+                  <Label>Індекси інфляції: </Label>
+                </div>
+                <div className="flex gap-2">
+                  <Dialog open={isYearSelectorOpen} onOpenChange={setIsYearSelectorOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        title="Вибрати діапазон років для заповнення"
+                      >
+                        <Calendar className="h-4 w-4 mr-1" /> Вибрати роки
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Вибір діапазону років</DialogTitle>
+                        <DialogDescription>
+                          Оберіть початковий та кінцевий рік для індексів інфляції
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="startYear">Початковий рік</Label>
+                            <select
+                              id="startYear"
+                              value={selectedStartYear}
+                              onChange={(e) => setSelectedStartYear(parseInt(e.target.value))}
+                              className="w-full mt-1 p-2 border rounded"
+                            >
+                              {yearOptions.map((year: number) => (
+                                <option key={year} value={year}>{year}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <Label htmlFor="endYear">Кінцевий рік</Label>
+                            <select
+                              id="endYear"
+                              value={selectedEndYear}
+                              onChange={(e) => setSelectedEndYear(parseInt(e.target.value))}
+                              className="w-full mt-1 p-2 border rounded"
+                            >
+                              {yearOptions.map((year: number) => (
+                                <option key={year} value={year}>{year}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="p-3 bg-blue-50 rounded text-sm">
+                          <strong>Буде додано років:</strong> {selectedEndYear - selectedStartYear + 1}
+                          <br />
+                          <strong>Діапазон:</strong> {selectedStartYear} - {selectedEndYear}
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsYearSelectorOpen(false)}
+                        >
+                          Скасувати
+                        </Button>
+                        <Button onClick={applyYearRange}>
+                          Застосувати
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addStateInflationIndexHandler}
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Додати рік
+                  </Button>
+                </div>
               </div>
               <div className="grid gap-2 mt-2">
-                {stateInflationIndexes.map((index, i) => (
-                  <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <Label className="min-w-[80px] text-sm">{`Рік ${2023 + i + 1}:`}</Label>
-                      <Input
-                        type="number"
-                        value={index}
-                        onChange={(e) => handleStateInflationChange(i, e.target.value)}
-                        placeholder="Введіть індекс"
-                        className="flex-1 sm:flex-none sm:w-24"
-                      />
-                      <span className="text-sm">%</span>
-                    </div>
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <span className="text-xs text-gray-500">
-                        (коеф.: {(1 + index / 100).toFixed(4)})
-                      </span>
-                      {stateInflationIndexes.length > 1 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeStateInflationIndexHandler(i)}
-                          className="p-1 h-auto text-red-600 hover:text-red-800"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+                {stateInflationIndexes.map((inflationValue, i) => (
+                  <InflationIndexField
+                    key={i}
+                    index={i}
+                    yearNumber={appliedStartYear + i}
+                    value={inflationValue}
+                    canRemove={stateInflationIndexes.length > 1}
+                    onChange={handleStateInflationChange}
+                    onRemove={removeStateInflationIndexHandler}
+                  />
                 ))}
-                <div className="mt-2 p-2 bg-blue-50 rounded">
-                  <strong>Сукупний індекс інфляції: {calculateCumulativeInflationIndex(stateInflationIndexes).toFixed(4)}</strong>
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded">
+                  <div className="text-sm font-semibold text-blue-900">
+                    Сукупний індекс інфляції: {cumulativeInflation.toFixed(4)}
+                  </div>
                 </div>
               </div>
             </div>
@@ -244,4 +442,5 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = () => {
   );
 };
 
-export default Block2StateRoads;
+// ✅ ОПТИМІЗАЦІЯ: React.memo для запобігання зайвим ре-рендерам
+export default React.memo(Block2StateRoads);

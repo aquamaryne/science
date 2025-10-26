@@ -5,6 +5,7 @@ import Block2MaintenanceCalculator from './components/view/block_two_page';
 import { Block3MultiPageApp }  from './components/view/block_three_page';
 import UserManual from '@/components/view/instructions';
 import HistoryComponent from './components/view/history';
+import { Toaster } from 'sonner';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
            </Routes>
         </main>
       </div>
+      <Toaster position="top-right" richColors closeButton />
     </Router>
   )
 }

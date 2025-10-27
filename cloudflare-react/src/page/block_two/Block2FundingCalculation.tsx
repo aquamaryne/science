@@ -43,12 +43,11 @@ interface RegionalRoadData {
     high: number;
     veryHigh: number;
   };
-  europeanRoadsLength: number;
+  europeanIndexLength: number; // Протяжність доріг з індексом Е
   borderCrossingLength: number;
   lightingLength: number;
   repairedLength: number;
   criticalInfraCount: number;
-  europeanIndexLength: number; // Нова колонка для доріг з індексом Е
   fundingByCategory?: { [key in 1 | 2 | 3 | 4 | 5]: number };
   totalFunding?: number;
   fundingPercentage?: number;
@@ -124,11 +123,11 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
           stateImportance: roadType === 'state', // Залежить від обраного типу доріг
           length,
           trafficIntensity: avgIntensity,
-          hasEuropeanStatus: region.europeanRoadsLength > 0,
+          hasEuropeanStatus: region.europeanIndexLength > 0,
           isBorderCrossing: region.borderCrossingLength > 0,
           hasLighting: region.lightingLength > 0,
           recentlyRepaired: region.repairedLength > 0,
-          europeanIndexLength: region.europeanIndexLength // Додаємо нове поле
+          europeanIndexLength: region.europeanIndexLength // Протяжність доріг з індексом Е
         });
       }
     });
@@ -171,17 +170,16 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
               5: Number(row[5]) || 0,
             },
             totalLength: Number(row[6]) || 0,
+            europeanIndexLength: Number(row[7]) || 0, // Протяжність доріг з індексом Е (після "Разом")
             lengthByIntensity: {
-              medium: Number(row[7]) || 0,
-              high: Number(row[8]) || 0,
-              veryHigh: Number(row[9]) || 0,
+              medium: Number(row[8]) || 0,  // 15000-20000
+              high: Number(row[9]) || 0,    // 20001-30000
+              veryHigh: Number(row[10]) || 0, // 30001 і більше
             },
-            europeanRoadsLength: Number(row[10]) || 0,
-            borderCrossingLength: Number(row[11]) || 0,
-            lightingLength: Number(row[12]) || 0,
-            repairedLength: Number(row[13]) || 0,
-            criticalInfraCount: Number(row[14]) || 0,
-            europeanIndexLength: Number(row[15]) || 0, // Нова колонка для доріг з індексом Е
+            borderCrossingLength: Number(row[11]) || 0, // МПП
+            lightingLength: Number(row[12]) || 0, // Освітлення
+            repairedLength: Number(row[13]) || 0, // Ремонт
+            criticalInfraCount: Number(row[14]) || 0, // Критична інфраструктура
           };
           
           parsedData.push(regionData);
@@ -799,7 +797,6 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                           <th className="border border-gray-400 p-1 text-center text-[10px] whitespace-nowrap min-w-[90px]">30001 і більше</th>
                           {roadType === 'state' && (
                             <>
-                              <th className="border border-gray-400 p-1 text-center text-[10px] min-w-[60px]">Євро</th>
                               <th className="border border-gray-400 p-1 text-center text-[10px] min-w-[60px]">МПП</th>
                               <th className="border border-gray-400 p-1 text-center text-[10px] min-w-[60px]">Освітл.</th>
                               <th className="border border-gray-400 p-1 text-center text-[10px] min-w-[70px]">Ремонт</th>
@@ -920,24 +917,6 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                             
                             {roadType === 'state' && (
                               <>
-                                <td className="border border-gray-300 p-1 min-w-[60px]">
-                                  {isEditing ? (
-                                    <input
-                                      type="number"
-                                      value={region.europeanRoadsLength}
-                                      onChange={(e) => {
-                                        const newData = [...regionalData];
-                                        newData[realIdx].europeanRoadsLength = parseNumberInput(e.target.value, 0);
-                                        setRegionalData(newData);
-                                      }}
-                                      onPaste={handleNativeInputPaste}
-                                      className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded min-w-[50px]"
-                                      style={{ fontSize: '11px' }}
-                                    />
-                                  ) : (
-                                    <div className="text-right whitespace-nowrap">{region.europeanRoadsLength}</div>
-                                  )}
-                                </td>
                                 <td className="border border-gray-300 p-1 min-w-[60px]">
                                   {isEditing ? (
                                     <input

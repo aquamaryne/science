@@ -136,7 +136,19 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
   };
 
   // ==================== ЗАВАНТАЖЕННЯ EXCEL ====================
-  
+  /**
+   * Структура Excel шаблону (колонки):
+   * 0: Область
+   * 1-5: Категорії I-V
+   * 6: Разом
+   * 7: Протяжність доріг з індексом Е
+   * 8-10: Інтенсивність (15000-20000, 20001-30000, 30001+)
+   * 11: МПП (міжнародні пункти пропуску)
+   * 12: Освітлення
+   * 13: Ремонт
+   * 14: Критична інфраструктура
+   */
+
   const handleTemplateUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target?.files?.[0];
     if (!file) return;

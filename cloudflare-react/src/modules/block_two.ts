@@ -332,9 +332,9 @@ export function calculateCriticalInfrastructureCoefficient(
 ): number {
   if (criticalInfrastructureCount === 0) {
     return CRITICAL_INFRASTRUCTURE_COEFFICIENTS["0"];
-  } else if (criticalInfrastructureCount >= 10) {
+  } else if (criticalInfrastructureCount > 10) {
     return CRITICAL_INFRASTRUCTURE_COEFFICIENTS[">10"];
-  } else if (criticalInfrastructureCount >= 5) {
+  } else if (criticalInfrastructureCount > 5) {
     return CRITICAL_INFRASTRUCTURE_COEFFICIENTS["5-10"];
   } else {
     return CRITICAL_INFRASTRUCTURE_COEFFICIENTS["1-5"];

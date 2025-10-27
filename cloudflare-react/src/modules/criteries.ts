@@ -1,5 +1,131 @@
 // src/modules/block_three_criteria.ts - КРИТЕРИИ БЕЗ ИНТЕРФЕЙСА
 
+// ==================== РОЗДІЛ II: РОЗПОДІЛ БЮДЖЕТНИХ КОШТІВ (МЕТОДИКА П.2.1) ====================
+
+export interface BudgetDistribution {
+  // Загальні обсяги (п. 2.1)
+  Q1_total: number; // Загальний обсяг для державних доріг
+  Q2_total: number; // Загальний обсяг для місцевих доріг
+
+  // Витрати державних доріг (формула 2.1.1)
+  Qпп: number;  // Пункти пропуску
+  Qміжн: number; // Міжнародні фінансові організації
+  QІАС: number; // Інформаційно-аналітична система
+  Qн: number;   // Науково-дослідні роботи
+  Qлік: number; // Медичні заклади (Чорнобиль)
+  Qвп: number;  // Виробничі потужності
+  Qупр: number; // Управління
+  QДПП: number; // Державно-приватне партнерство
+
+  // Витрати місцевих доріг (формула 2.1.2)
+  Qкред: number; // Погашення боргу (≤30%)
+  QІАС2: number; // ІАС місцевих
+  Qн2: number;   // НДР місцевих
+  QДПП2: number; // ДПП місцевих
+  Qком: number;  // Комунальні дороги (≤20%)
+
+  // Результати розподілу
+  Qдз: number; // Для державних доріг
+  Qмз: number; // Для місцевих доріг
+}
+
+export function calculateBudgetDistribution(
+  Q1: number,
+  Q2: number,
+  expenses: Partial<BudgetDistribution>
+): BudgetDistribution {
+  const {
+    Qпп = 0, Qміжн = 0, QІАС = 0, Qн = 0, Qлік = 0,
+    Qвп = 0, Qупр = 0, QДПП = 0,
+    Qкред = 0, QІАС2 = 0, Qн2 = 0, QДПП2 = 0, Qком = 0
+  } = expenses;
+
+  // Формула 2.1.1: Qдз = Q1 - (Qпп + Qміжн + QІАС + Qн + Qлік + Qвп + Qупр + QДПП)
+  const Qдз = Q1 - (Qпп + Qміжн + QІАС + Qн + Qлік + Qвп + Qупр + QДПП);
+
+  // Формула 2.1.2: Qмз = Q2 - Qкред - QІАС2 - Qн2 - QДПП2 - Qком
+  const Qмз = Q2 - Qкред - QІАС2 - Qн2 - QДПП2 - Qком;
+
+  return {
+    Q1_total: Q1,
+    Q2_total: Q2,
+    Qпп, Qміжн, QІАС, Qн, Qлік, Qвп, Qупр, QДПП,
+    Qкред, QІАС2, Qн2, QДПП2, Qком,
+    Qдз,
+    Qмз
+  };
+}
+
+// ==================== РОЗДІЛ III: НОРМАТИВИ УТРИМАННЯ (ДОДАТОК 3) ====================
+
+// Коефіцієнти диференціювання вартості робіт (Додаток 3)
+export const DIFFERENTIATION_COEFFICIENTS = {
+  state: { // Державні дороги (K^д_j)
+    1: 1.80,
+    2: 1.00,
+    3: 0.89,
+    4: 0.61,
+    5: 0.39
+  },
+  local: { // Місцеві дороги (K^м_j)
+    1: 1.71,
+    2: 1.00,
+    3: 0.85,
+    4: 0.64,
+    5: 0.40
+  }
+};
+
+// Базові нормативи (п. 3.2, 3.3)
+export const BASE_MAINTENANCE_STANDARDS = {
+  state: 604.761,  // H^д - для II категорії державних доріг (тис.грн/км, ціни 2023)
+  local: 360.544   // H^м - для II категорії місцевих доріг (тис.грн/км, ціни 2023)
+};
+
+export interface MaintenanceStandard {
+  category: 1 | 2 | 3 | 4 | 5;
+  significance: 'state' | 'local';
+  baseRate: number;
+  adjustedRate: number; // З урахуванням інфляції
+  differentiationCoeff: number;
+}
+
+// Формула 3.2: H^д_j = H^д × K^д_j × K_інф
+export function calculateStateMaintenanceStandard(
+  category: 1 | 2 | 3 | 4 | 5,
+  inflationIndex: number = 1.0
+): MaintenanceStandard {
+  const baseRate = BASE_MAINTENANCE_STANDARDS.state;
+  const differentiationCoeff = DIFFERENTIATION_COEFFICIENTS.state[category];
+  const adjustedRate = baseRate * differentiationCoeff * inflationIndex;
+
+  return {
+    category,
+    significance: 'state',
+    baseRate,
+    adjustedRate,
+    differentiationCoeff
+  };
+}
+
+// Формула 3.3: H^м_j = H^м × K^м_j × K_інф
+export function calculateLocalMaintenanceStandard(
+  category: 1 | 2 | 3 | 4 | 5,
+  inflationIndex: number = 1.0
+): MaintenanceStandard {
+  const baseRate = BASE_MAINTENANCE_STANDARDS.local;
+  const differentiationCoeff = DIFFERENTIATION_COEFFICIENTS.local[category];
+  const adjustedRate = baseRate * differentiationCoeff * inflationIndex;
+
+  return {
+    category,
+    significance: 'local',
+    baseRate,
+    adjustedRate,
+    differentiationCoeff
+  };
+}
+
 // ==================== КРИТЕРИЙ 1: ПРОТЯЖНОСТЬ В КИЛОМЕТРАХ ====================
 
 export interface LengthAnalysis {
@@ -509,6 +635,11 @@ export interface CostFactors {
     lighting: number;
     borderCrossing: number;
     criticalInfrastructure: number;
+    europeanNetwork: number; // Коефіцієнт для доріг європейської мережі (Ce = 1.5)
+    highIntensity: number; // Коефіцієнт для інтенсивності >15000 авт/добу
+    mountainTerrain: number; // Коефіцієнт гірської місцевості (Кг)
+    operatingConditions: number; // Коефіцієнт умов експлуатації (Куе)
+    recentRepair: number; // Коефіцієнт для доріг після ремонту (Срем = 0.5)
   };
 }
 
@@ -525,18 +656,24 @@ export const DEFAULT_COST_FACTORS: CostFactors = {
     'Харківська': 1.05,
     'Дніпропетровська': 1.08,
     'Одеська': 1.12,
-    'Закарпатська': 1.15,
-    'Івано-Франківська': 1.18,
-    'Чернівецька': 1.12,
+    'Закарпатська': 1.11, // Додатково 11% за гірську місцевість (Додаток 5)
+    'Івано-Франківська': 1.13, // Додатково 13% за гірську місцевість
+    'Чернівецька': 1.04, // Додатково 4% за гірську місцевість
+    'АР Крим': 1.15, // Додатково 15% за гірську місцевість
     'Житомирська': 1.08,
     'Вінницька': 1.06
   },
   special: {
-    international: 1.15,
-    defense: 1.10,
-    lighting: 1.05,
-    borderCrossing: 1.08,
-    criticalInfrastructure: 1.02
+    international: 1.15, // Коефіцієнт для міжнародних доріг (Смпп = 1.5)
+    defense: 1.10, // Коефіцієнт для доріг оборонного значення
+    lighting: 2.0, // Коефіцієнт для доріг з освітленням (Cосв = 2.0, Додаток 7)
+    borderCrossing: 1.5, // Коефіцієнт для доріг біля пунктів пропуску (Смпп = 1.5)
+    criticalInfrastructure: 1.02, // Коефіцієнт для об'єктів критичної інфраструктури (Додаток 8)
+    europeanNetwork: 1.5, // Коефіцієнт для доріг європейської мережі (Ce = 1.5)
+    highIntensity: 2.3, // Коефіцієнт для інтенсивності 15000-20000 авт/добу (Сінт, Додаток 7)
+    mountainTerrain: 1.15, // Максимальний коефіцієнт гірської місцевості (Кг, Додаток 5)
+    operatingConditions: 1.15, // Коефіцієнт умов експлуатації (Куе, Додаток 6)
+    recentRepair: 0.5 // Коефіцієнт для доріг після ремонту (Срем = 0.5, зменшення витрат)
   }
 };
 
@@ -554,25 +691,60 @@ export function calculateEstimatedCost(
   const baseRate = costStandards[workType][section.category];
   let totalCost = baseRate * section.length;
 
-  // Применяем корректирующие коэффициенты
-  if (section.isInternationalRoad) {
-    totalCost *= costFactors.special.international;
+  // Базовий коефіцієнт обслуговування доріг державного значення (Кд = 1.16)
+  if (section.significance === 'state') {
+    totalCost *= 1.16;
   }
-  
+
+  // Регіональний коефіцієнт (включає гірську місцевість)
+  if (section.region && costFactors.regional[section.region]) {
+    totalCost *= costFactors.regional[section.region];
+  }
+
+  // Коефіцієнт умов експлуатації (залежить від області, Додаток 6)
+  const operatingConditionsRegions = ['АР Крим', 'Київська', 'Івано-Франківська', 'Закарпатська', 'Львівська', 'Чернівецька'];
+  if (section.region && operatingConditionsRegions.includes(section.region)) {
+    totalCost *= costFactors.special.operatingConditions;
+  }
+
+  // Коефіцієнт для високої інтенсивності руху (>15000 авт/добу, Додаток 7)
+  if (section.trafficIntensity > 15000 && section.trafficIntensity <= 20000) {
+    totalCost *= costFactors.special.highIntensity;
+  } else if (section.trafficIntensity > 20000 && section.trafficIntensity <= 30000) {
+    totalCost *= 3.5; // Сінт для 20001-30000
+  } else if (section.trafficIntensity > 30000) {
+    totalCost *= 3.9; // Сінт для >30000
+  }
+
+  // Коефіцієнт для доріг європейської мережі (Ce = 1.5)
+  if (section.isEuropeanNetwork) {
+    totalCost *= costFactors.special.europeanNetwork;
+  }
+
+  // Коефіцієнт для міжнародних пунктів пропуску (Смпп = 1.5)
+  if (section.isInternationalRoad) {
+    totalCost *= costFactors.special.borderCrossing;
+  }
+
+  // Коефіцієнт для доріг оборонного значення
   if (section.isDefenseRoad) {
     totalCost *= costFactors.special.defense;
   }
-  
+
+  // Коефіцієнт для доріг з освітленням (Cосв = 2.0)
   if (section.hasLighting) {
     totalCost *= costFactors.special.lighting;
   }
-  
+
+  // Коефіцієнт для об'єктів критичної інфраструктури (по кількості об'єктів, Додаток 8)
   if (section.criticalInfrastructureCount && section.criticalInfrastructureCount > 0) {
-    totalCost *= Math.pow(costFactors.special.criticalInfrastructure, section.criticalInfrastructureCount);
-  }
-  
-  if (section.region && costFactors.regional[section.region]) {
-    totalCost *= costFactors.regional[section.region];
+    if (section.criticalInfrastructureCount <= 5) {
+      totalCost *= 1.01;
+    } else if (section.criticalInfrastructureCount <= 10) {
+      totalCost *= 1.03;
+    } else {
+      totalCost *= 1.05;
+    }
   }
 
   return Number(totalCost.toFixed(2));
@@ -1162,6 +1334,89 @@ function calculateFinancialIndicators(
   };
 }
 
+// ==================== ДОДАТОК 11: ІНДЕКС ЕКСПЛУАТАЦІЙНОГО СТАНУ (МІСЦЕВІ ДОРОГИ) ====================
+
+export interface RoadConditionIndex {
+  index: number; // J від 1 до 10
+  assessment: string;
+  needsRepair: 'none' | 'current' | 'capital';
+  description: string;
+}
+
+// Таблиця 11.1 - Шкала оцінки експлуатаційного стану
+export const ROAD_CONDITION_SCALE: Record<number, string> = {
+  10: 'Проїзна частина рівна, без руйнувань і деформацій',
+  9: 'Проїзна частина рівна, окремі тріщини, 90% інженерного устаткування',
+  8: 'Проїзна частина рівна, тріщини усунені ямковим ремонтом, 75% устаткування',
+  7: 'Рівність задовільна, поверхня зношена, 60% устаткування',
+  6: 'Колійність до 15мм, відносна площа руйнувань до 1%, 50% устаткування',
+  5: 'Поперечний профіль спотворений в окремих місцях, руйнування до 2%',
+  4: 'Профіль спотворений в багатьох місцях, покриву нерівне, руйнування 3%',
+  3: 'Профіль спотворений на значній протяжності, руйнування до 4%',
+  2: 'Профіль спотворений на великій протяжності, вибоїни, колійність',
+  1: 'Профіль повністю спотворений, аварійний стан, небезпека для руху'
+};
+
+// Таблиця 11.2 - Необхідність ремонту залежно від індексу J
+export function determineRepairByIndex(index: number): RoadConditionIndex {
+  let assessment: string;
+  let needsRepair: 'none' | 'current' | 'capital';
+
+  if (index >= 8) {
+    assessment = 'Відмінний/Хороший';
+    needsRepair = 'none';
+  } else if (index >= 5 && index <= 7) {
+    assessment = 'Задовільний';
+    needsRepair = 'current';
+  } else { // index <= 4
+    assessment = 'Незадовільний/Аварійний';
+    needsRepair = 'capital';
+  }
+
+  return {
+    index,
+    assessment,
+    needsRepair,
+    description: ROAD_CONDITION_SCALE[index] || 'Невідома оцінка'
+  };
+}
+
+// Функція для оцінки індексу J експертним методом (п. 4.4.3.1)
+export function assessRoadConditionIndex(observations: {
+  surfaceCondition: number; // 1-10
+  transverseProfile: number; // 1-10
+  damageArea: number; // % площі руйнувань
+  rutting: number; // мм
+  engineeringEquipment: number; // % відповідності
+}): number {
+  // Спрощена експертна оцінка з урахуванням всіх факторів
+  let score = 0;
+
+  // Стан покриття (40% ваги)
+  score += observations.surfaceCondition * 0.4;
+
+  // Поперечний профіль (25% ваги)
+  score += observations.transverseProfile * 0.25;
+
+  // Руйнування (20% ваги)
+  const damageScore = observations.damageArea <= 1 ? 10 :
+                      observations.damageArea <= 2 ? 7 :
+                      observations.damageArea <= 3 ? 5 :
+                      observations.damageArea <= 4 ? 3 : 1;
+  score += damageScore * 0.2;
+
+  // Колійність (10% ваги)
+  const ruttingScore = observations.rutting <= 15 ? 10 :
+                       observations.rutting <= 25 ? 7 :
+                       observations.rutting <= 35 ? 4 : 1;
+  score += ruttingScore * 0.1;
+
+  // Інженерне устаткування (5% ваги)
+  score += (observations.engineeringEquipment / 10) * 0.05;
+
+  return Math.round(Math.max(1, Math.min(10, score)));
+}
+
 // ==================== АГРЕГИРОВАННЫЙ АНАЛИЗ ====================
 
 export interface AggregatedSocioEconomicAnalysis {
@@ -1234,48 +1489,62 @@ export function calculateAggregatedSocioEconomicAnalysis(
 // ==================== ЭКСПОРТ ВСЕХ ФУНКЦИЙ ====================
 
 export default {
-  // Критерий 1: Протяженность
+  // Розділ II: Розподіл бюджету
+  calculateBudgetDistribution,
+
+  // Розділ III: Нормативи утримання
+  calculateStateMaintenanceStandard,
+  calculateLocalMaintenanceStandard,
+  BASE_MAINTENANCE_STANDARDS,
+  DIFFERENTIATION_COEFFICIENTS,
+
+  // Критерій 1: Протяжність
   analyzeLengthDistribution,
-  
-  // Критерий 2: Категории дорог
+
+  // Критерій 2: Категорії доріг
   analyzeCategoryDistribution,
   getCategoryRequirements,
   suggestCategoryByIntensity,
-  
-  // Критерий 3: Индивидуальные данные
+
+  // Критерій 3: Індивідуальні дані
   createEmptyRoadSection,
   validateRoadSection,
-  
-  // Критерий 4: Технические коэффициенты
+
+  // Критерій 4: Технічні коефіцієнти
   calculateTechnicalCoefficients,
-  
-  // Критерий 5: Категории дорог
+
+  // Критерій 5: Категорії доріг
   ROAD_CATEGORY_DEFINITIONS,
-  
-  // Критерий 6: Соответствие нормативам
+
+  // Критерій 6: Відповідність нормативам
   calculateComplianceStatus,
   getComplianceColor,
   getComplianceIcon,
-  
-  // Критерий 7: Виды ремонта
+
+  // Критерій 7: Види робіт
   determineRepairType,
-  
-  // Критерий 8: Стоимость
+
+  // Критерій 8: Вартість
   calculateEstimatedCost,
   analyzeCosts,
   DEFAULT_COST_STANDARDS,
   DEFAULT_COST_FACTORS,
-  
-  // Критерий 9: Изменение данных
+
+  // Критерій 9: Зміна даних
   createChangeLog,
   validateDataChange,
-  
-  // Критерий 10: Excel
+
+  // Критерій 10: Excel
   parseExcelRow,
   generateExcelHeaders,
-  
-  // Критерий 11: Социально-экономический эффект
+
+  // Критерій 11: Соціально-економічний ефект
   calculateSocioEconomicEffect,
   calculateAggregatedSocioEconomicAnalysis,
-  DEFAULT_SOCIO_ECONOMIC_PARAMS
+  DEFAULT_SOCIO_ECONOMIC_PARAMS,
+
+  // Додаток 11: Індекс експлуатаційного стану (місцеві дороги)
+  determineRepairByIndex,
+  assessRoadConditionIndex,
+  ROAD_CONDITION_SCALE
 };

@@ -129,7 +129,6 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
           isBorderCrossing: region.borderCrossingLength > 0,
           hasLighting: region.lightingLength > 0,
           recentlyRepaired: region.repairedLength > 0,
-          europeanIndexLength: region.europeanIndexLength // Протяжність доріг з індексом Е
         });
       }
     });

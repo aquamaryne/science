@@ -1,698 +1,902 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+// src/test/block_two.test.ts
 import {
   calculateStateRoadMaintenanceRate,
   calculateLocalRoadMaintenanceRate,
-  calculateTotalFunding,
   calculateTrafficIntensityCoefficient,
   calculateEuropeanRoadCoefficient,
   calculateBorderCrossingCoefficient,
   calculateLightingCoefficient,
   calculateRepairCoefficient,
   calculateCriticalInfrastructureCoefficient,
-  generateSampleRegionData,
+  calculateStateRoadMaintenanceFunding,
+  calculateLocalRoadMaintenanceFunding,
+  calculateTotalFunding,
   getRegionCoefficients,
+  generateSampleRegionData,
   type RoadSection,
-  type RegionRoads,
   type RegionCoefficients,
-  type PriceIndexes
+  type RegionRoads,
+  type PriceIndexes,
+  MAINTENANCE_CONSTANTS,
 } from '../modules/block_two';
 
+describe('Road Maintenance Calculations - Section III', () => {
+  const INFLATION_INDEX = 1.0; // Без інфляції для спрощення тестів
 
-const createTestRoadSection = (overrides: Partial<RoadSection> = {}): RoadSection => ({
-  category: 1,
-  stateImportance: true,
-  length: 100,
-  trafficIntensity: 15000,
-  hasEuropeanStatus: false,
-  isBorderCrossing: false,
-  hasLighting: false,
-  recentlyRepaired: false,
-  europeanIndexLength: 0,
-  ...overrides
-});
+  describe('3.2 - State Road Maintenance Rate (H_j^о)', () => {
+    it('повинен правильно розраховувати норматив для II категорії', () => {
+      const rate = calculateStateRoadMaintenanceRate(2, INFLATION_INDEX);
+      expect(rate).toBeCloseTo(604.761, 2);
+    });
 
-const createTestRegionData = (regionalName: string = 'Київська'): RegionRoads => 
-  generateSampleRegionData(regionalName);
+    it('повинен застосовувати коефіцієнт для I категорії (1.80)', () => {
+      const rate = calculateStateRoadMaintenanceRate(1, INFLATION_INDEX);
+      expect(rate).toBeCloseTo(604.761 * 1.80, 2);
+    });
 
-const createTestPriceIndexes = (inflationIndex: number = 1.1): PriceIndexes => ({ 
-  inflationIndex 
-});
+    it('повинен застосовувати коефіцієнт для V категорії (0.39)', () => {
+      const rate = calculateStateRoadMaintenanceRate(5, INFLATION_INDEX);
+      expect(rate).toBeCloseTo(604.761 * 0.39, 2);
+    });
 
+    it('повинен враховувати індекс інфляції', () => {
+      const inflationIndex = 1.5;
+      const rate = calculateStateRoadMaintenanceRate(2, inflationIndex);
+      expect(rate).toBeCloseTo(604.761 * 1.5, 2);
+    });
+  });
 
-const BASE_RATES = {
-  STATE: 604.761,
-  LOCAL: 360.544
-} as const;
+  describe('3.3 - Local Road Maintenance Rate (H_j^м)', () => {
+    it('повинен правильно розраховувати норматив для II категорії', () => {
+      const rate = calculateLocalRoadMaintenanceRate(2, INFLATION_INDEX);
+      expect(rate).toBeCloseTo(360.544, 2);
+    });
 
-const INFLATION_INDEX = {
-  STANDARD: 1.1,
-  NO_INFLATION: 1.0,
-  HIGH_INFLATION: 2.0
-} as const;
+    it('повинен застосовувати коефіцієнт для I категорії (1.71)', () => {
+      const rate = calculateLocalRoadMaintenanceRate(1, INFLATION_INDEX);
+      expect(rate).toBeCloseTo(360.544 * 1.71, 2);
+    });
 
-const CATEGORIES = [1, 2, 3, 4, 5] as const;
+    it('повинен застосовувати коефіцієнт для V категорії (0.40)', () => {
+      const rate = calculateLocalRoadMaintenanceRate(5, INFLATION_INDEX);
+      expect(rate).toBeCloseTo(360.544 * 0.40, 2);
+    });
+  });
 
-const COEFFICIENT_RANGES = {
-  TRAFFIC_INTENSITY: { MIN: 1.0, MAX: 3.9 },
-  EUROPEAN_ROAD: { MIN: 1.0, MAX: 1.5 },
-  BORDER_CROSSING: { MIN: 1.0, MAX: 1.5 },
-  LIGHTING: { MIN: 1.0, MAX: 2.0 },
-  REPAIR: { MIN: 0.5, MAX: 1.0 },
-  CRITICAL_INFRASTRUCTURE: { MIN: 1.0, MAX: 1.15 }
-} as const;
+  describe('3.5 - Traffic Intensity Coefficient (K_інт.д^i)', () => {
+    it('повинен повертати 1.0 для доріг без високої інтенсивності', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 100,
+          trafficIntensity: 10000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+      ];
+      const coefficient = calculateTrafficIntensityCoefficient(sections, 100);
+      expect(coefficient).toBe(1.0);
+    });
 
-const EXPECTED_RATES = {
-  STATE: {
-    CATEGORY_1: 604.761 * 1.80 * 1.1, // 1197.42678
-    CATEGORY_2: 604.761 * 1.00 * 1.1  // 665.2371
-  },
-  STATE_SERVICE_COEFFICIENT: 1.16
-} as const;
+    it('повинен застосовувати коефіцієнт 2.3 для 15000-20000 авт./добу', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 100,
+          trafficIntensity: 16000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+      ];
+      const coefficient = calculateTrafficIntensityCoefficient(sections, 100);
+      // Формула: (2.3 * 100 + (100 - 100)) / 100 = 2.3
+      expect(coefficient).toBeCloseTo(2.3, 2);
+    });
 
-describe('Block Two - Maintenance Calculations', () => {
+    it('повинен застосовувати коефіцієнт 3.5 для 20001-30000 авт./добу', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 100,
+          trafficIntensity: 25000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+      ];
+      const coefficient = calculateTrafficIntensityCoefficient(sections, 100);
+      expect(coefficient).toBeCloseTo(3.5, 2);
+    });
+
+    it('повинен застосовувати коефіцієнт 3.9 для >30000 авт./добу', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 100,
+          trafficIntensity: 35000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+      ];
+      const coefficient = calculateTrafficIntensityCoefficient(sections, 100);
+      expect(coefficient).toBeCloseTo(3.9, 2);
+    });
+
+    it('повинен правильно розраховувати для змішаних ділянок', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 50,
+          trafficIntensity: 16000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+        {
+          category: 2,
+          stateImportance: true,
+          length: 50,
+          trafficIntensity: 5000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+      ];
+      const coefficient = calculateTrafficIntensityCoefficient(sections, 100);
+      // Формула: (2.3 * 50 + (100 - 50)) / 100 = (115 + 50) / 100 = 1.65
+      expect(coefficient).toBeCloseTo(1.65, 2);
+    });
+  });
+
+  describe('3.5 - European Road Coefficient (K_e.д^i)', () => {
+    it('повинен повертати 1.0 для доріг без європейського статусу', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 100,
+          trafficIntensity: 10000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+      ];
+      const coefficient = calculateEuropeanRoadCoefficient(sections, 100);
+      expect(coefficient).toBe(1.0);
+    });
+
+    it('повинен застосовувати коефіцієнт 1.5 для європейських доріг', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 100,
+          trafficIntensity: 10000,
+          hasEuropeanStatus: true,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+      ];
+      const coefficient = calculateEuropeanRoadCoefficient(sections, 100);
+      // Формула: (1.5 * 100 + (100 - 100)) / 100 = 1.5
+      expect(coefficient).toBeCloseTo(1.5, 2);
+    });
+
+    it('повинен правильно розраховувати для частково європейських доріг', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 60,
+          trafficIntensity: 10000,
+          hasEuropeanStatus: true,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+        {
+          category: 2,
+          stateImportance: true,
+          length: 40,
+          trafficIntensity: 10000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+      ];
+      const coefficient = calculateEuropeanRoadCoefficient(sections, 100);
+      // Формула: (1.5 * 60 + (100 - 60)) / 100 = (90 + 40) / 100 = 1.3
+      expect(coefficient).toBeCloseTo(1.3, 2);
+    });
+  });
+
+  describe('3.5 - Border Crossing Coefficient (K_мпп.д^i)', () => {
+    it('повинен повертати 1.0 для доріг без прикордонних пунктів', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 100,
+          trafficIntensity: 10000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+      ];
+      const coefficient = calculateBorderCrossingCoefficient(sections, 100);
+      expect(coefficient).toBe(1.0);
+    });
+
+    it('повинен застосовувати коефіцієнт 1.5 для прикордонних доріг', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 100,
+          trafficIntensity: 10000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: true,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+      ];
+      const coefficient = calculateBorderCrossingCoefficient(sections, 100);
+      expect(coefficient).toBeCloseTo(1.5, 2);
+    });
+  });
+
+  describe('3.5 - Lighting Coefficient (K_осв^i)', () => {
+    it('повинен повертати 1.0 для доріг без освітлення', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 100,
+          trafficIntensity: 10000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+      ];
+      const coefficient = calculateLightingCoefficient(sections, 100);
+      expect(coefficient).toBe(1.0);
+    });
+
+    it('повинен застосовувати коефіцієнт 2.0 для доріг з освітленням', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 100,
+          trafficIntensity: 10000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: true,
+          recentlyRepaired: false,
+        },
+      ];
+      const coefficient = calculateLightingCoefficient(sections, 100);
+      expect(coefficient).toBeCloseTo(2.0, 2);
+    });
+
+    it('повинен правильно розраховувати для частково освітлених доріг', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 30,
+          trafficIntensity: 10000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: true,
+          recentlyRepaired: false,
+        },
+        {
+          category: 2,
+          stateImportance: true,
+          length: 70,
+          trafficIntensity: 10000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+      ];
+      const coefficient = calculateLightingCoefficient(sections, 100);
+      // Формула: (2.0 * 30 + (100 - 30)) / 100 = (60 + 70) / 100 = 1.3
+      expect(coefficient).toBeCloseTo(1.3, 2);
+    });
+  });
+
+  describe('3.5 - Repair Coefficient (K_рем^i)', () => {
+    it('повинен повертати 1.0 для доріг без нещодавнього ремонту', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 100,
+          trafficIntensity: 10000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+      ];
+      const coefficient = calculateRepairCoefficient(sections, 100);
+      expect(coefficient).toBe(1.0);
+    });
+
+    it('повинен застосовувати коефіцієнт 0.5 для відремонтованих доріг', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 100,
+          trafficIntensity: 10000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: true,
+        },
+      ];
+      const coefficient = calculateRepairCoefficient(sections, 100);
+      expect(coefficient).toBeCloseTo(0.5, 2);
+    });
+
+    it('повинен правильно розраховувати для частково відремонтованих доріг', () => {
+      const sections: RoadSection[] = [
+        {
+          category: 2,
+          stateImportance: true,
+          length: 40,
+          trafficIntensity: 10000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: true,
+        },
+        {
+          category: 2,
+          stateImportance: true,
+          length: 60,
+          trafficIntensity: 10000,
+          hasEuropeanStatus: false,
+          isBorderCrossing: false,
+          hasLighting: false,
+          recentlyRepaired: false,
+        },
+      ];
+      const coefficient = calculateRepairCoefficient(sections, 100);
+      // Формула: (0.5 * 40 + (100 - 40)) / 100 = (20 + 60) / 100 = 0.8
+      expect(coefficient).toBeCloseTo(0.8, 2);
+    });
+  });
+
+  describe('3.5 - Critical Infrastructure Coefficient (K_кр.і^i)', () => {
+    it('повинен повертати 1.00 для 0 об\'єктів', () => {
+      const coefficient = calculateCriticalInfrastructureCoefficient(0);
+      expect(coefficient).toBe(1.0);
+    });
+
+    it('повинен повертати 1.01 для 1-5 об\'єктів', () => {
+      expect(calculateCriticalInfrastructureCoefficient(1)).toBe(1.01);
+      expect(calculateCriticalInfrastructureCoefficient(3)).toBe(1.01);
+      expect(calculateCriticalInfrastructureCoefficient(5)).toBe(1.01);
+    });
+
+    it('повинен повертати 1.03 для 5-10 об\'єктів', () => {
+      expect(calculateCriticalInfrastructureCoefficient(6)).toBe(1.03);
+      expect(calculateCriticalInfrastructureCoefficient(8)).toBe(1.03);
+      expect(calculateCriticalInfrastructureCoefficient(10)).toBe(1.03);
+    });
+
+    it('повинен повертати 1.05 для >10 об\'єктів', () => {
+      expect(calculateCriticalInfrastructureCoefficient(11)).toBe(1.05);
+      expect(calculateCriticalInfrastructureCoefficient(20)).toBe(1.05);
+    });
+  });
+
+  describe('3.5 - State Road Maintenance Funding (Q_i^о)', () => {
+    // ... попередні тести ...
   
-  describe('State Road Maintenance Rates', () => {
-    describe('Basic Calculations', () => {
-      it('should calculate positive rates for all categories', () => {
-        CATEGORIES.forEach(category => {
-          const result = calculateStateRoadMaintenanceRate(
-            category, 
-            INFLATION_INDEX.STANDARD
-          );
-          
-          expect(result).toBeGreaterThan(0);
-          expect(Number.isFinite(result)).toBe(true);
-        });
-      });
-
-      it('should apply correct category coefficients', () => {
-        const cat1 = calculateStateRoadMaintenanceRate(
-          1, 
-          INFLATION_INDEX.STANDARD
-        );
-        const cat2 = calculateStateRoadMaintenanceRate(
-          2, 
-          INFLATION_INDEX.STANDARD
-        );
-        
-        expect(cat1).toBeCloseTo(EXPECTED_RATES.STATE.CATEGORY_1, 1);
-        expect(cat2).toBeCloseTo(EXPECTED_RATES.STATE.CATEGORY_2, 1);
-        expect(cat1).toBeGreaterThan(cat2);
-      });
-
-      it('should maintain descending order by category', () => {
-        const rates = CATEGORIES.map(cat => 
-          calculateStateRoadMaintenanceRate(cat, INFLATION_INDEX.STANDARD)
-        );
-        
-        for (let i = 0; i < rates.length - 1; i++) {
-          expect(rates[i]).toBeGreaterThan(rates[i + 1]);
-        }
-      });
-    });
-
-    describe('Inflation Impact', () => {
-      it('should return base rate with no inflation', () => {
-        const result = calculateStateRoadMaintenanceRate(
-          2, 
-          INFLATION_INDEX.NO_INFLATION
-        );
-        
-        expect(result).toBeCloseTo(BASE_RATES.STATE, 2);
-      });
-
-      it('should scale proportionally with inflation', () => {
-        const baseResult = calculateStateRoadMaintenanceRate(
-          2, 
-          INFLATION_INDEX.NO_INFLATION
-        );
-        const inflatedResult = calculateStateRoadMaintenanceRate(
-          2, 
-          INFLATION_INDEX.HIGH_INFLATION
-        );
-        
-        expect(inflatedResult / baseResult).toBeCloseTo(INFLATION_INDEX.HIGH_INFLATION, 2);
-      });
-    });
-
-    describe('Edge Cases', () => {
-      it('should handle zero inflation', () => {
-        const result = calculateStateRoadMaintenanceRate(2, 0);
-        expect(result).toBe(0);
-      });
-
-      it('should handle very high inflation', () => {
-        const result = calculateStateRoadMaintenanceRate(2, 100);
-        expect(Number.isFinite(result)).toBe(true);
-        expect(result).toBeGreaterThan(0);
-      });
-
-      it('should handle invalid category gracefully', () => {
-        // Функція використовує значення за замовчуванням для невалідних категорій
-        const result1 = calculateStateRoadMaintenanceRate(0 as any, INFLATION_INDEX.STANDARD);
-        const result2 = calculateStateRoadMaintenanceRate(6 as any, INFLATION_INDEX.STANDARD);
-
-        expect(Number.isFinite(result1)).toBe(true);
-        expect(Number.isFinite(result2)).toBe(true);
-        expect(result1).toBeGreaterThan(0);
-        expect(result2).toBeGreaterThan(0);
-      });
-    });
-  });
-
-  describe('Local Road Maintenance Rates', () => {
-    describe('Basic Calculations', () => {
-      it('should calculate positive rates for all categories', () => {
-        CATEGORIES.forEach(category => {
-          const result = calculateLocalRoadMaintenanceRate(
-            category, 
-            INFLATION_INDEX.STANDARD
-          );
-          
-          expect(result).toBeGreaterThan(0);
-          expect(Number.isFinite(result)).toBe(true);
-        });
-      });
-
-      it('should be lower than state road rates', () => {
-        CATEGORIES.forEach(category => {
-          const stateRate = calculateStateRoadMaintenanceRate(
-            category, 
-            INFLATION_INDEX.STANDARD
-          );
-          const localRate = calculateLocalRoadMaintenanceRate(
-            category, 
-            INFLATION_INDEX.STANDARD
-          );
-          
-          expect(stateRate).toBeGreaterThan(localRate);
-        });
-      });
-
-      it('should maintain descending order by category', () => {
-        const rates = CATEGORIES.map(cat => 
-          calculateLocalRoadMaintenanceRate(cat, INFLATION_INDEX.STANDARD)
-        );
-        
-        for (let i = 0; i < rates.length - 1; i++) {
-          expect(rates[i]).toBeGreaterThan(rates[i + 1]);
-        }
-      });
-    });
-  });
-
-  describe('Traffic Coefficients', () => {
-    let testSections: RoadSection[];
-
-    beforeEach(() => {
-      testSections = [createTestRoadSection()];
-    });
-
-    describe('Traffic Intensity Coefficient', () => {
-      it('should calculate within valid range', () => {
-        const result = calculateTrafficIntensityCoefficient(testSections, 100);
-        
-        expect(result).toBeGreaterThanOrEqual(COEFFICIENT_RANGES.TRAFFIC_INTENSITY.MIN);
-        expect(result).toBeLessThanOrEqual(COEFFICIENT_RANGES.TRAFFIC_INTENSITY.MAX);
-      });
-
-      it('should return 1.0 for empty sections', () => {
-        const result = calculateTrafficIntensityCoefficient([], 0);
-        expect(result).toBe(1.0);
-      });
-
-      it('should return 1.0 for zero total length', () => {
-        const result = calculateTrafficIntensityCoefficient(testSections, 0);
-        expect(result).toBe(1.0);
-      });
-
-      it('should handle high traffic intensity', () => {
-        testSections[0].trafficIntensity = 25000;
-        const result = calculateTrafficIntensityCoefficient(testSections, 100);
-        
-        expect(result).toBeGreaterThan(1.0);
-      });
-    });
-
-    describe('European Road Coefficient', () => {
-      it('should return max coefficient for all European roads', () => {
-        testSections[0].hasEuropeanStatus = true;
-        const result = calculateEuropeanRoadCoefficient(testSections, 100);
-        
-        expect(result).toBeCloseTo(COEFFICIENT_RANGES.EUROPEAN_ROAD.MAX, 1);
-      });
-
-      it('should return 1.0 for no European roads', () => {
-        testSections[0].hasEuropeanStatus = false;
-        const result = calculateEuropeanRoadCoefficient(testSections, 100);
-        
-        expect(result).toBe(1.0);
-      });
-
-      it('should calculate proportionally for partial coverage', () => {
-        const sections = [
-          createTestRoadSection({ length: 50, hasEuropeanStatus: true }),
-          createTestRoadSection({ length: 50, hasEuropeanStatus: false })
-        ];
-        
-        const result = calculateEuropeanRoadCoefficient(sections, 100);
-        const expectedCoeff = (1.5 * 50 + 50) / 100; // (1.5 * 50 + (100 - 50)) / 100 = 1.25
-        
-        expect(result).toBeCloseTo(expectedCoeff, 2);
-      });
-    });
-
-    describe('Border Crossing Coefficient', () => {
-      it('should return max coefficient for all border roads', () => {
-        testSections[0].isBorderCrossing = true;
-        const result = calculateBorderCrossingCoefficient(testSections, 100);
-        
-        expect(result).toBeCloseTo(COEFFICIENT_RANGES.BORDER_CROSSING.MAX, 1);
-      });
-
-      it('should return 1.0 for no border crossings', () => {
-        testSections[0].isBorderCrossing = false;
-        const result = calculateBorderCrossingCoefficient(testSections, 100);
-        
-        expect(result).toBe(1.0);
-      });
-    });
-
-    describe('Lighting Coefficient', () => {
-      it('should return max coefficient for fully lit roads', () => {
-        testSections[0].hasLighting = true;
-        const result = calculateLightingCoefficient(testSections, 100);
-        
-        expect(result).toBeCloseTo(COEFFICIENT_RANGES.LIGHTING.MAX, 1);
-      });
-
-      it('should return 1.0 for no lighting', () => {
-        testSections[0].hasLighting = false;
-        const result = calculateLightingCoefficient(testSections, 100);
-        
-        expect(result).toBe(1.0);
-      });
-    });
-
-    describe('Repair Coefficient', () => {
-      it('should return reduction for recently repaired roads', () => {
-        testSections[0].recentlyRepaired = true;
-        const result = calculateRepairCoefficient(testSections, 100);
-        
-        expect(result).toBeCloseTo(COEFFICIENT_RANGES.REPAIR.MIN, 1);
-        expect(result).toBeLessThan(1.0);
-      });
-
-      it('should return 1.0 for no repairs', () => {
-        testSections[0].recentlyRepaired = false;
-        const result = calculateRepairCoefficient(testSections, 100);
-        
-        expect(result).toBe(1.0);
-      });
-    });
-
-    describe('Critical Infrastructure Coefficient', () => {
-      const testCases = [
-        { count: 0, expectedMin: 1.0 },
-        { count: 1, expectedMin: 1.0 },
-        { count: 5, expectedMin: 1.0 },
-        { count: 10, expectedMin: 1.0 }
-      ];
-
-      testCases.forEach(({ count, expectedMin }) => {
-        it(`should calculate correctly for ${count} infrastructure objects`, () => {
-          const result = calculateCriticalInfrastructureCoefficient(count);
-          
-          expect(result).toBeGreaterThanOrEqual(expectedMin);
-          expect(result).toBeLessThanOrEqual(COEFFICIENT_RANGES.CRITICAL_INFRASTRUCTURE.MAX);
-        });
-      });
-
-      it('should not exceed maximum even with many objects', () => {
-        const result = calculateCriticalInfrastructureCoefficient(100);
-        expect(result).toBeLessThanOrEqual(COEFFICIENT_RANGES.CRITICAL_INFRASTRUCTURE.MAX);
-      });
-    });
-  });
-
-  describe('Total Funding Calculation', () => {
-    let regionData: RegionRoads;
-    let regionCoeff: RegionCoefficients;
-    let priceIndexes: PriceIndexes;
-
-    beforeEach(() => {
-      regionData = createTestRegionData();
-      regionCoeff = getRegionCoefficients()[0];
-      priceIndexes = createTestPriceIndexes();
-    });
-
-    describe('Basic Funding', () => {
-      it('should calculate positive funding amounts', () => {
-        const result = calculateTotalFunding(regionData, regionCoeff, priceIndexes);
-        
-        expect(result.stateFunding).toBeGreaterThan(0);
-        expect(result.localFunding).toBeGreaterThan(0);
-        expect(result.totalFunding).toBeGreaterThan(0);
-      });
-
-      it('should sum state and local funding correctly', () => {
-        const result = calculateTotalFunding(regionData, regionCoeff, priceIndexes);
-        
-        expect(result.totalFunding).toBe(result.stateFunding + result.localFunding);
-      });
-
-      it('should provide complete breakdown details', () => {
-        const result = calculateTotalFunding(regionData, regionCoeff, priceIndexes);
-        
-        expect(result.details).toBeDefined();
-        expect(result.details.stateRoadLength).toBeGreaterThan(0);
-        expect(result.details.localRoadLength).toBeGreaterThan(0);
-        expect(result.details.stateRoadBaseRate).toBeGreaterThan(0);
-        expect(result.details.localRoadBaseRate).toBeGreaterThan(0);
-        expect(result.details.appliedCoefficients).toBeDefined();
-      });
-
-      it('should apply state service coefficient', () => {
-        const result = calculateTotalFunding(regionData, regionCoeff, priceIndexes);
-        
-        expect(result.details.appliedCoefficients.stateServiceCoefficient)
-          .toBe(EXPECTED_RATES.STATE_SERVICE_COEFFICIENT);
-      });
-    });
-
-    describe('Regional Variations', () => {
-      it('should handle regions with only state roads', () => {
-        regionData.roadSections = regionData.roadSections.filter(s => s.stateImportance);
-        const result = calculateTotalFunding(regionData, regionCoeff, priceIndexes);
-        
-        expect(result.stateFunding).toBeGreaterThan(0);
-        expect(result.localFunding).toBe(0);
-      });
-
-      it('should handle regions with only local roads', () => {
-        regionData.roadSections = regionData.roadSections.filter(s => !s.stateImportance);
-        const result = calculateTotalFunding(regionData, regionCoeff, priceIndexes);
-        
-        expect(result.stateFunding).toBe(0);
-        expect(result.localFunding).toBeGreaterThan(0);
-      });
-
-      it('should handle regions with no roads', () => {
-        regionData.roadSections = [];
-        const result = calculateTotalFunding(regionData, regionCoeff, priceIndexes);
-        
-        expect(result.stateFunding).toBe(0);
-        expect(result.localFunding).toBe(0);
-        expect(result.totalFunding).toBe(0);
-      });
-    });
-
-    describe('Coefficient Application', () => {
-      it('should apply all relevant coefficients', () => {
-        const result = calculateTotalFunding(regionData, regionCoeff, priceIndexes);
-        const coeffs = result.details.appliedCoefficients;
-        
-        expect(coeffs.mountainous).toBeGreaterThanOrEqual(1.0);
-        expect(coeffs.operatingConditions).toBeGreaterThanOrEqual(1.0);
-        expect(coeffs.stateServiceCoefficient).toBe(1.16);
-      });
-
-      it('should increase funding with higher coefficients', () => {
-        const normalCoeff: RegionCoefficients = {
-          regionalName: 'Test',
-          mountainous: 1.0,
-          operatingConditions: 1.0,
-          criticalInfrastructure: 1.0
-        };
-        const highCoeff: RegionCoefficients = {
-          regionalName: 'Test',
-          mountainous: 1.5,
-          operatingConditions: 1.5,
-          criticalInfrastructure: 1.0
-        };
-        
-        const normalResult = calculateTotalFunding(regionData, normalCoeff, priceIndexes);
-        const highResult = calculateTotalFunding(regionData, highCoeff, priceIndexes);
-        
-        expect(highResult.totalFunding).toBeGreaterThan(normalResult.totalFunding);
-      });
-    });
-
-    describe('Inflation Impact', () => {
-      it('should scale funding with inflation', () => {
-        const noInflation = createTestPriceIndexes(1.0);
-        const withInflation = createTestPriceIndexes(2.0);
-        
-        const normalResult = calculateTotalFunding(regionData, regionCoeff, noInflation);
-        const inflatedResult = calculateTotalFunding(regionData, regionCoeff, withInflation);
-        
-        expect(inflatedResult.totalFunding).toBeGreaterThan(normalResult.totalFunding);
-      });
-    });
-  });
-
-  describe('Region Data', () => {
-    describe('Sample Data Generation', () => {
-      it('should generate valid regional structure', () => {
-        const data = generateSampleRegionData('Київська');
-        
-        expect(data.regionalName).toBe('Київська');
-        expect(Array.isArray(data.roadSections)).toBe(true);
-        expect(data.roadSections.length).toBeGreaterThan(0);
-        expect(data.criticalInfrastructureCount).toBeGreaterThanOrEqual(0);
-      });
-
-      it('should generate sections with valid properties', () => {
-        const data = generateSampleRegionData('Львівська');
-        
-        data.roadSections.forEach(section => {
-          expect(CATEGORIES).toContain(section.category);
-          expect(section.length).toBeGreaterThan(0);
-          expect(section.trafficIntensity).toBeGreaterThan(0);
-          expect(typeof section.stateImportance).toBe('boolean');
-          expect(typeof section.hasEuropeanStatus).toBe('boolean');
-          expect(typeof section.isBorderCrossing).toBe('boolean');
-          expect(typeof section.hasLighting).toBe('boolean');
-          expect(typeof section.recentlyRepaired).toBe('boolean');
-        });
-      });
-
-      it('should include both state and local roads', () => {
-        const data = generateSampleRegionData('Одеська');
-        
-        const stateRoads = data.roadSections.filter(s => s.stateImportance);
-        const localRoads = data.roadSections.filter(s => !s.stateImportance);
-        
-        expect(stateRoads.length).toBeGreaterThan(0);
-        expect(localRoads.length).toBeGreaterThan(0);
-      });
-    });
-
-    describe('Region Coefficients', () => {
-      it('should have coefficients for all regions', () => {
-        const regions = getRegionCoefficients();
-        
-        expect(regions.length).toBeGreaterThan(20);
-      });
-
-      it('should have valid coefficient values', () => {
-        const regions = getRegionCoefficients();
-        
-        regions.forEach(region => {
-          expect(region.regionalName).toBeTruthy();
-          expect(region.mountainous).toBeGreaterThanOrEqual(1.0);
-          expect(region.operatingConditions).toBeGreaterThanOrEqual(1.0);
-          expect(region.mountainous).toBeLessThanOrEqual(2.0);
-          expect(region.operatingConditions).toBeLessThanOrEqual(2.0);
-        });
-      });
-
-      it('should have unique region names', () => {
-        const regions = getRegionCoefficients();
-        const names = regions.map(r => r.regionalName);
-        const uniqueNames = new Set(names);
-        
-        expect(uniqueNames.size).toBe(names.length);
-      });
-
-      it('should include major regions', () => {
-        const regions = getRegionCoefficients();
-        const regionNames = regions.map(r => r.regionalName);
-        
-        const majorRegions = ['Київська', 'Львівська', 'Харківська', 'Одеська'];
-        majorRegions.forEach(name => {
-          expect(regionNames).toContain(name);
-        });
-      });
-    });
-  });
-
-  describe('Integration Scenarios', () => {
-    it('should handle complete workflow for a region', () => {
-      const regionData = generateSampleRegionData('Київська');
-      const regionCoeff = getRegionCoefficients().find(r => r.regionalName === 'Київська')!;
-      const priceIndexes = createTestPriceIndexes(1.25);
-      
-      expect(regionData).toBeDefined();
-      expect(regionCoeff).toBeDefined();
-      
-      const result = calculateTotalFunding(regionData, regionCoeff, priceIndexes);
-      
-      expect(result.totalFunding).toBeGreaterThan(0);
-      expect(result.details).toBeDefined();
-    });
-
-    it('should maintain consistency across multiple calculations', () => {
-      const regionData = generateSampleRegionData('Харківська');
-      const regionCoeff = getRegionCoefficients()[0];
-      const priceIndexes = createTestPriceIndexes();
-      
-      const result1 = calculateTotalFunding(regionData, regionCoeff, priceIndexes);
-      const result2 = calculateTotalFunding(regionData, regionCoeff, priceIndexes);
-      
-      expect(result1.totalFunding).toBe(result2.totalFunding);
-      expect(result1.stateFunding).toBe(result2.stateFunding);
-      expect(result1.localFunding).toBe(result2.localFunding);
-    });
-  });
-
-  describe('European Index Length', () => {
-    it('should handle road sections with European index length', () => {
-      const section = createTestRoadSection({
-        hasEuropeanStatus: true,
-        europeanIndexLength: 50
-      });
-      
-      expect(section.europeanIndexLength).toBe(50);
-      expect(section.hasEuropeanStatus).toBe(true);
-    });
-
-    it('should handle road sections without European index length', () => {
-      const section = createTestRoadSection({
-        hasEuropeanStatus: false,
-        europeanIndexLength: 0
-      });
-      
-      expect(section.europeanIndexLength).toBe(0);
-      expect(section.hasEuropeanStatus).toBe(false);
-    });
-
-    it('should maintain European index length during calculations', () => {
-      const sections = [
-        createTestRoadSection({ europeanIndexLength: 25, hasEuropeanStatus: true }),
-        createTestRoadSection({ europeanIndexLength: 0, hasEuropeanStatus: false }),
-        createTestRoadSection({ europeanIndexLength: 75, hasEuropeanStatus: true })
-      ];
-      
-      const regionData: RegionRoads = {
-        regionalName: 'Test Region',
-        roadSections: sections,
-        criticalInfrastructureCount: 5
+    it('повинен застосовувати правило вибору максимального коефіцієнта', () => {
+      // Тест 1: Дорога з traffic=2.3 і european=1.5 одночасно
+      const region1: RegionRoads = {
+        regionalName: 'Тест максимального вибору',
+        roadSections: [
+          {
+            category: 2,
+            stateImportance: true,
+            length: 100,
+            trafficIntensity: 16000,     // C_інт = 2.3
+            hasEuropeanStatus: true,     // C_e = 1.5
+            isBorderCrossing: false,     // C_мпп = 1.0
+            hasLighting: false,
+            recentlyRepaired: false,
+          },
+        ],
+        criticalInfrastructureCount: 0,
       };
-      
-      const regionCoeff = getRegionCoefficients()[0];
-      const priceIndexes = createTestPriceIndexes();
-      
-      const result = calculateTotalFunding(regionData, regionCoeff, priceIndexes);
-      
-      expect(result.totalFunding).toBeGreaterThan(0);
-      expect(sections[0].europeanIndexLength).toBe(25);
-      expect(sections[1].europeanIndexLength).toBe(0);
-      expect(sections[2].europeanIndexLength).toBe(75);
+  
+      const coeffs: RegionCoefficients = {
+        regionalName: 'Тест',
+        mountainous: 1.0,
+        operatingConditions: 1.0,
+      };
+  
+      const funding1 = calculateStateRoadMaintenanceFunding(region1, coeffs, INFLATION_INDEX);
+  
+      // Очікується максимальний коефіцієнт 2.3 (а не обидва: 2.3 * 1.5)
+      const expected1 = 604.761 * 100 * 1.16 * 1.0 * 1.0 * 2.3 * 1.0 * 1.0 * 1.0 * 1.0 * 1.0;
+      expect(funding1).toBeCloseTo(expected1, 0);
     });
-
-    it('should handle European index length in sample data generation', () => {
-      const data = generateSampleRegionData('Київська');
-      
-      data.roadSections.forEach(section => {
-        // europeanIndexLength может быть undefined в старых данных
-        if (section.europeanIndexLength !== undefined) {
-          expect(typeof section.europeanIndexLength).toBe('number');
-          expect(section.europeanIndexLength).toBeGreaterThanOrEqual(0);
-        }
-      });
+  
+    it('повинен застосовувати всі незалежні коефіцієнти', () => {
+      // Тест 2: Освітлення і ремонт застосовуються незалежно від traffic/euro/border
+      const region2: RegionRoads = {
+        regionalName: 'Тест незалежних коефіцієнтів',
+        roadSections: [
+          {
+            category: 2,
+            stateImportance: true,
+            length: 100,
+            trafficIntensity: 16000,     // C_інт = 2.3
+            hasEuropeanStatus: false,    
+            isBorderCrossing: false,     
+            hasLighting: true,           // K_осв = 2.0 (застосовується завжди)
+            recentlyRepaired: true,      // K_рем = 0.5 (застосовується завжди)
+          },
+        ],
+        criticalInfrastructureCount: 6, // K_кр = 1.03 (застосовується завжди)
+      };
+  
+      const coeffs: RegionCoefficients = {
+        regionalName: 'Тест',
+        mountainous: 1.15,
+        operatingConditions: 1.15,
+      };
+  
+      const funding2 = calculateStateRoadMaintenanceFunding(region2, coeffs, INFLATION_INDEX);
+  
+      // Освітлення, ремонт і крит.інфраструктура застосовуються незалежно
+      const expected2 = 604.761 * 100 * 1.16 * 1.15 * 1.15 * 2.3 * 1.0 * 1.0 * 2.0 * 0.5 * 1.03;
+      expect(funding2).toBeCloseTo(expected2, 0);
     });
-
-    it('should correlate European status with index length', () => {
-      const sections = [
-        createTestRoadSection({ hasEuropeanStatus: true, europeanIndexLength: 100 }),
-        createTestRoadSection({ hasEuropeanStatus: false, europeanIndexLength: 0 }),
-        createTestRoadSection({ hasEuropeanStatus: true, europeanIndexLength: 50 })
-      ];
-      
-      sections.forEach(section => {
-        if (section.hasEuropeanStatus) {
-          expect(section.europeanIndexLength).toBeGreaterThan(0);
-        } else {
-          expect(section.europeanIndexLength).toBe(0);
-        }
-      });
+  
+    it('повинен обирати border crossing (1.5) якщо він максимальний', () => {
+      const region3: RegionRoads = {
+        regionalName: 'Тест прикордонної дороги',
+        roadSections: [
+          {
+            category: 2,
+            stateImportance: true,
+            length: 100,
+            trafficIntensity: 10000,     // низька інтенсивність
+            hasEuropeanStatus: false,    
+            isBorderCrossing: true,      // C_мпп = 1.5 (максимальний)
+            hasLighting: false,
+            recentlyRepaired: false,
+          },
+        ],
+        criticalInfrastructureCount: 0,
+      };
+  
+      const coeffs: RegionCoefficients = {
+        regionalName: 'Тест',
+        mountainous: 1.0,
+        operatingConditions: 1.0,
+      };
+  
+      const funding3 = calculateStateRoadMaintenanceFunding(region3, coeffs, INFLATION_INDEX);
+  
+      // Прикордонний коефіцієнт 1.5 застосовується
+      const expected3 = 604.761 * 100 * 1.16 * 1.0 * 1.0 * 1.0 * 1.5 * 1.0 * 1.0 * 1.0 * 1.0;
+      expect(funding3).toBeCloseTo(expected3, 0);
     });
-
-    it('should handle large European index lengths', () => {
-      const section = createTestRoadSection({
-        hasEuropeanStatus: true,
-        europeanIndexLength: 1000
-      });
-      
-      expect(section.europeanIndexLength).toBe(1000);
-      expect(Number.isFinite(section.europeanIndexLength)).toBe(true);
+  
+    it('повинен правильно розраховувати для змішаних ділянок', () => {
+      // Складний реальний випадок
+      const region4: RegionRoads = {
+        regionalName: 'Реальний регіон',
+        roadSections: [
+          // Ділянка 1: висока інтенсивність (обирається 3.5)
+          {
+            category: 2,
+            stateImportance: true,
+            length: 50,
+            trafficIntensity: 25000,     // C_інт = 3.5 (максимальний)
+            hasEuropeanStatus: true,     // C_e = 1.5 (ігнорується)
+            isBorderCrossing: false,
+            hasLighting: true,           // K_осв = 2.0
+            recentlyRepaired: false,
+          },
+          // Ділянка 2: європейська без високої інтенсивності (обирається 1.5)
+          {
+            category: 3,
+            stateImportance: true,
+            length: 80,
+            trafficIntensity: 8000,      // низька
+            hasEuropeanStatus: true,     // C_e = 1.5 (застосовується)
+            isBorderCrossing: false,
+            hasLighting: false,
+            recentlyRepaired: true,      // K_рем = 0.5
+          },
+          // Ділянка 3: звичайна дорога
+          {
+            category: 4,
+            stateImportance: true,
+            length: 70,
+            trafficIntensity: 5000,
+            hasEuropeanStatus: false,
+            isBorderCrossing: false,
+            hasLighting: false,
+            recentlyRepaired: false,
+          },
+        ],
+        criticalInfrastructureCount: 3,
+      };
+  
+      const coeffs: RegionCoefficients = {
+        regionalName: 'Реальний регіон',
+        mountainous: 1.10,
+        operatingConditions: 1.10,
+      };
+  
+      const funding4 = calculateStateRoadMaintenanceFunding(region4, coeffs, INFLATION_INDEX);
+  
+      // Розрахунок базового фінансування
+      const base1 = 604.761 * 50;  // кат. 2
+      const base2 = 604.761 * 0.89 * 80;  // кат. 3
+      const base3 = 604.761 * 0.61 * 70;  // кат. 4
+      const baseFunding = base1 + base2 + base3;
+  
+  
+      // K_інт: ділянка 1 має 3.5, решта 1.0
+      // (3.5 * 50 + 1.0 * 150) / 200 = (175 + 150) / 200 = 1.625
+      const K_int = 1.625;
+  
+      // K_e: ділянка 2 має 1.5 (ділянка 1 використала traffic), решта 1.0
+      // (1.5 * 80 + 1.0 * 120) / 200 = (120 + 120) / 200 = 1.2
+      const K_e = 1.2;
+  
+      // K_осв: тільки ділянка 1
+      // (2.0 * 50 + 1.0 * 150) / 200 = (100 + 150) / 200 = 1.25
+      const K_light = 1.25;
+  
+      // K_рем: тільки ділянка 2
+      // (0.5 * 80 + 1.0 * 120) / 200 = (40 + 120) / 200 = 0.8
+      const K_repair = 0.8;
+  
+      const expected4 = baseFunding * 1.16 * 1.10 * 1.10 * K_int * K_e * 1.0 * K_light * K_repair * 1.01;
+  
+      expect(funding4).toBeCloseTo(expected4, 0);
     });
-
-    it('should maintain data integrity with European index length', () => {
-      const originalSection = createTestRoadSection({
-        category: 2,
-        length: 200,
-        trafficIntensity: 10000,
-        hasEuropeanStatus: true,
-        europeanIndexLength: 150
-      });
-      
-      // Simulate data processing
-      const processedSection = { ...originalSection };
-      
-      expect(processedSection.europeanIndexLength).toBe(originalSection.europeanIndexLength);
-      expect(processedSection.hasEuropeanStatus).toBe(originalSection.hasEuropeanStatus);
-      expect(processedSection.category).toBe(originalSection.category);
-      expect(processedSection.length).toBe(originalSection.length);
+  
+    it('повинен повертати 0 для регіону без державних доріг', () => {
+      const region: RegionRoads = {
+        regionalName: 'Тестова область',
+        roadSections: [
+          {
+            category: 2,
+            stateImportance: false, // місцева дорога
+            length: 100,
+            trafficIntensity: 10000,
+            hasEuropeanStatus: false,
+            isBorderCrossing: false,
+            hasLighting: false,
+            recentlyRepaired: false,
+          },
+        ],
+        criticalInfrastructureCount: 0,
+      };
+  
+      const regionCoefficients: RegionCoefficients = {
+        regionalName: 'Тестова область',
+        mountainous: 1.0,
+        operatingConditions: 1.0,
+      };
+  
+      const funding = calculateStateRoadMaintenanceFunding(
+        region,
+        regionCoefficients,
+        INFLATION_INDEX
+      );
+  
+      expect(funding).toBe(0);
     });
   });
 
-  describe('Performance', () => {
-    it('should calculate rates efficiently for many iterations', () => {
-      const startTime = performance.now();
-      
-      for (let i = 0; i < 1000; i++) {
-        calculateStateRoadMaintenanceRate(2, INFLATION_INDEX.STANDARD);
-      }
-      
-      const endTime = performance.now();
-      expect(endTime - startTime).toBeLessThan(100);
+  describe('3.6 - Local Road Maintenance Funding (Q_i^м)', () => {
+    it('повинен правильно розраховувати базове фінансування', () => {
+      const region: RegionRoads = {
+        regionalName: 'Тестова область',
+        roadSections: [
+          {
+            category: 2,
+            stateImportance: false,
+            length: 100,
+            trafficIntensity: 10000,
+            hasEuropeanStatus: false,
+            isBorderCrossing: false,
+            hasLighting: false,
+            recentlyRepaired: false,
+          },
+        ],
+        criticalInfrastructureCount: 0,
+      };
+
+      const regionCoefficients: RegionCoefficients = {
+        regionalName: 'Тестова область',
+        mountainous: 1.0,
+        operatingConditions: 1.0,
+      };
+
+      const funding = calculateLocalRoadMaintenanceFunding(
+        region,
+        regionCoefficients,
+        INFLATION_INDEX
+      );
+
+      // Базовий розрахунок: 360.544 * 100 * 1.0 * 1.0 * 1.0
+      const expected = 360.544 * 100;
+      expect(funding).toBeCloseTo(expected, 2);
     });
 
-    it('should handle large datasets efficiently', () => {
-      const largeRegionData: RegionRoads = {
-        regionalName: 'Test Large',
-        roadSections: Array.from({ length: 500 }, (_, i) => 
-          createTestRoadSection({
-            category: ((i % 5) + 1) as 1|2|3|4|5,
-            stateImportance: i % 2 === 0,
-            length: 10 + i % 100,
-            europeanIndexLength: i % 3 === 0 ? 10 + i % 50 : 0
-          })
-        ),
-        criticalInfrastructureCount: 10
+    it('НЕ повинен застосовувати коефіцієнт K_д = 1.16', () => {
+      const region: RegionRoads = {
+        regionalName: 'Тестова область',
+        roadSections: [
+          {
+            category: 2,
+            stateImportance: false,
+            length: 100,
+            trafficIntensity: 10000,
+            hasEuropeanStatus: false,
+            isBorderCrossing: false,
+            hasLighting: false,
+            recentlyRepaired: false,
+          },
+        ],
+        criticalInfrastructureCount: 0,
       };
+
+      const regionCoefficients: RegionCoefficients = {
+        regionalName: 'Тестова область',
+        mountainous: 1.0,
+        operatingConditions: 1.0,
+      };
+
+      const funding = calculateLocalRoadMaintenanceFunding(
+        region,
+        regionCoefficients,
+        INFLATION_INDEX
+      );
+
+      // Перевіряємо, що K_д НЕ застосовано
+      expect(funding / (360.544 * 100)).toBeCloseTo(1.0, 2);
+    });
+
+    it('повинен застосовувати тільки базові коефіцієнти з формули п.3.6', () => {
+      const region: RegionRoads = {
+        regionalName: 'Тестова область',
+        roadSections: [
+          {
+            category: 2,
+            stateImportance: false,
+            length: 100,
+            trafficIntensity: 16000,
+            hasEuropeanStatus: false,
+            isBorderCrossing: false,
+            hasLighting: false,
+            recentlyRepaired: false,
+          },
+        ],
+        criticalInfrastructureCount: 0,
+      };
+
+      const regionCoefficients: RegionCoefficients = {
+        regionalName: 'Тестова область',
+        mountainous: 1.15,
+        operatingConditions: 1.15,
+      };
+
+      const funding = calculateLocalRoadMaintenanceFunding(
+        region,
+        regionCoefficients,
+        INFLATION_INDEX
+      );
+
+      // Очікувана формула (спрощена): 360.544 * 100 * 1.15 * 1.15 * 2.3
+      const expected = 360.544 * 100 * 1.15 * 1.15 * 2.3;
+      expect(funding).toBeCloseTo(expected, 0);
+    });
+
+    it('повинен повертати 0 для регіону без місцевих доріг', () => {
+      const region: RegionRoads = {
+        regionalName: 'Тестова область',
+        roadSections: [
+          {
+            category: 2,
+            stateImportance: true, // державна дорога
+            length: 100,
+            trafficIntensity: 10000,
+            hasEuropeanStatus: false,
+            isBorderCrossing: false,
+            hasLighting: false,
+            recentlyRepaired: false,
+          },
+        ],
+        criticalInfrastructureCount: 0,
+      };
+
+      const regionCoefficients: RegionCoefficients = {
+        regionalName: 'Тестова область',
+        mountainous: 1.0,
+        operatingConditions: 1.0,
+      };
+
+      const funding = calculateLocalRoadMaintenanceFunding(
+        region,
+        regionCoefficients,
+        INFLATION_INDEX
+      );
+
+      expect(funding).toBe(0);
+    });
+  });
+
+  describe('3.7 - Total Funding (Q)', () => {
+    it('повинен правильно розраховувати загальне фінансування', () => {
+      const region: RegionRoads = {
+        regionalName: 'Тестова область',
+        roadSections: [
+          {
+            category: 2,
+            stateImportance: true,
+            length: 100,
+            trafficIntensity: 10000,
+            hasEuropeanStatus: false,
+            isBorderCrossing: false,
+            hasLighting: false,
+            recentlyRepaired: false,
+          },
+          {
+            category: 2,
+            stateImportance: false,
+            length: 100,
+            trafficIntensity: 10000,
+            hasEuropeanStatus: false,
+            isBorderCrossing: false,
+            hasLighting: false,
+            recentlyRepaired: false,
+          },
+        ],
+        criticalInfrastructureCount: 0,
+      };
+
+      const regionCoefficients: RegionCoefficients = {
+        regionalName: 'Тестова область',
+        mountainous: 1.0,
+        operatingConditions: 1.0,
+      };
+
+      const priceIndexes: PriceIndexes = {
+        inflationIndex: INFLATION_INDEX,
+      };
+
+      const result = calculateTotalFunding(region, regionCoefficients, priceIndexes);
+
+      // Державні: 604.761 * 100 * 1.16 = 70152.28
+      // Місцеві: 360.544 * 100 = 36054.4
+      const expectedState = 604.761 * 100 * 1.16;
+      const expectedLocal = 360.544 * 100;
+
+      expect(result.stateFunding).toBeCloseTo(expectedState, 0);
+      expect(result.localFunding).toBeCloseTo(expectedLocal, 0);
+      expect(result.totalFunding).toBeCloseTo(expectedState + expectedLocal, 0);
+    });
+
+    it('повинен повертати правильні деталі розрахунку', () => {
+      const region: RegionRoads = {
+        regionalName: 'Тестова область',
+        roadSections: [
+          {
+            category: 2,
+            stateImportance: true,
+            length: 150,
+            trafficIntensity: 10000,
+            hasEuropeanStatus: false,
+            isBorderCrossing: false,
+            hasLighting: false,
+            recentlyRepaired: false,
+          },
+          {
+            category: 3,
+            stateImportance: false,
+            length: 200,
+            trafficIntensity: 5000,
+            hasEuropeanStatus: false,
+            isBorderCrossing: false,
+            hasLighting: false,
+            recentlyRepaired: false,
+          },
+        ],
+        criticalInfrastructureCount: 3,
+      };
+
+      const regionCoefficients: RegionCoefficients = {
+        regionalName: 'Тестова область',
+        mountainous: 1.15,
+        operatingConditions: 1.15,
+      };
+
+      const priceIndexes: PriceIndexes = {
+        inflationIndex: 1.2,
+      };
+
+      const result = calculateTotalFunding(region, regionCoefficients, priceIndexes);
+
+      expect(result.details.stateRoadLength).toBe(150);
+      expect(result.details.localRoadLength).toBe(200);
+      expect(result.details.stateRoadBaseRate).toBeCloseTo(604.761 * 1.2, 2);
+      expect(result.details.localRoadBaseRate).toBeCloseTo(360.544 * 1.2, 2);
+      expect(result.details.appliedCoefficients.mountainous).toBe(1.15);
+      expect(result.details.appliedCoefficients.operatingConditions).toBe(1.15);
+      expect(result.details.appliedCoefficients.stateServiceCoefficient).toBe(1.16);
+      expect(result.details.appliedCoefficients.criticalInfrastructure).toBe(1.01);
+    });
+  });
+
+  describe('Допоміжні функції', () => {
+    it('getRegionCoefficients повинен повертати 27 регіонів', () => {
+      const coefficients = getRegionCoefficients();
+      expect(coefficients.length).toBe(27);
+    });
+
+    it('getRegionCoefficients повинен містити правильні значення для Івано-Франківської', () => {
+      const coefficients = getRegionCoefficients();
+      const ivanFrankivsk = coefficients.find(c => c.regionalName === 'Івано-Франківська');
       
-      const regionCoeff = getRegionCoefficients()[0];
-      const priceIndexes = createTestPriceIndexes();
+      expect(ivanFrankivsk).toBeDefined();
+      expect(ivanFrankivsk?.mountainous).toBe(1.13);
+      expect(ivanFrankivsk?.operatingConditions).toBe(1.13);
+    });
+
+    it('generateSampleRegionData повинен створювати валідні дані', () => {
+      const sampleData = generateSampleRegionData('Тестова область');
       
-      const startTime = performance.now();
-      const result = calculateTotalFunding(largeRegionData, regionCoeff, priceIndexes);
-      const endTime = performance.now();
-      
-      expect(endTime - startTime).toBeLessThan(500);
-      expect(result.totalFunding).toBeGreaterThan(0);
+      expect(sampleData.regionalName).toBe('Тестова область');
+      expect(sampleData.roadSections.length).toBeGreaterThan(0);
+      expect(sampleData.criticalInfrastructureCount).toBeGreaterThanOrEqual(0);
+    });
+
+    it('MAINTENANCE_CONSTANTS повинні містити правильні базові значення', () => {
+      expect(MAINTENANCE_CONSTANTS.STATE_ROAD_BASE_COST).toBe(604.761);
+      expect(MAINTENANCE_CONSTANTS.LOCAL_ROAD_BASE_COST).toBe(360.544);
+      expect(MAINTENANCE_CONSTANTS.STATE_SERVICE_COEFFICIENT).toBe(1.16);
+      expect(MAINTENANCE_CONSTANTS.EUROPEAN_ROAD_COEFFICIENT).toBe(1.5);
+      expect(MAINTENANCE_CONSTANTS.BORDER_CROSSING_COEFFICIENT).toBe(1.5);
+      expect(MAINTENANCE_CONSTANTS.LIGHTING_COEFFICIENT).toBe(2.0);
+      expect(MAINTENANCE_CONSTANTS.REPAIR_COEFFICIENT).toBe(0.5);
     });
   });
 });

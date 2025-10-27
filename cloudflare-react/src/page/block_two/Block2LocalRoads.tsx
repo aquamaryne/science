@@ -86,7 +86,7 @@ const InflationIndexField = React.memo(({
       </div>
       <div className="flex items-center gap-2 w-full sm:w-auto">
         <span className="text-xs text-gray-500">
-          коеф.: {(1 + value / 100).toFixed(4)}
+          коеф.: {(value / 100).toFixed(4)}
         </span>
         {canRemove && (
           <Button
@@ -357,11 +357,6 @@ const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = () => {
                     onRemove={removeLocalInflationIndexHandler}
                   />
                 ))}
-                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded">
-                  <div className="text-sm font-semibold text-blue-900">
-                    Сукупний індекс інфляції K_інф: {cumulativeInflation.toFixed(4)}
-                  </div>
-                </div>
               </div>
             </div>
             

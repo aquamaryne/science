@@ -101,8 +101,10 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
 
   // ==================== ДОПОМІЖНІ ФУНКЦІЇ ====================
 
+  // Розрахунок сукупного індексу інфляції
+  // Якщо інфляція 106.1%, то коефіцієнт = 106.1/100 = 1.061
   const calculateCumulativeInflationIndex = (indexes: number[]): number => {
-    return indexes.reduce((acc, curr) => acc * (1 + curr / 100), 1);
+    return indexes.reduce((acc, curr) => acc * (curr / 100), 1);
   };
 
   // ✅ КОНВЕРТУЄМО RegionalRoadData В RoadSection[] ДЛЯ ВИКОРИСТАННЯ ФУНКЦІЙ МОДУЛЯ

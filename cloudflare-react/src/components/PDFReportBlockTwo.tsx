@@ -186,7 +186,7 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
           <View style={[styles.tableRow, styles.tableRowEven]}>
             <Text style={styles.tableCell}>Сукупний індекс інфляції</Text>
             <Text style={styles.tableCell}>
-              {(blockTwoState?.stateInflationIndexes || [10]).reduce((acc, curr) => acc * (1 + curr / 100), 1).toFixed(4)}
+              {(blockTwoState?.stateInflationIndexes || [100]).reduce((acc, curr) => acc * (curr / 100), 1).toFixed(4)}
             </Text>
           </View>
         </View>
@@ -240,7 +240,7 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
           <View style={[styles.tableRow, styles.tableRowEven]}>
             <Text style={styles.tableCell}>Сукупний індекс інфляції</Text>
             <Text style={styles.tableCell}>
-              {(blockTwoState?.localInflationIndexes || [10]).reduce((acc, curr) => acc * (1 + curr / 100), 1).toFixed(4)}
+              {(blockTwoState?.localInflationIndexes || [100]).reduce((acc, curr) => acc * (curr / 100), 1).toFixed(4)}
             </Text>
           </View>
         </View>

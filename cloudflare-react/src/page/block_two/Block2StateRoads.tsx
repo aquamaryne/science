@@ -388,7 +388,7 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = () => {
               <Card className="p-3 md:p-4">
                 <CardContent className="p-0 text-center">
                   <h3 className="font-bold text-sm md:text-base">Категорія I</h3>
-                  <div className="text-lg md:text-xl lg:text-2xl font-bold mt-2">
+                  <div className="text-lg md:text-xl font-bold mt-2">
                     {stateRoadRate.category1.toFixed(2)}
                   </div>
                   <div className="text-xs md:text-sm text-gray-500">тис. грн/км</div>
@@ -401,7 +401,7 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = () => {
               <Card className="p-3 md:p-4">
                 <CardContent className="p-0 text-center">
                   <h3 className="font-bold text-sm md:text-base">Категорія II</h3>
-                  <div className="text-lg md:text-xl lg:text-2xl font-bold mt-2">
+                  <div className="text-lg md:text-xl font-bold mt-2">
                     {stateRoadRate.category2.toFixed(2)}
                   </div>
                   <div className="text-xs md:text-sm text-gray-500">тис. грн/км</div>
@@ -414,7 +414,7 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = () => {
               <Card className="p-3 md:p-4">
                 <CardContent className="p-0 text-center">
                   <h3 className="font-bold text-sm md:text-base">Категорія III</h3>
-                  <div className="text-lg md:text-xl lg:text-2xl font-bold mt-2">
+                  <div className="text-lg md:text-xl font-bold mt-2">
                     {stateRoadRate.category3.toFixed(2)}
                   </div>
                   <div className="text-xs md:text-sm text-gray-500">тис. грн/км</div>
@@ -427,7 +427,7 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = () => {
               <Card className="p-3 md:p-4">
                 <CardContent className="p-0 text-center">
                   <h3 className="font-bold text-sm md:text-base">Категорія IV</h3>
-                  <div className="text-lg md:text-xl lg:text-2xl font-bold mt-2">
+                  <div className="text-lg md:text-xl font-bold mt-2">
                     {stateRoadRate.category4.toFixed(2)}
                   </div>
                   <div className="text-xs md:text-sm text-gray-500">тис. грн/км</div>
@@ -440,7 +440,7 @@ const Block2StateRoads: React.FC<Block2StateRoadsProps> = () => {
               <Card className="p-3 md:p-4">
                 <CardContent className="p-0 text-center">
                   <h3 className="font-bold text-sm md:text-base">Категорія V</h3>
-                  <div className="text-lg md:text-xl lg:text-2xl font-bold mt-2">
+                  <div className="text-lg md:text-xl font-bold mt-2">
                     {stateRoadRate.category5.toFixed(2)}
                   </div>
                   <div className="text-xs md:text-sm text-gray-500">тис. грн/км</div>

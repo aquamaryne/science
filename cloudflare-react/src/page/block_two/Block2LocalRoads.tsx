@@ -401,7 +401,7 @@ const Block2LocalRoads: React.FC<Block2LocalRoadsProps> = () => {
               <Card className="p-4">
                 <CardContent className="p-0 text-center">
                   <h3 className="font-bold">Категорія II</h3>
-                  <div className="text-xl font-bold mt-2">
+                  <div className="text-xl font-bold  mt-2">
                     {localRoadRate.category2.toFixed(2)}
                   </div>
                   <div className="text-sm text-gray-500">тис. грн/км</div>

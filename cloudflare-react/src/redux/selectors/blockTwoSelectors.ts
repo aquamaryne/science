@@ -37,12 +37,14 @@ export const selectLocalRoadRates = createSelector(
 );
 
 // Computed selectors
+// Сукупний індекс інфляції розраховується як добуток коефіцієнтів
+// Якщо інфляція 106.1%, то коефіцієнт = 106.1/100 = 1.061
 export const selectStateCumulativeInflation = createSelector(
   [selectStateInflationIndexes],
-  (indexes) => indexes.reduce((acc, curr) => acc * (1 + curr / 100), 1)
+  (indexes) => indexes.reduce((acc, curr) => acc * (curr / 100), 1)
 );
 
 export const selectLocalCumulativeInflation = createSelector(
   [selectLocalInflationIndexes],
-  (indexes) => indexes.reduce((acc, curr) => acc * (1 + curr / 100), 1)
+  (indexes) => indexes.reduce((acc, curr) => acc * (curr / 100), 1)
 );

@@ -110,29 +110,142 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
   // ✅ КОНВЕРТУЄМО RegionalRoadData В RoadSection[] ДЛЯ ВИКОРИСТАННЯ ФУНКЦІЙ МОДУЛЯ
   const convertToRoadSections = (region: RegionalRoadData): RoadSection[] => {
     const roadSections: RoadSection[] = [];
-    
-    // Створюємо секції для кожної категорії
-    ([1, 2, 3, 4, 5] as const).forEach(category => {
-      const length = region.lengthByCategory[category];
-      if (length > 0) {
-        // Розраховуємо середню інтенсивність для категорії
-        const avgIntensity = region.totalLength > 0 
-          ? (region.lengthByIntensity.medium + region.lengthByIntensity.high + region.lengthByIntensity.veryHigh) / region.totalLength * 10000
-          : 5000;
-        
-        roadSections.push({
-          category,
-          stateImportance: roadType === 'state', // Залежить від обраного типу доріг
-          length,
-          trafficIntensity: avgIntensity,
-          hasEuropeanStatus: region.europeanIndexLength > 0,
-          isBorderCrossing: region.borderCrossingLength > 0,
-          hasLighting: region.lightingLength > 0,
-          recentlyRepaired: region.repairedLength > 0,
-        });
-      }
-    });
-    
+
+    // ✅ ВИПРАВЛЕНО: Створюємо ОКРЕМІ секції для доріг з різними ознаками
+    // Замість того щоб позначати ВСЮ протяжність одним прапорцем,
+    // створюємо ДІЙСНІ секції з фактичною протяжністю
+
+    // 1. Секції з високою інтенсивністю (15000-20000, 20001-30000, 30001+)
+    if (region.lengthByIntensity.medium > 0) {
+      roadSections.push({
+        category: 3, // Середня категорія для інтенсивності
+        stateImportance: roadType === 'state',
+        length: region.lengthByIntensity.medium,
+        trafficIntensity: 17500, // середнє для діапазону 15000-20000
+        hasEuropeanStatus: false,
+        isBorderCrossing: false,
+        hasLighting: false,
+        recentlyRepaired: false,
+      });
+    }
+
+    if (region.lengthByIntensity.high > 0) {
+      roadSections.push({
+        category: 3,
+        stateImportance: roadType === 'state',
+        length: region.lengthByIntensity.high,
+        trafficIntensity: 25000, // середнє для діапазону 20001-30000
+        hasEuropeanStatus: false,
+        isBorderCrossing: false,
+        hasLighting: false,
+        recentlyRepaired: false,
+      });
+    }
+
+    if (region.lengthByIntensity.veryHigh > 0) {
+      roadSections.push({
+        category: 3,
+        stateImportance: roadType === 'state',
+        length: region.lengthByIntensity.veryHigh,
+        trafficIntensity: 35000, // >30000
+        hasEuropeanStatus: false,
+        isBorderCrossing: false,
+        hasLighting: false,
+        recentlyRepaired: false,
+      });
+    }
+
+    // 2. Секція з європейським індексом E (ФАКТИЧНА протяжність!)
+    if (region.europeanIndexLength > 0) {
+      roadSections.push({
+        category: 3,
+        stateImportance: roadType === 'state',
+        length: region.europeanIndexLength, // ✅ ТІЛЬКИ фактична протяжність Е!
+        trafficIntensity: 5000,
+        hasEuropeanStatus: true, // ✅ ТІЛЬКИ ця секція має Е
+        isBorderCrossing: false,
+        hasLighting: false,
+        recentlyRepaired: false,
+      });
+    }
+
+    // 3. Секція з міжнародними пунктами пропуску
+    if (region.borderCrossingLength > 0) {
+      roadSections.push({
+        category: 3,
+        stateImportance: roadType === 'state',
+        length: region.borderCrossingLength, // ✅ ТІЛЬКИ фактична протяжність МПП!
+        trafficIntensity: 5000,
+        hasEuropeanStatus: false,
+        isBorderCrossing: true, // ✅ ТІЛЬКИ ця секція має МПП
+        hasLighting: false,
+        recentlyRepaired: false,
+      });
+    }
+
+    // 4. Секція з освітленням
+    if (region.lightingLength > 0) {
+      roadSections.push({
+        category: 3,
+        stateImportance: roadType === 'state',
+        length: region.lightingLength, // ✅ ТІЛЬКИ фактична протяжність з освітленням!
+        trafficIntensity: 5000,
+        hasEuropeanStatus: false,
+        isBorderCrossing: false,
+        hasLighting: true, // ✅ ТІЛЬКИ ця секція має освітлення
+        recentlyRepaired: false,
+      });
+    }
+
+    // 5. Секція після ремонту
+    if (region.repairedLength > 0) {
+      roadSections.push({
+        category: 3,
+        stateImportance: roadType === 'state',
+        length: region.repairedLength, // ✅ ТІЛЬКИ фактична протяжність після ремонту!
+        trafficIntensity: 5000,
+        hasEuropeanStatus: false,
+        isBorderCrossing: false,
+        hasLighting: false,
+        recentlyRepaired: true, // ✅ ТІЛЬКИ ця секція після ремонту
+      });
+    }
+
+    // 6. Базові секції по категоріях (основна протяжність без спеціальних ознак)
+    // ✅ Віднімаємо вже враховану протяжність зі спеціальними ознаками
+    const specialLengthsSum =
+      region.lengthByIntensity.medium +
+      region.lengthByIntensity.high +
+      region.lengthByIntensity.veryHigh +
+      region.europeanIndexLength +
+      region.borderCrossingLength +
+      region.lightingLength +
+      region.repairedLength;
+
+    const remainingLength = Math.max(0, region.totalLength - specialLengthsSum);
+
+    if (remainingLength > 0) {
+      // Розподіляємо решту протяжності пропорційно до категорій
+      ([1, 2, 3, 4, 5] as const).forEach(category => {
+        const categoryLength = region.lengthByCategory[category];
+        if (categoryLength > 0 && region.totalLength > 0) {
+          const proportionalLength = (categoryLength / region.totalLength) * remainingLength;
+          if (proportionalLength > 0) {
+            roadSections.push({
+              category,
+              stateImportance: roadType === 'state',
+              length: proportionalLength,
+              trafficIntensity: 5000, // базова інтенсивність
+              hasEuropeanStatus: false,
+              isBorderCrossing: false,
+              hasLighting: false,
+              recentlyRepaired: false,
+            });
+          }
+        }
+      });
+    }
+
     return roadSections;
   };
 
@@ -234,14 +347,21 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
             // Коефіцієнти для області не знайдено
             return;
           }
-          
-          // ✅ ПЕРЕВІРЯЄМО ЧИ Є ВЖЕ РОЗРАХОВАНІ КОЕФІЦІЄНТИ (ВІДРЕДАГОВАНІ)
-          const existingResult = regionalResults.find(r => r.regionName === region.name);
-          
+
           // ✅ КОНВЕРТУЄМО ДАНІ В RoadSection[]
           const roadSections = convertToRoadSections(region);
           const totalLength = region.totalLength;
-          
+
+          // ✅ ЛОГУВАННЯ ДЛЯ ДІАГНОСТИКИ
+          console.log(`📊 Регіон: ${region.name}`);
+          console.log(`   Загальна протяжність: ${totalLength} км`);
+          console.log(`   Створено секцій: ${roadSections.length}`);
+          roadSections.forEach((section, idx) => {
+            console.log(`   Секція ${idx + 1}: ${section.length.toFixed(2)} км, ` +
+              `E=${section.hasEuropeanStatus}, МПП=${section.isBorderCrossing}, ` +
+              `Освітл=${section.hasLighting}, Ремонт=${section.recentlyRepaired}`);
+          });
+
           // ✅ ВИКОРИСТОВУЄМО ФУНКЦІЇ З МОДУЛЯ block_two.ts
           // ✅ ЗГІДНО З П.3.5 МЕТОДИКИ (ФОРМУЛА ДЛЯ ДЕРЖАВНИХ ДОРІГ):
           // Qiд = Σ(Hjд × Lijд) × Kд × Kг × Kуе × Kінт.д × Kе.д × Kмпп.д × Kосв × Kрем × Kкр.і
@@ -261,17 +381,25 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
             const kLighting = calculateLightingCoefficient(roadSections, totalLength);
             const kRepair = calculateRepairCoefficient(roadSections, totalLength);
             const kCriticalInfra = calculateCriticalInfrastructureCoefficient(region.criticalInfraCount);
-            
-            // ✅ ВИКОРИСТОВУЄМО ВІДРЕДАГОВАНІ КОЕФІЦІЄНТИ ЯКЩО Є, ІНАКШЕ БАЗОВІ
+
+            console.log(`   Розраховані коефіцієнти:`);
+            console.log(`   K_е.д = ${kEuropean.toFixed(4)}`);
+            console.log(`   K_мпп.д = ${kBorder.toFixed(4)}`);
+            console.log(`   K_осв = ${kLighting.toFixed(4)}`);
+            console.log(`   K_рем = ${kRepair.toFixed(4)}`);
+            console.log(`   K_інт.д = ${kIntensity.toFixed(4)}`);
+
+            // ✅ ВИПРАВЛЕНО: ЗАВЖДИ використовуємо НОВІ розраховані значення
+            // Якщо користувач вручну редагував коефіцієнти, вони збережуться після оновлення таблиці
             coefficients = {
-              mountainous: existingResult?.coefficients.mountainous || regionCoeff.mountainous,
-              operatingConditions: existingResult?.coefficients.operatingConditions || regionCoeff.operatingConditions,
-              trafficIntensity: existingResult?.coefficients.trafficIntensity || kIntensity,
-              europeanRoad: existingResult?.coefficients.europeanRoad || kEuropean,
-              borderCrossing: existingResult?.coefficients.borderCrossing || kBorder,
-              lighting: existingResult?.coefficients.lighting || kLighting,
-              repair: existingResult?.coefficients.repair || kRepair,
-              criticalInfra: existingResult?.coefficients.criticalInfra || kCriticalInfra,
+              mountainous: regionCoeff.mountainous,
+              operatingConditions: regionCoeff.operatingConditions,
+              trafficIntensity: kIntensity, // ✅ НОВИЙ розрахунок
+              europeanRoad: kEuropean,      // ✅ НОВИЙ розрахунок
+              borderCrossing: kBorder,      // ✅ НОВИЙ розрахунок
+              lighting: kLighting,          // ✅ НОВИЙ розрахунок
+              repair: kRepair,              // ✅ НОВИЙ розрахунок
+              criticalInfra: kCriticalInfra,
               totalProduct: 0
             };
             
@@ -288,16 +416,20 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
               coefficients.criticalInfra;
           } else {
             // ДЛЯ МІСЦЕВИХ ДОРІГ - тільки K_г × K_уе × K_інт.м (формула п.3.6)
+            console.log(`   Розраховані коефіцієнти:`);
+            console.log(`   K_інт.м = ${kIntensity.toFixed(4)}`);
+
+            // ✅ ВИПРАВЛЕНО: ЗАВЖДИ використовуємо НОВІ розраховані значення
             coefficients = {
-              mountainous: existingResult?.coefficients.mountainous || regionCoeff.mountainous,
-              operatingConditions: existingResult?.coefficients.operatingConditions || regionCoeff.operatingConditions,
-              trafficIntensity: existingResult?.coefficients.trafficIntensity || kIntensity,
+              mountainous: regionCoeff.mountainous,
+              operatingConditions: regionCoeff.operatingConditions,
+              trafficIntensity: kIntensity, // ✅ НОВИЙ розрахунок
               totalProduct: 0
             };
-            
-            totalProduct = 
-              coefficients.mountainous * 
-              coefficients.operatingConditions * 
+
+            totalProduct =
+              coefficients.mountainous *
+              coefficients.operatingConditions *
               coefficients.trafficIntensity;
           }
           

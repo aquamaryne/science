@@ -509,7 +509,7 @@ const ENPVCalculationTool: React.FC = () => {
       {/* Заголовок */}
       <Card>
         <CardHeader className="py-3">
-          <CardTitle className="text-xl">
+          <CardTitle className="text-base md:text-lg xl:text-xl">
             Визначення ефективності реконструкції/капітального ремонту автомобільних доріг
           </CardTitle>
         </CardHeader>
@@ -656,9 +656,9 @@ const ENPVCalculationTool: React.FC = () => {
             <div className="glass-card">
               <CardContent className="p-0">
                 <div className="border-2 border-gray-400 overflow-hidden">
-                  <div className="overflow-auto max-h-[800px]">
+                  <div className="overflow-x-auto">
                     {/* ВСЯ ТАБЛИЦА ВВОДА ДАННЫХ ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ */}
-                    <table className="border-collapse w-full min-w-full">
+                    <table className="border-collapse w-full">
                     <thead className="sticky top-0 z-20">
                         <tr>
                         <th className="w-12 h-10 bg-gray-200 border border-gray-400 text-center text-xs font-bold sticky left-0 z-30">
@@ -1325,7 +1325,7 @@ const ENPVCalculationTool: React.FC = () => {
                   <CardHeader className="py-3">
                     <div className="flex items-center justify-between">
                       <div>
-                        <CardTitle className="text-base">
+                        <CardTitle className="text-xs md:text-sm xl:text-base">
                           Розрахунок для об'єкту: {currentData.sectionName}
                         </CardTitle>
                         <CardDescription>
@@ -1471,7 +1471,7 @@ const ENPVCalculationTool: React.FC = () => {
                 {/* Структура вигод */}
                 <Card>
                   <CardHeader className="py-3">
-                    <CardTitle className="text-sm">Структура економічних вигод (млн грн)</CardTitle>
+                    <CardTitle className="text-xs md:text-sm xl:text-sm">Структура економічних вигод (млн грн)</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1506,12 +1506,12 @@ const ENPVCalculationTool: React.FC = () => {
                 {/* ТАБЛИЦА РЕЗУЛЬТАТОВ ПО ГОДАМ */}
                 <Card>
                   <CardHeader className="py-3">
-                    <CardTitle className="text-sm">Детальний розрахунок по роках</CardTitle>
+                    <CardTitle className="text-xs md:text-sm xl:text-sm">Детальний розрахунок по роках</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="border-2 border-gray-400 overflow-hidden">
-                      <div className="overflow-auto max-h-[600px]">
-                        <table className="border-collapse w-full min-w-full text-xs">
+                      <div className="overflow-x-auto">
+                        <table className="border-collapse w-full text-xs">
                           <thead className="sticky top-0 z-20">
                             <tr>
                               <th className="bg-gray-200 border border-gray-400 text-center font-bold p-2" rowSpan={2}>Рік</th>

@@ -309,10 +309,10 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
   };
 
   return (
-    <div className="w-full space-y-6 p-6">
+    <div className="w-full space-y-1.5 md:space-y-2 xl:space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Визначення показників транспортно-експлуатаційного стану доріг</h1>
+          <h1 className="text-xs md:text-sm xl:text-base font-bold">Визначення показників транспортно-експлуатаційного стану доріг</h1>
         </div>
       </div>
 
@@ -355,16 +355,16 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
       )}
       {/* ТАБЛИЦЯ 1: ВИХІДНІ ДАНІ */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">📝 Вихідні дані (заповнюємо)</CardTitle>
-            <div className="flex gap-2">
-              <Button onClick={addInputRow} size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Додати рядок
+        <CardHeader className="py-1.5 md:py-2 xl:py-3">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-1.5 md:gap-2">
+            <CardTitle className="text-[11px] md:text-xs xl:text-sm">📝 Вихідні дані (заповнюємо)</CardTitle>
+            <div className="flex gap-1 flex-wrap">
+              <Button onClick={addInputRow} size="sm" className="text-[10px] md:text-xs py-0.5 md:py-1 px-1.5 md:px-2 h-6 md:h-7">
+                <Plus className="h-3 w-3 mr-0.5 md:mr-1" />
+                Додати
               </Button>
-              <Button onClick={calculateCoefficients} size="sm" className="bg-white border-1 border-green-700 text-black hover:bg-green-400">
-                <Calculator className="h-4 w-4 mr-2" />
+              <Button onClick={calculateCoefficients} size="sm" className="bg-white border-1 border-green-700 text-black hover:bg-green-400 text-[10px] md:text-xs py-0.5 md:py-1 px-1.5 md:px-2 h-6 md:h-7">
+                <Calculator className="h-3 w-3 mr-0.5 md:mr-1" />
                 Розрахувати
               </Button>
             </div>
@@ -375,50 +375,50 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
             <Table>
               <TableHeader>
                 <TableRow className="border-1 border-blue-600">
-                  <TableHead className="text-black text-center" colSpan={10}>
+                  <TableHead className="text-black text-center text-[10px] md:text-xs xl:text-sm" colSpan={10}>
                     Визначення показників фактичного транспортно–експлуатаційного стану доріг державного значення
                   </TableHead>
                 </TableRow>
                 <TableRow>
-                  <TableHead className="text-xs">Найменування ділянки дороги</TableHead>
-                  <TableHead className="text-xs">Протяжність (км)</TableHead>
-                  <TableHead className="text-xs">Категорія</TableHead>
-                  <TableHead className="text-xs">Інтенсивність (авт./добу)</TableHead>
-                  <TableHead className="text-xs">Модуль пружності (МПа)</TableHead>
-                  <TableHead className="text-xs">Рівність (м/км)</TableHead>
-                  <TableHead className="text-xs">Рівність (см/км)</TableHead>
-                  <TableHead className="text-xs">Глибина колії (мм)</TableHead>
-                  <TableHead className="text-xs">Коеф. зчеплення</TableHead>
-                  <TableHead className="text-xs">Дії</TableHead>
+                  <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Найменування ділянки дороги</TableHead>
+                  <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Протяжність (км)</TableHead>
+                  <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Категорія</TableHead>
+                  <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Інтенсивність (авт./добу)</TableHead>
+                  <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Модуль пружності (МПа)</TableHead>
+                  <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Рівність (м/км)</TableHead>
+                  <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Рівність (см/км)</TableHead>
+                  <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Глибина колії (мм)</TableHead>
+                  <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Коеф. зчеплення</TableHead>
+                  <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Дії</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {inputRows.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell>
+                    <TableCell className="p-1 md:p-2">
                       <Input
                         value={row.roadName}
                         onChange={(e) => updateInputRow(row.id, 'roadName', e.target.value)}
                         placeholder="М-06"
-                        className="h-8"
+                        className="h-7 md:h-8 text-xs md:text-sm"
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="p-1 md:p-2">
                       <Input
                         type="number"
                         value={row.length || ''}
                         onChange={(e) => updateInputRow(row.id, 'length', parseNumberInput(e.target.value, 0) || 0)}
                         placeholder="0"
                         step="0.1"
-                        className="h-8 w-20"
+                        className="h-7 md:h-8 w-16 md:w-20 text-xs md:text-sm"
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="p-1 md:p-2">
                       <Select
                         value={row.category.toString()}
                         onValueChange={(value) => updateInputRow(row.id, 'category', parseInt(value))}
                       >
-                        <SelectTrigger className="h-8 w-16">
+                        <SelectTrigger className="h-7 md:h-8 w-14 md:w-16 text-xs md:text-sm">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -436,7 +436,7 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
                         value={row.actualIntensity || ''}
                         onChange={(e) => updateInputRow(row.id, 'actualIntensity', parseNumberInput(e.target.value, 0) || 0)}
                         placeholder="5000"
-                        className="h-8 w-20"
+                        className="h-7 md:h-8 w-16 md:w-20 text-xs md:text-sm"
                       />
                     </TableCell>
                     <TableCell>
@@ -445,7 +445,7 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
                         value={row.actualElasticModulus || ''}
                         onChange={(e) => updateInputRow(row.id, 'actualElasticModulus', parseNumberInput(e.target.value, 0) || 0)}
                         placeholder="180"
-                        className="h-8 w-20"
+                        className="h-7 md:h-8 w-16 md:w-20 text-xs md:text-sm"
                       />
                     </TableCell>
                     <TableCell>
@@ -455,7 +455,7 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
                         onChange={(e) => updateInputRow(row.id, 'actualSurfaceEvenness', parseNumberInput(e.target.value, 0) || 0)}
                         placeholder="3.5"
                         step="0.1"
-                        className="h-8 w-20"
+                        className="h-7 md:h-8 w-16 md:w-20 text-xs md:text-sm"
                       />
                     </TableCell>
                     <TableCell className="text-center text-xs text-muted-foreground bg-muted">
@@ -467,7 +467,7 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
                         value={row.actualRutDepth || ''}
                         onChange={(e) => updateInputRow(row.id, 'actualRutDepth', parseNumberInput(e.target.value, 0) || 0)}
                         placeholder="25"
-                        className="h-8 w-20"
+                        className="h-7 md:h-8 w-16 md:w-20 text-xs md:text-sm"
                       />
                     </TableCell>
                     <TableCell>
@@ -479,7 +479,7 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
                         step="0.01"
                         min="0"
                         max="1"
-                        className="h-8 w-20"
+                        className="h-7 md:h-8 w-16 md:w-20 text-xs md:text-sm"
                       />
                     </TableCell>
                     <TableCell>
@@ -504,19 +504,19 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
       {/* ТАБЛИЦЯ 2: РЕЗУЛЬТАТИ */}
       {calculated && (
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+          <CardHeader className="py-1.5 md:py-2 xl:py-3">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-1.5 md:gap-2">
               <Button
                 variant="ghost"
                 onClick={() => setShowResults(!showResults)}
-                className="text-lg font-semibold p-0 h-auto hover:bg-transparent"
+                className="text-[11px] md:text-xs xl:text-sm font-semibold p-0 h-auto hover:bg-transparent"
               >
-                📊 Визначення виду робіт (результати розрахунку)
-                {showResults ? <ChevronUp className="ml-2 h-5 w-5" /> : <ChevronDown className="ml-2 h-5 w-5" />}
+                📊 Визначення виду робіт (результати)
+                {showResults ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />}
               </Button>
-              <Button onClick={exportToCSV} size="sm" className="bg-purple-600 hover:bg-purple-700">
-                <FileDown className="h-4 w-4 mr-2" />
-                Експорт CSV
+              <Button onClick={exportToCSV} size="sm" className="bg-purple-600 hover:bg-purple-700 text-[10px] md:text-xs py-0.5 md:py-1 px-1.5 md:px-2 h-6 md:h-7">
+                <FileDown className="h-3 w-3 mr-0.5 md:mr-1" />
+                Експорт
               </Button>
             </div>
           </CardHeader>
@@ -526,27 +526,27 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-green-600 hover:bg-green-600">
-                      <TableHead className="text-white text-center" colSpan={9}>
+                      <TableHead className="text-white text-center text-[10px] md:text-xs xl:text-sm p-1 md:p-2" colSpan={9}>
                         Визначення показників фактичного транспортно–експлуатаційного стану доріг
                       </TableHead>
                     </TableRow>
                     <TableRow>
-                      <TableHead className="text-xs">Найменування</TableHead>
-                      <TableHead className="text-xs">Протяжність</TableHead>
-                      <TableHead className="text-xs">Коеф. інтенсивності</TableHead>
-                      <TableHead className="text-xs">Коеф. міцності (неж)</TableHead>
-                      <TableHead className="text-xs">Коеф. міцності (ж)</TableHead>
-                      <TableHead className="text-xs">Коеф. рівності</TableHead>
-                      <TableHead className="text-xs">Коеф. колійності</TableHead>
-                      <TableHead className="text-xs">Коеф. зчеплення</TableHead>
-                      <TableHead className="text-xs">Вид робіт</TableHead>
+                      <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Найменування</TableHead>
+                      <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Протяжність</TableHead>
+                      <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Коеф. інтенсивності</TableHead>
+                      <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Коеф. міцності (неж)</TableHead>
+                      <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Коеф. міцності (ж)</TableHead>
+                      <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Коеф. рівності</TableHead>
+                      <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Коеф. колійності</TableHead>
+                      <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Коеф. зчеплення</TableHead>
+                      <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Вид робіт</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {resultRows.map((row) => (
                       <TableRow key={row.id}>
-                        <TableCell className="text-sm">{row.roadName}</TableCell>
-                        <TableCell className="text-sm text-center">{row.length}</TableCell>
+                        <TableCell className="text-[10px] md:text-xs xl:text-sm p-1 md:p-2">{row.roadName}</TableCell>
+                        <TableCell className="text-[10px] md:text-xs xl:text-sm p-1 md:p-2 text-center">{row.length}</TableCell>
                         <TableCell className={`text-sm text-center font-medium ${getCoefficientColor(row.intensityCoefficient, 1.0)}`}>
                           {row.intensityCoefficient.toFixed(3)}
                         </TableCell>

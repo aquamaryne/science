@@ -1,335 +1,287 @@
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import React, { useState } from "react";
-import { ScrollArea } from "./ui/scroll-area";
 import { Button } from "./ui/button";
-import { Trash2, AlertTriangle } from "lucide-react";
+import { Trash2, AlertTriangle, Home, Calculator, Wrench, Route, History } from "lucide-react";
 import { useAppDispatch } from "@/redux/hooks";
 import { clearAllData } from "@/redux/slices/historySlice";
 import { clearAllAppData } from "@/redux/store";
 import { persistor } from "@/redux/store";
 
+// ✅ Shadcn/ui Sidebar Components
+import {
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarGroup,
+    SidebarGroupContent,
+    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuItem,
+    SidebarMenuButton,
+    SidebarProvider,
+    SidebarTrigger,
+} from "@/components/ui/sidebar";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+
 interface NavItem {
     to: string;
     label: string;
+    icon: React.ComponentType<{ className?: string }>;
 }
 
 const navItems: NavItem[] = [
-    { to: "/", label: 'Інструкція' },
-    { to: "/block_one_page", label: "Розрахунок бюджетного фінансування доріг" },
-    { to: "/block_two_page", label: "Експлуатаційне утримання доріг" },
-    { to: "/block_three_page", label: "Планування ремонтів автомобільних доріг" },
-    { to: "/history", label: "Історія розрахунків" },
-]
+    { to: "/", label: 'Інструкція', icon: Home },
+    { to: "/block_one_page", label: "Розрахунок бюджетного фінансування доріг", icon: Calculator },
+    { to: "/block_two_page", label: "Експлуатаційне утримання доріг", icon: Wrench },
+    { to: "/block_three_page", label: "Планування ремонтів автомобільних доріг", icon: Route },
+    { to: "/history", label: "Історія розрахунків", icon: History },
+];
 
-export const Sidebar: React.FC = () => {
+export const AppSidebar: React.FC = () => {
     const dispatch = useAppDispatch();
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const handleClearAllData = async () => {
         try {
-            // Очищаем все данные из Redux
             await dispatch(clearAllData()).unwrap();
-            
-            // Очищаем все slices
             dispatch(clearAllAppData());
-            
-            // Очищаем persist store
             await persistor.purge();
-            
-            // Перезагружаем страницу для полной очистки
             window.location.reload();
         } catch (error) {
-            console.error('Ошибка при очистке данных:', error);
+            console.error('Помилка при очищенні даних:', error);
         }
     };
 
     return (
         <>
-            {/* Mobile Burger Menu Button */}
-            <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="fixed top-4 left-4 z-[60] lg:hidden bg-white rounded-lg shadow-lg p-3 hover:bg-gray-50 transition-all"
-                aria-label="Toggle Menu"
-            >
-                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    {isSidebarOpen ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    )}
-                </svg>
-            </button>
+            <Sidebar className="glass-sidebar">
 
-            {/* Overlay for mobile */}
-            {isSidebarOpen && (
-                <div 
-                    className="fixed inset-0 bg-gray-600 bg-opacity-30 z-40 lg:hidden"
-                    onClick={() => setIsSidebarOpen(false)}
-                />
-            )}
-
-        <aside className={`
-            w-80 h-screen fixed left-0 top-0 z-50 transform transition-transform duration-300 ease-in-out
-            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-            lg:translate-x-0
-        `}>
-            {/* Background with animated blobs */}
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-gray-100">
-                {/* Morphing blob 1 */}
-                <div 
-                    className="absolute w-96 h-96 rounded-full opacity-10 blur-3xl"
-                    style={{
-                        background: 'radial-gradient(circle, rgba(99,102,241,0.2) 0%, rgba(168,85,247,0.1) 50%, transparent 100%)',
-                        animation: 'morph1 15s ease-in-out infinite, float1 20s ease-in-out infinite'
-                    }}
-                />
-                {/* Morphing blob 2 */}
-                <div 
-                    className="absolute w-80 h-80 rounded-full opacity-8 blur-2xl"
-                    style={{
-                        background: 'radial-gradient(circle, rgba(236,72,153,0.15) 0%, rgba(59,130,246,0.08) 60%, transparent 100%)',
-                        animation: 'morph2 12s ease-in-out infinite, float2 18s ease-in-out infinite',
-                        right: '-10%',
-                        top: '30%'
-                    }}
-                />
-            </div>
-
-            {/* Main glass container */}
-            <div className="glass-sidebar-container">
-                {/* Content */}
-                <div className="relative z-20 h-full flex flex-col py-6 px-4">
-                    {/* Header */}
-                    <div className="mb-6 px-2">
-                        <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent tracking-wide">
+                {/* Header */}
+                <SidebarHeader className="relative z-10">
+                    <div className="px-2 py-2 md:py-3 xl:py-4">
+                        <h1 className="text-lg md:text-xl xl:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent tracking-wide">
                             ІАС Дороги
                         </h1>
-                        <div className="glass-divider" style={{ margin: '0.75rem 0' }} />
+                        <div className="glass-divider mt-2 md:mt-3" />
                     </div>
+                </SidebarHeader>
 
-                    {/* Navigation */}
-                    <ScrollArea className="flex-1">
-                        <nav className="space-y-6 px-2 pt-1">
-                            {navItems.map(({to, label}, index) => (
-                                <NavLink
-                                    key={to}
-                                    to={to}
-                                    className={({ isActive }) => cn(
-                                        "glass-nav-button group relative block overflow-hidden",
-                                        isActive && "glass-nav-button--active"
-                                    )}
-                                    style={{
-                                        animationDelay: `${index * 100}ms`
-                                    }}
-                                >
-                                    {/* Liquid ripple effect */}
-                                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none">
-                                        <div 
-                                            className="absolute inset-0 rounded-xl"
-                                            style={{
-                                                background: 'radial-gradient(circle at 50% 50%, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.03) 40%, transparent 70%)',
-                                                transform: 'scale(0)',
-                                                animation: 'ripple 0.6s ease-out forwards'
-                                            }}
-                                        />
-                                    </div>
+                {/* Content */}
+                <SidebarContent className="relative z-10">
+                    <SidebarGroup>
+                        <SidebarGroupContent>
+                            <SidebarMenu className="space-y-1.5 md:space-y-2">
+                                {navItems.map((item, index) => (
+                                    <SidebarMenuItem key={item.to}>
+                                        <NavLink
+                                            to={item.to}
+                                            className={({ isActive }) => cn(
+                                                "w-full",
+                                                isActive && "sidebar-active"
+                                            )}
+                                        >
+                                            {({ isActive }) => (
+                                                <SidebarMenuButton
+                                                    className={cn(
+                                                        "glass-nav-button group w-full h-auto min-h-[3rem] md:min-h-[3.5rem] py-2 md:py-2.5 px-2.5 md:px-3 flex items-start justify-start",
+                                                        isActive && "glass-nav-button--active"
+                                                    )}
+                                                >
+                                                    <item.icon className="relative z-10 h-4 w-4 md:h-5 md:w-5 xl:h-5 xl:w-5 2xl:h-6 2xl:w-6 min-w-[1rem] md:min-w-[1.25rem] mr-2 mt-1 flex-shrink-0" />
+                                                    <span className="relative z-10 text-[11px] md:text-xs xl:text-sm 2xl:text-base font-semibold text-gray-700 group-hover:text-gray-900 transition-colors leading-tight md:leading-relaxed text-left flex-1 whitespace-normal break-words">
+                                                        {item.label}
+                                                    </span>
+                                                </SidebarMenuButton>
+                                            )}
+                                        </NavLink>
+                                    </SidebarMenuItem>
+                                ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                </SidebarContent>
 
-                                    {/* Shine effect */}
-                                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                                        <div 
-                                            className="absolute top-0 left-0 w-full h-full rounded-xl"
-                                            style={{
-                                                background: 'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%)',
-                                                transform: 'translateX(-100%)',
-                                                animation: 'shine 1.5s ease-out forwards'
-                                            }}
-                                        />
-                                    </div>
+                {/* Footer */}
+                <SidebarFooter className="relative z-10">
+                    <div className="px-2 py-2 md:py-3 xl:py-4">
+                        <div className="glass-divider mb-2 md:mb-3 xl:mb-4" />
 
-                                    <span className="relative z-10 block px-5 py-4 text-base font-semibold text-gray-700 group-hover:text-gray-900 transition-colors leading-snug">
-                                        {label}
-                                    </span>
-                                </NavLink>
-                            ))}
-                        </nav>
-                    </ScrollArea>
-
-                    {/* Footer */}
-                    <div className="mt-6 pt-4 px-1">
-                        <div className="glass-divider" style={{ margin: '0 0 1rem 0' }} />
-                        
                         {/* Clear Cache Button */}
-                        <div className="mb-4">
-                            <Button
-                                onClick={() => setShowConfirmDialog(true)}
-                                variant="destructive"
-                                className="w-full glass-clear-button"
-                                size="sm"
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Очистити всі дані
-                            </Button>
-                        </div>
-                        
-                        <div className="glass-badge px-4 py-2 text-center">
-                            <span className="text-xs font-medium text-gray-600">© 2025 ДП "НІРІ"</span>
-                        </div>
+                        <Button
+                            onClick={() => setShowConfirmDialog(true)}
+                            variant="destructive"
+                            className="w-full glass-clear-button text-xs md:text-sm xl:text-base py-2 md:py-2.5"
+                        >
+                            <Trash2 className="h-3 w-3 md:h-4 md:w-4 xl:h-4 xl:w-4 mr-1.5 md:mr-2" />
+                            Очистити всі дані
+                        </Button>
                     </div>
-                </div>
-            </div>
+                </SidebarFooter>
+            </Sidebar>
 
             {/* Confirmation Dialog */}
-            {showConfirmDialog && (
-                <div className="fixed inset-0 bg-gray-600 bg-opacity-30 flex items-center justify-center z-[100]">
-                    <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl border border-red-200">
-                        <div className="flex items-center mb-4">
-                            <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
-                                <AlertTriangle className="h-6 w-6 text-red-600" />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-semibold text-gray-900">
-                                    Підтвердження очищення
-                                </h3>
-                                <p className="text-sm text-gray-500">
-                                    Ця дія незворотна
+            <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-red-600">
+                            <AlertTriangle className="h-5 w-5" />
+                            Підтвердження очищення
+                        </DialogTitle>
+                        <DialogDescription className="text-base pt-2">
+                            <div className="space-y-3">
+                                <p className="font-semibold text-gray-900">
+                                    Ви впевнені, що хочете видалити всі дані?
+                                </p>
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+                                    <p className="font-medium text-red-900 mb-2">
+                                        ⚠️ Будуть видалені:
+                                    </p>
+                                    <ul className="space-y-1 text-red-800 list-disc list-inside">
+                                        <li>Всі збережені розрахунки</li>
+                                        <li>Історія сесій</li>
+                                        <li>Налаштування</li>
+                                        <li>Завантажені дані</li>
+                                    </ul>
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                    Цю дію неможливо скасувати. Сторінка перезавантажиться після очищення.
                                 </p>
                             </div>
-                        </div>
-                        
-                        <div className="mb-6">
-                            <p className="text-gray-700 mb-2">
-                                Ви впевнені, що хочете очистити <strong>ВСІ ДАНІ</strong>?
-                            </p>
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                                <p className="text-sm text-red-800">
-                                    <strong>Буде видалено:</strong>
-                                </p>
-                                <ul className="text-sm text-red-700 mt-1 ml-4 list-disc">
-                                    <li>Всі розрахунки з бюджетного фінансування</li>
-                                    <li>Всі розрахунки з експлуатаційного утримання</li>
-                                    <li>Всі розрахунки з планування ремонтів</li>
-                                    <li>Історію сесій</li>
-                                    <li>Збережені дані</li>
-                                    <li>Налаштування користувача</li>
-                                </ul>
-                            </div>
-                        </div>
-                        
-                        <div className="flex gap-3">
-                            <Button
-                                variant="outline"
-                                onClick={() => setShowConfirmDialog(false)}
-                                className="flex-1"
-                            >
-                                Скасувати
-                            </Button>
-                            <Button
-                                variant="destructive"
-                                onClick={handleClearAllData}
-                                className="flex-1"
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Очистити все
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowConfirmDialog(false)}
+                            className="flex-1 sm:flex-none"
+                        >
+                            Скасувати
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => {
+                                setShowConfirmDialog(false);
+                                handleClearAllData();
+                            }}
+                            className="flex-1 sm:flex-none"
+                        >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Так, видалити все
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
-            {/* CSS Styles */}
             <style>{`
-                /* Import glass variables */
+                /* Glass morphism variables */
                 :root {
-                    --glass-base: 187 187 188;
-                    --glass-light: 255 255 255;
-                    --glass-dark: 0 0 0;
-                    --glass-content: 34 34 68;
-                    --glass-action: 0 82 245;
-                    --glass-reflex-dark: 1;
-                    --glass-reflex-light: 1;
-                    --glass-saturation: 150%;
-                    --glass-radius: 0.875rem;
-                    --glass-radius-sm: 0.5rem;
-                    --glass-blur-strong: 16px;
-                    --glass-blur-medium: 10px;
-                    --glass-blur-light: 6px;
-                    --glass-transition: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-                    --glass-transition-fast: 150ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                    --glass-base: 255, 255, 255;
+                    --glass-action: 59, 130, 246;
+                    --glass-content: 31, 41, 55;
+                    --glass-blur-heavy: 24px;
+                    --glass-blur-medium: 16px;
+                    --glass-blur-light: 8px;
+                    --glass-saturation: 180%;
+                    --glass-brightness: 1.1;
+                    --glass-reflex-light: 0.5;
+                    --glass-reflex-dark: 0.25;
+                    --glass-radius-lg: 1.5rem;
+                    --glass-radius-md: 1rem;
+                    --glass-radius-sm: 0.75rem;
+                    --glass-transition-smooth: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                    --glass-transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
                 }
 
-                /* Sidebar Container */
-                .glass-sidebar-container {
-                    position: relative;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(var(--glass-base), 0.08);
-                    backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturation));
-                    -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturation));
-                    border-right: 1px solid rgba(255, 255, 255, 0.15);
-                    box-shadow: 
-                        inset 0 0 0 1px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.08)),
-                        inset 2px 3px 0 -2px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.6)),
-                        inset -2px -2px 0 -2px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.5)),
-                        0 4px 12px 0 rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.06));
-                    transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+                /* Sidebar Base */
+                .glass-sidebar {
+                    position: sticky;
+                    top: 0;
+                    height: 100vh;
+                    width: 280px;
+                    min-width: 280px;
+                    background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+                    border-right: 1px solid #e2e8f0;
                 }
 
-                /* Navigation Button */
+                /* 1920x1080 и выше (QHD, 4K) */
+                @media (min-width: 1920px) {
+                    .glass-sidebar {
+                        width: 320px;
+                        min-width: 320px;
+                    }
+                }
+
+                /* 2K и выше */
+                @media (min-width: 2560px) {
+                    .glass-sidebar {
+                        width: 360px;
+                        min-width: 360px;
+                    }
+                }
+
+                /* 1600-1920 */
+                @media (max-width: 1919px) {
+                    .glass-sidebar {
+                        width: 270px;
+                        min-width: 270px;
+                    }
+                }
+
+                /* 1366-1600 */
+                @media (max-width: 1599px) {
+                    .glass-sidebar {
+                        width: 250px;
+                        min-width: 250px;
+                    }
+                }
+
+                /* Меньше 1366 */
+                @media (max-width: 1365px) {
+                    .glass-sidebar {
+                        width: 230px;
+                        min-width: 230px;
+                    }
+                }
+
+                /* Navigation Button Base */
                 .glass-nav-button {
                     position: relative;
-                    display: block;
-                    background: rgba(var(--glass-base), 0.05);
-                    backdrop-filter: blur(var(--glass-blur-medium)) saturate(var(--glass-saturation));
-                    -webkit-backdrop-filter: blur(var(--glass-blur-medium)) saturate(var(--glass-saturation));
-                    border: 1.5px solid rgba(255, 255, 255, 0.12);
-                    border-radius: var(--glass-radius);
-                    transition: all var(--glass-transition);
-                    transform: scale(1) translateZ(0);
-                    will-change: transform;
-                    box-shadow: 
-                        inset 0 0 0 1px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.08)),
-                        inset 1.5px 2.5px 0 -1px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.5)),
-                        0 2px 4px 0 rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.06));
+                    background: white;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 0.5rem;
+                    transition: all 0.2s ease;
+                    overflow: visible;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
                 }
 
                 .glass-nav-button:hover {
-                    transform: scale(1.02) translateY(-1px) translateZ(0);
-                    background: rgba(var(--glass-base), 0.1);
-                    border-color: rgba(255, 255, 255, 0.18);
-                    box-shadow: 
-                        inset 0 0 0 1px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.12)),
-                        inset 2px 3px 0 -1px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.6)),
-                        0 4px 8px 0 rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.1)),
-                        0 0 0 4px rgba(255, 255, 255, 0.05);
-                }
-
-                .glass-nav-button:active {
-                    transform: scale(0.98) translateZ(0);
-                    transition: all var(--glass-transition-fast);
+                    background: #f8fafc;
+                    border-color: #cbd5e1;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
                 }
 
                 /* Active Navigation Button */
                 .glass-nav-button--active {
-                    background: rgba(var(--glass-action), 0.15);
-                    border-color: rgba(var(--glass-action), 0.3);
-                    box-shadow: 
-                        inset 0 0 0 1px rgba(var(--glass-action), 0.25),
-                        inset 2px 3px 0 -1px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.7)),
-                        inset -2px -2px 0 -1px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.6)),
-                        0 4px 12px 0 rgba(var(--glass-action), 0.2),
-                        0 0 0 3px rgba(var(--glass-action), 0.1);
+                    background: #dbeafe;
+                    border-color: #3b82f6;
                 }
 
                 .glass-nav-button--active:hover {
-                    background: rgba(var(--glass-action), 0.18);
-                    border-color: rgba(var(--glass-action), 0.35);
-                    transform: scale(1.02) translateY(-1px) translateZ(0);
+                    background: #bfdbfe;
+                    border-color: #2563eb;
                 }
 
                 .glass-nav-button--active span {
-                    color: rgb(var(--glass-action));
+                    color: #1d4ed8;
                     font-weight: 700;
                 }
 
@@ -342,7 +294,6 @@ export const Sidebar: React.FC = () => {
                         rgba(255, 255, 255, 0.25) 50%,
                         transparent
                     );
-                    margin: 1rem 0;
                 }
 
                 /* Badge */
@@ -382,13 +333,6 @@ export const Sidebar: React.FC = () => {
                     box-shadow: 
                         0 6px 16px rgba(239, 68, 68, 0.4),
                         inset 0 1px 0 rgba(255, 255, 255, 0.3);
-                }
-
-                .glass-clear-button:active {
-                    transform: translateY(0);
-                    box-shadow: 
-                        0 2px 8px rgba(239, 68, 68, 0.3),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
                 }
 
                 /* Animations */
@@ -451,14 +395,32 @@ export const Sidebar: React.FC = () => {
 
                 /* Reduced motion */
                 @media (prefers-reduced-motion: reduce) {
-                    .glass-sidebar-container,
                     .glass-nav-button {
                         animation: none;
                         transition: none;
                     }
                 }
             `}</style>
-        </aside>
         </>
     );
-}
+};
+
+// ✅ Wrapper component з SidebarProvider
+export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    return (
+        <SidebarProvider>
+            <div className="flex w-full">
+                <AppSidebar />
+                <main className="flex-1 min-h-screen">
+                    {/* Trigger button для мобільних пристроїв */}
+                    <div className="lg:hidden fixed top-4 left-4 z-50">
+                        <SidebarTrigger className="bg-white shadow-lg hover:bg-gray-50 rounded-lg p-2" />
+                    </div>
+                    <div className="p-4 md:p-6 xl:p-8 2xl:p-10">
+                        {children}
+                    </div>
+                </main>
+            </div>
+        </SidebarProvider>
+    );
+};

@@ -150,6 +150,13 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
    * 14: Критична інфраструктура
    */
 
+  const parseExcelNumber = (value: any, decimals: number = 2): number => {
+    if (value === null || value === undefined || value === '') return 0;
+    const num = Number(value);
+    if (isNaN(num)) return 0;
+    return Math.round(num * Math.pow(10, decimals)) / Math.pow(10, decimals);
+  };
+
   const handleTemplateUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target?.files?.[0];
     if (!file) return;
@@ -176,23 +183,23 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
           const regionData: RegionalRoadData = {
             name: String(row[0]),
             lengthByCategory: {
-              1: Number(row[1]) || 0,
-              2: Number(row[2]) || 0,
-              3: Number(row[3]) || 0,
-              4: Number(row[4]) || 0,
-              5: Number(row[5]) || 0,
+              1: parseExcelNumber(row[1], 1),
+              2: parseExcelNumber(row[2], 1),
+              3: parseExcelNumber(row[3], 1),
+              4: parseExcelNumber(row[4], 1),
+              5: parseExcelNumber(row[5], 1),
             },
-            totalLength: Number(row[6]) || 0,
-            europeanIndexLength: Number(row[7]) || 0, // Протяжність доріг з індексом Е (після "Разом")
+            totalLength: parseExcelNumber(row[6], 1),
+            europeanIndexLength: parseExcelNumber(row[7], 1),
             lengthByIntensity: {
-              medium: Number(row[8]) || 0,  // 15000-20000
-              high: Number(row[9]) || 0,    // 20001-30000
-              veryHigh: Number(row[10]) || 0, // 30001 і більше
+              medium: parseExcelNumber(row[8], 1),
+              high: parseExcelNumber(row[9], 1),
+              veryHigh: parseExcelNumber(row[10], 1),
             },
-            borderCrossingLength: Number(row[11]) || 0, // МПП
-            lightingLength: Number(row[12]) || 0, // Освітлення
-            repairedLength: Number(row[13]) || 0, // Ремонт
-            criticalInfraCount: Number(row[14]) || 0, // Критична інфраструктура
+            borderCrossingLength: parseExcelNumber(row[11], 1),
+            lightingLength: parseExcelNumber(row[12], 1),
+            repairedLength: parseExcelNumber(row[13], 1),
+            criticalInfraCount: parseExcelNumber(row[14], 0),
           };
           
           parsedData.push(regionData);

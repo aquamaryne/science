@@ -286,9 +286,9 @@ export const RoadCostIndicators: React.FC = () => {
 
       {/* ВКЛАДКА 3: Показники вартості */}
       <Card>
-        <CardHeader>
+        <CardHeader className="py-3 md:py-4 xl:py-6">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">📊 Усереднені орієнтовні показники вартості</CardTitle>
+            <CardTitle className="text-sm md:text-base xl:text-lg">📊 Усереднені орієнтовні показники вартості</CardTitle>
             <div className="flex gap-2">
               <Button onClick={resetToDefaults} variant="outline" size="sm">
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -379,7 +379,7 @@ export const RoadCostIndicators: React.FC = () => {
       {/* ВКЛАДКА 4: Орієнтовна вартість робіт */}
       {calculated && (
         <Card>
-          <CardHeader>
+          <CardHeader className="py-3 md:py-4 xl:py-6">
             <div className="flex items-center justify-between">
               <Button
                 variant="ghost"
@@ -407,7 +407,7 @@ export const RoadCostIndicators: React.FC = () => {
                       </TableHead>
                     </TableRow>
                     <TableRow>
-                      <TableHead className="text-xs">Найменування ділянки</TableHead>
+                      <TableHead className="text-[10px] md:text-xs xl:text-xs p-1 md:p-2">Найменування ділянки</TableHead>
                       <TableHead className="text-xs text-center">Протяжність (км)</TableHead>
                       <TableHead className="text-xs text-center">Категорія</TableHead>
                       <TableHead className="text-xs text-center">Вид робіт</TableHead>

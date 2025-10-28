@@ -79,7 +79,7 @@ export const AppSidebar: React.FC = () => {
                     <SidebarGroup>
                         <SidebarGroupContent>
                             <SidebarMenu className="space-y-1.5 md:space-y-2">
-                                {navItems.map((item, index) => (
+                                {navItems.map((item) => (
                                     <SidebarMenuItem key={item.to}>
                                         <NavLink
                                             to={item.to}

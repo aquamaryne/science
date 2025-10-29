@@ -346,6 +346,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
     return Math.round(num * Math.pow(10, decimals)) / Math.pow(10, decimals);
   };
 
+  // Функція для форматування чисел з 2 знаками після коми
+  const formatNumber = (value: number): string => {
+    return value.toLocaleString('uk-UA', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
   const handleTemplateUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target?.files?.[0];
     if (!file) return;
@@ -811,7 +819,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
       if (result.type.endsWith('/fulfilled')) {
         const message = `✅ Успішно збережено!\n\n` +
           `📊 Регіональні результати: ${regionalResults.length} областей\n` +
-          `💰 Загальне фінансування: ${totalFunding.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2})} тис. грн\n` +
+          `💰 Загальне фінансування: ${formatNumber(totalFunding)} тис. грн\n` +
           `🛣️ Тип доріг: ${roadType === 'state' ? 'Державні' : 'Місцеві'}\n\n` +
           `Перегляньте детальні таблиці в розділі "Історія"`;
         alert(message);
@@ -874,13 +882,13 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center p-3 bg-white rounded border">
                     <div className="text-lg font-bold text-blue-700">
-                      {q1Value ? q1Value.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—'} тис. грн
+                      {q1Value ? formatNumber(q1Value) : '—'} тис. грн
                     </div>
                     <div className="text-xs text-gray-600">Q₁ (Державні дороги)</div>
                   </div>
                   <div className="text-center p-3 bg-white rounded border">
                     <div className="text-lg font-bold text-green-700">
-                      {q2Value ? q2Value.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—'} тис. грн
+                      {q2Value ? formatNumber(q2Value) : '—'} тис. грн
                     </div>
                     <div className="text-xs text-gray-600">Q₂ (Місцеві дороги)</div>
                   </div>
@@ -1624,14 +1632,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     {([1, 2, 3, 4, 5] as const).map(cat => (
                                       <td key={`funding-${cat}`} className="border border-gray-400 p-2 text-right whitespace-nowrap min-w-[100px]">
                                         {regionResult?.fundingByCategory?.[cat]
-                                          ? regionResult.fundingByCategory[cat].toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2})
+                                          ? formatNumber(regionResult.fundingByCategory[cat])
                                           : '-'
                                         }
                                       </td>
                                     ))}
                                     <td className="border border-gray-400 p-2 text-right font-bold bg-green-50 whitespace-nowrap min-w-[120px]">
                                       {regionResult?.totalFunding
-                                        ? regionResult.totalFunding.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2})
+                                        ? formatNumber(regionResult.totalFunding)
                                         : '-'
                                       }
                                     </td>
@@ -1659,17 +1667,19 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                 </td>
                                 {([1, 2, 3, 4, 5] as const).map(cat => (
                                   <td key={`total-funding-${cat}`} className="border-2 border-gray-400 p-2 text-right whitespace-nowrap min-w-[100px]">
-                                    {regionalResults
-                                      .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
-                                      .reduce((sum, r) => sum + (r.fundingByCategory?.[cat] || 0), 0)
-                                      .toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                    {formatNumber(
+                                      regionalResults
+                                        .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
+                                        .reduce((sum, r) => sum + (r.fundingByCategory?.[cat] || 0), 0)
+                                    )}
                                   </td>
                                 ))}
                                 <td className="border-2 border-gray-400 p-2 text-right bg-green-100 text-lg whitespace-nowrap min-w-[120px]">
-                                  {regionalResults
-                                    .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
-                                    .reduce((sum, r) => sum + r.totalFunding, 0)
-                                    .toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                  {formatNumber(
+                                    regionalResults
+                                      .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
+                                      .reduce((sum, r) => sum + r.totalFunding, 0)
+                                  )}
                                 </td>
                                 <td className="border-2 border-gray-400 p-2 text-right bg-yellow-100 text-base whitespace-nowrap min-w-[80px]">
                                   {selectedRegion === 'all' ? '100.00' : '100.00'}
@@ -1735,8 +1745,8 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                               </div>
                               <div className="text-base sm:text-lg md:text-2xl font-bold text-blue-700 break-all">
                                 {roadType === 'state' ?
-                                  (q1Value ? q1Value.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—') :
-                                  (q2Value ? q2Value.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—')
+                                  (q1Value ? formatNumber(q1Value) : '—') :
+                                  (q2Value ? formatNumber(q2Value) : '—')
                                 } тис. грн
                               </div>
                             </div>
@@ -1746,9 +1756,11 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                 {selectedRegion === 'all' ? 'Витрати на ЕУ' : 'Витрати на ЕУ (фільтр)'}
                               </div>
                               <div className="text-base sm:text-lg md:text-2xl font-bold text-red-700 break-all">
-                                {regionalResults
-                                  .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
-                                  .reduce((sum, r) => sum + r.totalFunding, 0).toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2})} тис. грн
+                                {formatNumber(
+                                  regionalResults
+                                    .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
+                                    .reduce((sum, r) => sum + r.totalFunding, 0)
+                                )} тис. грн
                               </div>
                             </div>
                             
@@ -1770,7 +1782,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     .reduce((sum, r) => sum + r.totalFunding, 0);
                                   const available = roadType === 'state' ? (q1Value || 0) : (q2Value || 0);
                                   const remainder = available - totalEU;
-                                  return remainder.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                  return formatNumber(remainder);
                                 })()} тис. грн
                               </div>
                             </div>
@@ -1832,7 +1844,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                   .reduce((sum, r) => sum + r.totalFunding, 0);
                                 const available = roadType === 'state' ? (q1Value || 0) : (q2Value || 0);
                                 const remainder = available - totalEU;
-                                return remainder.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                return formatNumber(remainder);
                               })()} тис. грн
                             </strong>
                           </div>

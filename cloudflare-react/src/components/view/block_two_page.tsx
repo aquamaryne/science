@@ -64,6 +64,7 @@ const Block2MaintenanceCalculator: React.FC = () => {
   // ✅ ПЕРЕВІРКА ЗАВЕРШЕННЯ ЕТАПІВ (лише для індикаторів)
   const isStep1Complete = blockTwoState.stateRoadRates.category1 > 0;
   const isStep2Complete = blockTwoState.localRoadRates.category1 > 0;
+  const isStep3Complete = blockTwoState.regionalResults && blockTwoState.regionalResults.length > 0;
 
   // Синхронизация с Redux при загрузке
   useEffect(() => {
@@ -95,10 +96,11 @@ const Block2MaintenanceCalculator: React.FC = () => {
             {isStep2Complete && <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />}
             <span className="truncate">Дороги місцевого значення</span>
           </TabsTrigger>
-          <TabsTrigger 
-            value="step3" 
+          <TabsTrigger
+            value="step3"
             className="flex items-center justify-center gap-2 text-xs sm:text-sm p-2 sm:p-0"
           >
+            {isStep3Complete && <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />}
             <span className="truncate">Розрахунок обсягу коштів</span>
           </TabsTrigger>
         </TabsList>

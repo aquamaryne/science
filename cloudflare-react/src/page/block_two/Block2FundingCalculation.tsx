@@ -2,7 +2,17 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle, Download, Calculator, AlertTriangle, Construction, Upload, Edit } from "lucide-react";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+} from "@/components/ui/context-menu";
+import { CheckCircle, Download, Calculator, AlertTriangle, Construction, Upload, Edit, Copy, FileDown, RefreshCw, Trash2, FileSpreadsheet } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { parseNumberInput, handleNativeInputPaste } from '@/utils/numberInput';
 
@@ -105,6 +115,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
   const [regionalResults, setRegionalResults] = useState<RegionalCalculationResult[]>([]);
   const [isCalculatingRegional, setIsCalculatingRegional] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>('');
+  const [isDragOver, setIsDragOver] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ✅ ЧИТАЄМО isEditing З REDUX (зберігається між вкладками)
@@ -397,6 +408,98 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
     };
     
     reader.readAsBinaryString(file);
+  };
+
+  // ==================== DRAG AND DROP ОБРОБНИКИ ====================
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragOver(false);
+
+    const files = event.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+
+      // Перевірка розширення файлу
+      const fileName = file.name.toLowerCase();
+      if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls')) {
+        setUploadStatus('❌ Будь ласка, завантажте файл формату .xlsx або .xls');
+        setTimeout(() => setUploadStatus(''), 5000);
+        return;
+      }
+
+      // Обробка файлу через існуючу логіку
+      setUploadStatus('Завантажуємо шаблон...');
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = e.target?.result;
+          const workbook = XLSX.read(data, { type: 'binary' });
+
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as (string | number)[][];
+
+          const parsedData: RegionalRoadData[] = [];
+
+          for (let i = 2; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            if (!row[0]) continue;
+
+            const regionData: RegionalRoadData = {
+              name: String(row[0]),
+              lengthByCategory: {
+                1: parseExcelNumber(row[1], 1),
+                2: parseExcelNumber(row[2], 1),
+                3: parseExcelNumber(row[3], 1),
+                4: parseExcelNumber(row[4], 1),
+                5: parseExcelNumber(row[5], 1),
+              },
+              totalLength: parseExcelNumber(row[6], 1),
+              europeanIndexLength: parseExcelNumber(row[7], 1),
+              lengthByIntensity: {
+                medium: parseExcelNumber(row[8], 1),
+                high: parseExcelNumber(row[9], 1),
+                veryHigh: parseExcelNumber(row[10], 1),
+              },
+              borderCrossingLength: parseExcelNumber(row[11], 1),
+              lightingLength: parseExcelNumber(row[12], 1),
+              repairedLength: parseExcelNumber(row[13], 1),
+              criticalInfraCount: parseExcelNumber(row[14], 0),
+            };
+
+            parsedData.push(regionData);
+          }
+
+          setRegionalData(parsedData);
+          dispatch(setRegionalDataAction(parsedData));
+          setUploadStatus(`✓ Успішно завантажено дані для ${parsedData.length} областей`);
+          setTimeout(() => setUploadStatus(''), 3000);
+
+        } catch (error) {
+          console.error('Помилка парсингу Excel:', error);
+          setUploadStatus('❌ Помилка при завантаженні файлу. Перевірте формат.');
+          setTimeout(() => setUploadStatus(''), 5000);
+        }
+      };
+
+      reader.readAsBinaryString(file);
+    }
   };
 
   // ==================== РОЗРАХУНОК З ВИКОРИСТАННЯМ ФУНКЦІЙ МОДУЛЯ ====================
@@ -748,17 +851,19 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
   // ==================== RENDER ====================
 
   return (
-    <Card className='w-full'>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Construction className="h-5 w-5" />
-          Розрахунок обсягу коштів на ЕУ доріг
-        </CardTitle>
-        <CardDescription>
-          Оберіть тип доріг та завантажте Excel шаблон з даними про дороги по областях.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <Card className='w-full'>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Construction className="h-5 w-5" />
+              Розрахунок обсягу коштів на ЕУ доріг
+            </CardTitle>
+            <CardDescription>
+              Оберіть тип доріг та завантажте Excel шаблон з даними про дороги по областях.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
         
         {/* ✅ ПОКАЗУЄМО Q1 ТА Q2 З БЛОКУ 1 */}
         {hasBlockOneData && (
@@ -844,50 +949,66 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
         </Alert>
 
         {/* Завантаження файлу */}
-        <Alert className="bg-blue-50 border-blue-200">
-          <AlertDescription>
-            <div className="space-y-4">
-              <div className="text-sm md:text-base">
-                Завантажте Excel шаблон з вихідними даними про дороги по областях
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`relative transition-all duration-200 ${
+            isDragOver ? 'ring-4 ring-blue-500 ring-opacity-50' : ''
+          }`}
+        >
+          <Alert className={`${isDragOver ? 'bg-blue-100 border-blue-400' : 'bg-blue-50 border-blue-200'} transition-colors duration-200`}>
+            <AlertDescription>
+              <div className="space-y-4">
+                <div className="text-sm md:text-base">
+                  {isDragOver ? (
+                    <div className="flex items-center gap-2 font-semibold text-blue-700">
+                      <Upload className="h-5 w-5 animate-bounce" />
+                      Відпустіть файл для завантаження
+                    </div>
+                  ) : (
+                    'Завантажте Excel шаблон з вихідними даними про дороги по областях (або перетягніть файл сюди)'
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-sm md:text-base w-full justify-center"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Завантажити таблицю
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = '/templates/шаблон_державні.xlsx';
+                      link.download = 'шаблон_державні.xlsx';
+                      link.click();
+                    }}
+                    variant="outline"
+                    className="flex items-center gap-2 border-blue-300 text-blue-700 hover:bg-blue-50 text-sm md:text-base w-full justify-center"
+                  >
+                    <Download className="h-4 w-4" />
+                    Шаблон державні
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = '/templates/шаблон_місцеві.xlsx';
+                      link.download = 'шаблон_місцеві.xlsx';
+                      link.click();
+                    }}
+                    variant="outline"
+                    className="flex items-center gap-2 border-green-300 text-green-700 hover:bg-green-50 text-sm md:text-base w-full justify-center sm:col-span-2 lg:col-span-1"
+                  >
+                    <Download className="h-4 w-4" />
+                    Шаблон місцеві
+                  </Button>
+                </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-sm md:text-base w-full justify-center"
-                >
-                  <Upload className="h-4 w-4" />
-                  Завантажити таблицю
-                </Button>
-                <Button
-                  onClick={() => {
-                    const link = document.createElement('a');
-                    link.href = '/templates/шаблон_державні.xlsx';
-                    link.download = 'шаблон_державні.xlsx';
-                    link.click();
-                  }}
-                  variant="outline"
-                  className="flex items-center gap-2 border-blue-300 text-blue-700 hover:bg-blue-50 text-sm md:text-base w-full justify-center"
-                >
-                  <Download className="h-4 w-4" />
-                  Шаблон державні
-                </Button>
-                <Button
-                  onClick={() => {
-                    const link = document.createElement('a');
-                    link.href = '/templates/шаблон_місцеві.xlsx';
-                    link.download = 'шаблон_місцеві.xlsx';
-                    link.click();
-                  }}
-                  variant="outline"
-                  className="flex items-center gap-2 border-green-300 text-green-700 hover:bg-green-50 text-sm md:text-base w-full justify-center sm:col-span-2 lg:col-span-1"
-                >
-                  <Download className="h-4 w-4" />
-                  Шаблон місцеві
-                </Button>
-              </div>
-            </div>
-          </AlertDescription>
-        </Alert>
+            </AlertDescription>
+          </Alert>
+        </div>
 
         <input
           ref={fileInputRef}
@@ -1723,8 +1844,102 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
               )}
             </>
           )}
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-64">
+        <ContextMenuItem onClick={() => fileInputRef.current?.click()}>
+          <Upload className="mr-2 h-4 w-4" />
+          Завантажити таблицю
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Завантажити шаблон
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent className="w-48">
+            <ContextMenuItem
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = '/templates/шаблон_державні.xlsx';
+                link.download = 'шаблон_державні.xlsx';
+                link.click();
+              }}
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              Шаблон державні
+            </ContextMenuItem>
+            <ContextMenuItem
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = '/templates/шаблон_місцеві.xlsx';
+                link.download = 'шаблон_місцеві.xlsx';
+                link.click();
+              }}
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              Шаблон місцеві
+            </ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        <ContextMenuSeparator />
+        {regionalData.length > 0 && (
+          <>
+            <ContextMenuItem onClick={calculateRegionalFinancing} disabled={isCalculatingRegional}>
+              <Calculator className="mr-2 h-4 w-4" />
+              {isCalculatingRegional ? 'Розрахунок...' : 'Виконати розрахунок'}
+            </ContextMenuItem>
+            <ContextMenuItem
+              onClick={() => {
+                const filteredData = selectedRegion === 'all'
+                  ? regionalData
+                  : regionalData.filter(r => r.name === selectedRegion);
+                const dataStr = JSON.stringify(filteredData, null, 2);
+                navigator.clipboard.writeText(dataStr);
+                setUploadStatus('✓ Дані скопійовано в буфер обміну');
+                setTimeout(() => setUploadStatus(''), 2000);
+              }}
+            >
+              <Copy className="mr-2 h-4 w-4" />
+              Копіювати дані
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              onClick={() => {
+                setRegionalData([]);
+                setRegionalResults([]);
+                dispatch(clearRegionalDataAction());
+                setUploadStatus('✓ Дані очищено');
+                setTimeout(() => setUploadStatus(''), 2000);
+              }}
+              className="text-red-600"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Очистити дані
+            </ContextMenuItem>
+          </>
+        )}
+        {regionalResults.length > 0 && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={exportRegionalResults}>
+              <FileDown className="mr-2 h-4 w-4" />
+              Експортувати результати
+            </ContextMenuItem>
+          </>
+        )}
+        <ContextMenuSeparator />
+        <ContextMenuItem
+          onClick={() => {
+            window.location.reload();
+          }}
+        >
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Оновити сторінку
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 };
 

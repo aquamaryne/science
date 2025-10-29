@@ -76,9 +76,9 @@ const TRAFFIC_INTENSITY_COEFFICIENTS: Record<string, number> = {
 // ✅ Додаток 9 (сторінка 31) - Коефіцієнти K_кр.і^i (п.3.5 методики)
 const CRITICAL_INFRASTRUCTURE_COEFFICIENTS: Record<string, number> = {
   "0": 1.00,     // 0 об'єктів
-  "1-5": 1.01,   // від 1 до 5 об'єктів
-  "5-10": 1.03,  // від 5 до 10 об'єктів
-  ">10": 1.05,   // більше 10 об'єктів
+  "1-4": 1.01,   // від 1 до 4 об'єктів
+  "5-9": 1.03,   // від 5 до 9 об'єктів
+  ">=10": 1.05,  // 10 і більше об'єктів
 };
 
 // ✅ Константи з методики для коефіцієнтів
@@ -320,24 +320,24 @@ export function calculateRepairCoefficient(
 /**
  * ✅ П.3.5 МЕТОДИКИ + ДОДАТОК 9 (сторінка 31) - Розрахунок коефіцієнта K_кр.і^i
  * Враховує об'єкти критичної інфраструктури
- * 
+ *
  * Значення з Додатку 9:
  *   0 об'єктів: 1,00
- *   1-5 об'єктів: 1,01
- *   5-10 об'єктів: 1,03
- *   >10 об'єктів: 1,05
+ *   1-4 об'єктів: 1,01
+ *   5-9 об'єктів: 1,03
+ *   10+ об'єктів: 1,05
  */
 export function calculateCriticalInfrastructureCoefficient(
   criticalInfrastructureCount: number
 ): number {
   if (criticalInfrastructureCount === 0) {
     return CRITICAL_INFRASTRUCTURE_COEFFICIENTS["0"];
-  } else if (criticalInfrastructureCount > 10) {
-    return CRITICAL_INFRASTRUCTURE_COEFFICIENTS[">10"];
-  } else if (criticalInfrastructureCount > 5) {
-    return CRITICAL_INFRASTRUCTURE_COEFFICIENTS["5-10"];
+  } else if (criticalInfrastructureCount >= 10) {
+    return CRITICAL_INFRASTRUCTURE_COEFFICIENTS[">=10"];
+  } else if (criticalInfrastructureCount >= 5) {
+    return CRITICAL_INFRASTRUCTURE_COEFFICIENTS["5-9"];
   } else {
-    return CRITICAL_INFRASTRUCTURE_COEFFICIENTS["1-5"];
+    return CRITICAL_INFRASTRUCTURE_COEFFICIENTS["1-4"];
   }
 }
 

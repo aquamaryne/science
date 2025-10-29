@@ -788,7 +788,7 @@ const HistoryComponent: React.FC = () => {
                             </TableHeader>
                             <TableBody>
                               {selectedSession.blockOneData.stateRoadBudget.map((item: any, index: number) => (
-                                <TableRow key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-green-50'}>
+                                <TableRow key={item.id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-green-50'}>
                                   <TableCell className="font-medium">
                                     <div className="flex items-center gap-2">
                                       <Badge variant="outline" className="font-mono">{item.id}</Badge>
@@ -826,7 +826,7 @@ const HistoryComponent: React.FC = () => {
                             </TableHeader>
                             <TableBody>
                               {selectedSession.blockOneData.localRoadBudget.map((item: any, index: number) => (
-                                <TableRow key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
+                                <TableRow key={item.id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
                                   <TableCell className="font-medium">
                                     <div className="flex items-center gap-2">
                                       <Badge variant="outline" className="font-mono">{item.id}</Badge>
@@ -1039,7 +1039,7 @@ const HistoryComponent: React.FC = () => {
                               </TableHeader>
                               <TableBody>
                                 {selectedSession.blockTwoData.regionalResults.map((result: any, index: number) => (
-                                  <TableRow key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-purple-50'}>
+                                  <TableRow key={result.regionName || index} className={index % 2 === 0 ? 'bg-white' : 'bg-purple-50'}>
                                     <TableCell className="font-medium sticky left-0 z-10 bg-inherit">
                                       {result.regionName}
                                     </TableCell>
@@ -1114,7 +1114,7 @@ const HistoryComponent: React.FC = () => {
                               </TableHeader>
                               <TableBody>
                                 {selectedSession.blockTwoData!.regionalResults!.map((result: any, index: number) => (
-                                  <TableRow key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-cyan-50'}>
+                                  <TableRow key={result.regionName || index} className={index % 2 === 0 ? 'bg-white' : 'bg-cyan-50'}>
                                     <TableCell className="font-medium">{result.regionName}</TableCell>
                                     {selectedSession.blockTwoData!.roadType === 'state' && (
                                       <TableCell className="text-center bg-gray-100">1.1600</TableCell>
@@ -1199,7 +1199,7 @@ const HistoryComponent: React.FC = () => {
                             </TableHeader>
                             <TableBody>
                               {selectedSession.blockThreeData.sections.map((section: any, index: number) => (
-                                <TableRow key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-indigo-50'}>
+                                <TableRow key={section.name || index} className={index % 2 === 0 ? 'bg-white' : 'bg-indigo-50'}>
                                   <TableCell className="font-medium">{section.name}</TableCell>
                                   <TableCell className="text-center">
                                     <Badge variant="outline">{section.category}</Badge>

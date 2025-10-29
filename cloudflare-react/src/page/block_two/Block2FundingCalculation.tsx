@@ -846,8 +846,8 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                         className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="all">Всі області ({regionalData.length})</option>
-                        {regionalData.map((region, idx) => (
-                          <option key={idx} value={region.name}>
+                        {regionalData.map((region) => (
+                          <option key={region.name} value={region.name}>
                             {region.name}
                           </option>
                         ))}
@@ -964,7 +964,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                             // Находим реальный индекс в исходном массиве
                             const realIdx = regionalData.findIndex(r => r.name === region.name);
                             return (
-                          <tr key={realIdx} className={filteredIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <tr key={region.name} className={filteredIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                             <td className="border border-gray-300 p-2 whitespace-nowrap sticky left-0 bg-inherit">{region.name}</td>
 
                             {([1, 2, 3, 4, 5] as const).map(cat => (
@@ -1207,25 +1207,25 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                 const realIdx = regionalResults.findIndex(r => r.regionName === result.regionName);
                               let currentProduct;
                               if (roadType === 'state') {
-                                currentProduct = 
-                                  1.16 * 
-                                  result.coefficients.mountainous * 
-                                  result.coefficients.operatingConditions * 
-                                  result.coefficients.trafficIntensity * 
-                                  (result.coefficients.europeanRoad || 1) * 
-                                  (result.coefficients.borderCrossing || 1) * 
-                                  (result.coefficients.lighting || 1) * 
-                                  (result.coefficients.repair || 1) * 
+                                currentProduct =
+                                  1.16 *
+                                  result.coefficients.mountainous *
+                                  result.coefficients.operatingConditions *
+                                  result.coefficients.trafficIntensity *
+                                  (result.coefficients.europeanRoad || 1) *
+                                  (result.coefficients.borderCrossing || 1) *
+                                  (result.coefficients.lighting || 1) *
+                                  (result.coefficients.repair || 1) *
                                   (result.coefficients.criticalInfra || 1);
                               } else {
-                                currentProduct = 
-                                  result.coefficients.mountainous * 
-                                  result.coefficients.operatingConditions * 
+                                currentProduct =
+                                  result.coefficients.mountainous *
+                                  result.coefficients.operatingConditions *
                                   result.coefficients.trafficIntensity;
                               }
 
                               return (
-                                <tr key={realIdx} className={filteredIdx % 2 === 0 ? 'bg-white' : roadType === 'state' ? 'bg-blue-50' : 'bg-green-50'}>
+                                <tr key={`${roadType}-${result.regionName}`} className={filteredIdx % 2 === 0 ? 'bg-white' : roadType === 'state' ? 'bg-blue-50' : 'bg-green-50'}>
                                   <td className={`border p-2 whitespace-nowrap min-w-[150px] ${roadType === 'state' ? 'border-blue-300' : 'border-green-300'}`}>{result.regionName}</td>
                                   {roadType === 'state' && (
                                     <td className="border border-blue-300 p-2 text-center bg-gray-100 whitespace-nowrap min-w-[70px]">1.1600</td>
@@ -1400,14 +1400,12 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                               {regionalData
                                 .filter(region => selectedRegion === 'all' || region.name === selectedRegion)
                                 .map((region, filteredIdx) => {
-                                  // Находим реальный индекс в исходном массиве
-                                  const realIdx = regionalData.findIndex(r => r.name === region.name);
                                 const totalFunding = regionalResults.reduce((sum, r) => sum + r.totalFunding, 0);
                                 const regionResult = regionalResults.find(r => r.regionName === region.name);
                                 const percentage = regionResult ? (regionResult.totalFunding / totalFunding * 100) : 0;
-                                
+
                                 return (
-                                  <tr key={realIdx} className={filteredIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                  <tr key={region.name} className={filteredIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                     <td className="border border-gray-400 p-2 font-medium sticky left-0 bg-inherit z-10 whitespace-nowrap min-w-[150px]">
                                       {region.name}
                                     </td>
@@ -1422,14 +1420,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     {([1, 2, 3, 4, 5] as const).map(cat => (
                                       <td key={`funding-${cat}`} className="border border-gray-400 p-2 text-right whitespace-nowrap min-w-[100px]">
                                         {regionResult?.fundingByCategory?.[cat]
-                                          ? regionResult.fundingByCategory[cat].toLocaleString('uk-UA', {maximumFractionDigits: 0})
+                                          ? regionResult.fundingByCategory[cat].toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2})
                                           : '-'
                                         }
                                       </td>
                                     ))}
                                     <td className="border border-gray-400 p-2 text-right font-bold bg-green-50 whitespace-nowrap min-w-[120px]">
                                       {regionResult?.totalFunding
-                                        ? regionResult.totalFunding.toLocaleString('uk-UA', {maximumFractionDigits: 0})
+                                        ? regionResult.totalFunding.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2})
                                         : '-'
                                       }
                                     </td>
@@ -1460,14 +1458,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     {regionalResults
                                       .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
                                       .reduce((sum, r) => sum + (r.fundingByCategory?.[cat] || 0), 0)
-                                      .toLocaleString('uk-UA', {maximumFractionDigits: 0})}
+                                      .toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                   </td>
                                 ))}
                                 <td className="border-2 border-gray-400 p-2 text-right bg-green-100 text-lg whitespace-nowrap min-w-[120px]">
                                   {regionalResults
                                     .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
                                     .reduce((sum, r) => sum + r.totalFunding, 0)
-                                    .toLocaleString('uk-UA', {maximumFractionDigits: 0})}
+                                    .toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                 </td>
                                 <td className="border-2 border-gray-400 p-2 text-right bg-yellow-100 text-base whitespace-nowrap min-w-[80px]">
                                   {selectedRegion === 'all' ? '100.00' : '100.00'}

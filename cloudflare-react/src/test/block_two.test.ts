@@ -397,19 +397,20 @@ describe('Road Maintenance Calculations - Section III', () => {
       expect(coefficient).toBe(1.0);
     });
 
-    it('повинен повертати 1.01 для 1-5 об\'єктів', () => {
+    it('повинен повертати 1.01 для 1-4 об\'єктів', () => {
       expect(calculateCriticalInfrastructureCoefficient(1)).toBe(1.01);
-      expect(calculateCriticalInfrastructureCoefficient(3)).toBe(1.01);
-      expect(calculateCriticalInfrastructureCoefficient(5)).toBe(1.01);
+      expect(calculateCriticalInfrastructureCoefficient(2)).toBe(1.01);
+      expect(calculateCriticalInfrastructureCoefficient(4)).toBe(1.01);
     });
 
-    it('повинен повертати 1.03 для 5-10 об\'єктів', () => {
-      expect(calculateCriticalInfrastructureCoefficient(6)).toBe(1.03);
-      expect(calculateCriticalInfrastructureCoefficient(8)).toBe(1.03);
-      expect(calculateCriticalInfrastructureCoefficient(10)).toBe(1.03);
+    it('повинен повертати 1.03 для 5-9 об\'єктів', () => {
+      expect(calculateCriticalInfrastructureCoefficient(5)).toBe(1.03);
+      expect(calculateCriticalInfrastructureCoefficient(7)).toBe(1.03);
+      expect(calculateCriticalInfrastructureCoefficient(9)).toBe(1.03);
     });
 
-    it('повинен повертати 1.05 для >10 об\'єктів', () => {
+    it('повинен повертати 1.05 для 10+ об\'єктів', () => {
+      expect(calculateCriticalInfrastructureCoefficient(10)).toBe(1.05);
       expect(calculateCriticalInfrastructureCoefficient(11)).toBe(1.05);
       expect(calculateCriticalInfrastructureCoefficient(20)).toBe(1.05);
     });

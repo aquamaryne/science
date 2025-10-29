@@ -242,8 +242,8 @@ export const calculateMaintenanceFunds = (
   const illuminatedRoadsCoefficient = additionalCoefficients.illuminatedRoads ? 1.1 : 1.0;
   const repairedRoadsCoefficient = additionalCoefficients.repairedRoads ? 0.95 : 1.0;
   const criticalInfrastructureCoefficient = additionalCoefficients.criticalInfrastructure && additionalCoefficients.criticalInfrastructure > 0
-    ? (additionalCoefficients.criticalInfrastructure <= 5 ? 1.01 : 
-       additionalCoefficients.criticalInfrastructure <= 10 ? 1.03 : 1.05)
+    ? (additionalCoefficients.criticalInfrastructure < 5 ? 1.01 :
+       additionalCoefficients.criticalInfrastructure < 10 ? 1.03 : 1.05)
     : 1.0;
   
   // Сумма средств для всех категорий дорог

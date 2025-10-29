@@ -144,7 +144,7 @@ const FileUploadComponent = ({
         <div className="space-y-1">
           {files.map((file, index) => (
             <div
-              key={index}
+              key={`${file.name}-${file.size}-${index}`}
               className="flex items-center justify-between p-2 bg-gray-50 rounded text-xs"
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">

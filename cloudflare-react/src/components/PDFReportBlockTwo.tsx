@@ -323,7 +323,7 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
               
               {/* Дані по областях */}
               {(regionalResults || []).map((result: any, idx: number) => (
-                <View key={idx} style={[styles.tableRow, idx % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}>
+                <View key={result.regionName || idx} style={[styles.tableRow, idx % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}>
                   <Text style={{ width: '25%', padding: 5, fontSize: 8, textAlign: 'left' }}>{result.regionName}</Text>
                   <Text style={{ width: '10%', padding: 5, fontSize: 7, textAlign: 'right' }}>
                     {Math.round(result.fundingByCategory[1]).toLocaleString('uk-UA')}
@@ -424,7 +424,7 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
               
               {/* Дані по областях */}
               {(regionalResults || []).map((result: any, idx: number) => (
-                <View key={idx} style={[styles.tableRow, idx % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}>
+                <View key={result.regionName || idx} style={[styles.tableRow, idx % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}>
                   <Text style={{ width: roadType === 'state' ? '16%' : '25%', padding: 4, fontSize: 7, textAlign: 'left' }}>{result.regionName}</Text>
                   {roadType === 'state' && (
                     <Text style={{ width: '8%', padding: 4, fontSize: 6, textAlign: 'center' }}>1.1600</Text>

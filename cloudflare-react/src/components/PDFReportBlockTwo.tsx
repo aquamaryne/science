@@ -40,16 +40,38 @@ Font.register({
 });
 
 const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
-  // Читаем данные из Redux
-  const blockTwoState = useAppSelector(state => state.blockTwo);
-  const currentSession = useAppSelector(state => state.history.currentSession);
-  const blockTwoData = currentSession?.blockTwoData;
+  // ✅ АВАРІЙНИЙ try-catch для всього компонента
+  try {
+    // Читаем данные из Redux
+    const blockTwoState = useAppSelector(state => state.blockTwo);
+    const currentSession = useAppSelector(state => state.history.currentSession);
+    const blockTwoData = currentSession?.blockTwoData;
 
-  // Проверяем наличие региональных результатов (из blockTwo state ИЛИ из истории)
-  const allRegionalResults: RegionalResult[] = blockTwoState?.regionalResults || blockTwoData?.regionalResults || [];
-  const selectedRegion = blockTwoState?.selectedRegion || blockTwoData?.selectedRegion || 'all';
-  const roadType = blockTwoState?.regionalResultsRoadType || blockTwoData?.roadType || null;
-  const roadTypeLabel = roadType === 'state' ? 'ДЕРЖАВНИХ' : roadType === 'local' ? 'МІСЦЕВИХ' : '';
+    // ✅ ВАЛІДАЦІЯ: перевіряємо що дані - це масив об'єктів, а не функції
+    const validateResults = (results: any): RegionalResult[] => {
+      try {
+        if (!Array.isArray(results)) return [];
+
+        return results.filter(item =>
+          item &&
+          typeof item === 'object' &&
+          typeof item !== 'function' &&
+          typeof item.regionName === 'string' &&
+          typeof item.totalFunding === 'number'
+        );
+      } catch {
+        return [];
+      }
+    };
+
+    // Проверяем наличие региональных результатов (из blockTwo state ИЛИ из истории)
+    const allRegionalResults: RegionalResult[] = validateResults(
+      blockTwoState?.regionalResults || blockTwoData?.regionalResults || []
+    );
+
+    const selectedRegion = blockTwoState?.selectedRegion || blockTwoData?.selectedRegion || 'all';
+    const roadType = blockTwoState?.regionalResultsRoadType || blockTwoData?.roadType || null;
+    const roadTypeLabel = roadType === 'state' ? 'ДЕРЖАВНИХ' : roadType === 'local' ? 'МІСЦЕВИХ' : '';
 
   // Debug info removed for production
 
@@ -547,6 +569,16 @@ const PDFReportBlockTwo: React.FC<PDFReportBlockTwoProps> = ({ className }) => {
       }}
     </PDFDownloadLink>
   );
+  } catch (error) {
+    // ✅ АВАРІЙНА ОБРОБКА: якщо весь компонент зламався (через старі дані в localStorage)
+    console.error('❌ КРИТИЧНА ПОМИЛКА В PDFReportBlockTwo:', error);
+    return (
+      <Button className={className} disabled>
+        <Download className="mr-2 h-4 w-4" />
+        Помилка: Очистіть дані кнопкою "🗑️ Очистити дані"
+      </Button>
+    );
+  }
 };
 
 export default PDFReportBlockTwo;

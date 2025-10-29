@@ -30,6 +30,7 @@ export interface BlockTwoState {
   regionalData: any[];
   regionalResults: any[];
   regionalResultsRoadType: 'state' | 'local' | null; // Тип доріг для regionalResults
+  isEditingTable: boolean; // ✅ Стан редагування таблиці
 }
 
 const initialState: BlockTwoState = {
@@ -59,6 +60,7 @@ const initialState: BlockTwoState = {
   regionalData: [],
   regionalResults: [],
   regionalResultsRoadType: null,
+  isEditingTable: false, // ✅ За замовчуванням редагування вимкнено
 };
 
 const blockTwoSlice = createSlice({
@@ -121,13 +123,25 @@ const blockTwoSlice = createSlice({
       state.selectedWorksheet = action.payload;
     },
     setRegionalData: (state, action: PayloadAction<any[]>) => {
-      state.regionalData = action.payload;
+      // ✅ СЕРІАЛІЗАЦІЯ: видаляємо функції та некоректні дані
+      state.regionalData = JSON.parse(JSON.stringify(action.payload));
     },
     setRegionalResults: (state, action: PayloadAction<any[]>) => {
-      state.regionalResults = action.payload;
+      // ✅ СЕРІАЛІЗАЦІЯ: видаляємо функції та некоректні дані
+      state.regionalResults = JSON.parse(JSON.stringify(action.payload));
     },
     setRegionalResultsRoadType: (state, action: PayloadAction<'state' | 'local' | null>) => {
       state.regionalResultsRoadType = action.payload;
+    },
+    clearRegionalData: (state) => {
+      // ✅ ОЧИЩЕННЯ: видаляємо всі регіональні дані
+      state.regionalData = [];
+      state.regionalResults = [];
+      state.regionalResultsRoadType = null;
+      state.isEditingTable = false;
+    },
+    setIsEditingTable: (state, action: PayloadAction<boolean>) => {
+      state.isEditingTable = action.payload;
     },
     resetBlockTwo: () => initialState,
   },
@@ -154,6 +168,8 @@ export const {
   setRegionalData,
   setRegionalResults,
   setRegionalResultsRoadType,
+  clearRegionalData,
+  setIsEditingTable,
   resetBlockTwo,
 } = blockTwoSlice.actions;
 

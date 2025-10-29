@@ -74,11 +74,16 @@ const TRAFFIC_INTENSITY_COEFFICIENTS: Record<string, number> = {
 };
 
 // ✅ Додаток 9 (сторінка 31) - Коефіцієнти K_кр.і^i (п.3.5 методики)
+// ВИПРАВЛЕНО згідно з методикою (фото):
+// 0 → 1.00
+// від 1 до 5 → 1.01  (тобто 1, 2, 3, 4 - БЕЗ 5!)
+// від 5 до 10 → 1.03 (тобто 5, 6, 7, 8, 9 - БЕЗ 10!)
+// 10 і більше → 1.05 (тобто 10, 11, 12, ... - 10 ВХОДИТЬ!)
 const CRITICAL_INFRASTRUCTURE_COEFFICIENTS: Record<string, number> = {
-  "0": 1.00,     // 0 об'єктів
-  "1-4": 1.01,   // від 1 до 4 об'єктів
-  "5-9": 1.03,   // від 5 до 9 об'єктів
-  ">=10": 1.05,  // 10 і більше об'єктів
+  "0": 1.00,
+  "1-4": 1.01,   // ✅ 1, 2, 3, 4
+  "5-9": 1.03,   // ✅ 5, 6, 7, 8, 9
+  ">=10": 1.05,  // ✅ 10, 11, 12, ...
 };
 
 // ✅ Константи з методики для коефіцієнтів
@@ -323,21 +328,21 @@ export function calculateRepairCoefficient(
  *
  * Значення з Додатку 9:
  *   0 об'єктів: 1,00
- *   1-4 об'єктів: 1,01
- *   5-9 об'єктів: 1,03
- *   10+ об'єктів: 1,05
+ *   від 1 до 5 об'єктів: 1,01 (тобто 1, 2, 3, 4 - БЕЗ 5!)
+ *   від 5 до 10 об'єктів: 1,03 (тобто 5, 6, 7, 8, 9 - БЕЗ 10!)
+ *   10 і більше об'єктів: 1,05 (тобто 10, 11, 12, ... - 10 ВХОДИТЬ!)
  */
 export function calculateCriticalInfrastructureCoefficient(
   criticalInfrastructureCount: number
 ): number {
   if (criticalInfrastructureCount === 0) {
-    return CRITICAL_INFRASTRUCTURE_COEFFICIENTS["0"];
-  } else if (criticalInfrastructureCount >= 10) {
-    return CRITICAL_INFRASTRUCTURE_COEFFICIENTS[">=10"];
+    return CRITICAL_INFRASTRUCTURE_COEFFICIENTS["0"]; // 1.00 для 0
+  } else if (criticalInfrastructureCount >= 10) { // ✅ ВИПРАВЛЕНО: >= 10 замість > 10
+    return CRITICAL_INFRASTRUCTURE_COEFFICIENTS[">=10"]; // 1.05 для 10, 11, 12, ...
   } else if (criticalInfrastructureCount >= 5) {
-    return CRITICAL_INFRASTRUCTURE_COEFFICIENTS["5-9"];
+    return CRITICAL_INFRASTRUCTURE_COEFFICIENTS["5-9"]; // 1.03 для 5, 6, 7, 8, 9
   } else {
-    return CRITICAL_INFRASTRUCTURE_COEFFICIENTS["1-4"];
+    return CRITICAL_INFRASTRUCTURE_COEFFICIENTS["1-4"]; // 1.01 для 1, 2, 3, 4
   }
 }
 

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -12,7 +12,10 @@ import { saveBlockTwoData } from '@/redux/slices/historySlice';
 import {
   setRegionalResults as setRegionalResultsAction,
   setRegionalResultsRoadType as setRegionalResultsRoadTypeAction,
-  setSelectedRegion as setSelectedRegionAction
+  setSelectedRegion as setSelectedRegionAction,
+  setRegionalData as setRegionalDataAction,
+  clearRegionalData as clearRegionalDataAction,
+  setIsEditingTable as setIsEditingTableAction
 } from '@/redux/slices/blockTwoSlice';
 
 // ✅ ІМПОРТИ З МОДУЛЯ
@@ -90,14 +93,76 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
   const q2Value = currentSession?.blockOneData?.q2Result || null;
   const hasBlockOneData = currentSession?.blockOneData !== undefined;
 
-  const [roadType, setRoadType] = React.useState<RoadType>('state');
-  const [regionalData, setRegionalData] = React.useState<RegionalRoadData[]>([]);
-  const [regionalResults, setRegionalResults] = React.useState<RegionalCalculationResult[]>([]);
-  const [isCalculatingRegional, setIsCalculatingRegional] = React.useState(false);
-  const [uploadStatus, setUploadStatus] = React.useState<string>('');
+  // ✅ ЧИТАЄМО З REDUX (збережені дані)
+  const blockTwoState = useAppSelector(state => state.blockTwo);
+  const savedRegionalData = Array.isArray(blockTwoState.regionalData) ? blockTwoState.regionalData : [];
+  const savedRegionalResults = Array.isArray(blockTwoState.regionalResults) ? blockTwoState.regionalResults : [];
+  const savedRoadType = blockTwoState.regionalResultsRoadType || 'state';
+
+  // ✅ ВИПРАВЛЕНО: НЕ ініціалізуємо з Redux, а тільки через useEffect
+  const [roadType, setRoadType] = useState<RoadType>('state');
+  const [regionalData, setRegionalData] = useState<RegionalRoadData[]>([]);
+  const [regionalResults, setRegionalResults] = useState<RegionalCalculationResult[]>([]);
+  const [isCalculatingRegional, setIsCalculatingRegional] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [selectedRegion, setSelectedRegion] = React.useState<string>('all');
+
+  // ✅ ЧИТАЄМО isEditing З REDUX (зберігається між вкладками)
+  const isEditing = blockTwoState.isEditingTable;
+  const setIsEditing = (value: boolean) => dispatch(setIsEditingTableAction(value));
+
+  const [selectedRegion, setSelectedRegion] = useState<string>('all');
+
+  // ✅ СИНХРОНІЗАЦІЯ З REDUX (відслідковуємо зміни Redux state)
+  useEffect(() => {
+    try {
+      console.log('🔄 Block2FundingCalculation: синхронізація з Redux...');
+      console.log('   savedRegionalData:', savedRegionalData.length, 'областей');
+      console.log('   savedRegionalResults:', savedRegionalResults.length, 'результатів');
+      console.log('   savedRoadType:', savedRoadType);
+
+      // ✅ ПЕРЕВІРКА на некоректні дані (функції, undefined)
+      const isDataValid = (data: any[]) => {
+        try {
+          return Array.isArray(data) && data.every(item =>
+            item !== null &&
+            typeof item === 'object' &&
+            !Array.isArray(item) &&
+            typeof item !== 'function'
+          );
+        } catch {
+          return false;
+        }
+      };
+
+      if (!isDataValid(savedRegionalData) || !isDataValid(savedRegionalResults)) {
+        console.warn('⚠️ Виявлено некоректні дані в Redux, очищення...');
+        dispatch(clearRegionalDataAction());
+        setRegionalData([]);
+        setRegionalResults([]);
+        return;
+      }
+
+      // ✅ ОНОВЛЮЄМО ЛОКАЛЬНИЙ STATE З REDUX (завжди, якщо є дані)
+      if (JSON.stringify(regionalData) !== JSON.stringify(savedRegionalData)) {
+        console.log('   🔄 Оновлення regionalData з Redux (', savedRegionalData.length, 'областей)');
+        setRegionalData(savedRegionalData);
+      }
+
+      if (JSON.stringify(regionalResults) !== JSON.stringify(savedRegionalResults)) {
+        console.log('   🔄 Оновлення regionalResults з Redux (', savedRegionalResults.length, 'результатів)');
+        setRegionalResults(savedRegionalResults);
+      }
+
+      if (roadType !== savedRoadType) {
+        console.log('   🔄 Оновлення roadType з Redux:', savedRoadType);
+        setRoadType(savedRoadType);
+      }
+    } catch (error) {
+      console.error('❌ Помилка при синхронізації з Redux:', error);
+      dispatch(clearRegionalDataAction());
+    }
+  }, [savedRegionalData, savedRegionalResults, savedRoadType]); // ✅ ЗАЛЕЖНОСТІ: реагуємо на зміни Redux!
 
   // ==================== ДОПОМІЖНІ ФУНКЦІЇ ====================
 
@@ -319,6 +384,8 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
         }
         
         setRegionalData(parsedData);
+        // ✅ ЗБЕРІГАЄМО В REDUX
+        dispatch(setRegionalDataAction(parsedData));
         setUploadStatus(`✓ Успішно завантажено дані для ${parsedData.length} областей`);
         setTimeout(() => setUploadStatus(''), 3000);
         
@@ -541,24 +608,24 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
       regionalResults.forEach(result => {
         fundingData.push([
           result.regionName,
-          Math.round(result.fundingByCategory[1]),
-          Math.round(result.fundingByCategory[2]),
-          Math.round(result.fundingByCategory[3]),
-          Math.round(result.fundingByCategory[4]),
-          Math.round(result.fundingByCategory[5]),
-          Math.round(result.totalFunding),
+          result.fundingByCategory[1].toFixed(2), // ✅ 2 знаки після коми
+          result.fundingByCategory[2].toFixed(2),
+          result.fundingByCategory[3].toFixed(2),
+          result.fundingByCategory[4].toFixed(2),
+          result.fundingByCategory[5].toFixed(2),
+          result.totalFunding.toFixed(2),         // ✅ 2 знаки після коми
           (result.totalFunding / 1000).toFixed(2)
         ]);
       });
-      
+
       const totals = [
         'ВСЬОГО ПО УКРАЇНІ',
-        Math.round(regionalResults.reduce((sum, r) => sum + r.fundingByCategory[1], 0)),
-        Math.round(regionalResults.reduce((sum, r) => sum + r.fundingByCategory[2], 0)),
-        Math.round(regionalResults.reduce((sum, r) => sum + r.fundingByCategory[3], 0)),
-        Math.round(regionalResults.reduce((sum, r) => sum + r.fundingByCategory[4], 0)),
-        Math.round(regionalResults.reduce((sum, r) => sum + r.fundingByCategory[5], 0)),
-        Math.round(regionalResults.reduce((sum, r) => sum + r.totalFunding, 0)),
+        regionalResults.reduce((sum, r) => sum + r.fundingByCategory[1], 0).toFixed(2),
+        regionalResults.reduce((sum, r) => sum + r.fundingByCategory[2], 0).toFixed(2),
+        regionalResults.reduce((sum, r) => sum + r.fundingByCategory[3], 0).toFixed(2),
+        regionalResults.reduce((sum, r) => sum + r.fundingByCategory[4], 0).toFixed(2),
+        regionalResults.reduce((sum, r) => sum + r.fundingByCategory[5], 0).toFixed(2),
+        regionalResults.reduce((sum, r) => sum + r.totalFunding, 0).toFixed(2),
         (regionalResults.reduce((sum, r) => sum + r.totalFunding, 0) / 1000).toFixed(2)
       ];
       fundingData.push(totals);
@@ -641,7 +708,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
       if (result.type.endsWith('/fulfilled')) {
         const message = `✅ Успішно збережено!\n\n` +
           `📊 Регіональні результати: ${regionalResults.length} областей\n` +
-          `💰 Загальне фінансування: ${totalFunding.toLocaleString()} тис. грн\n` +
+          `💰 Загальне фінансування: ${totalFunding.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2})} тис. грн\n` +
           `🛣️ Тип доріг: ${roadType === 'state' ? 'Державні' : 'Місцеві'}\n\n` +
           `Перегляньте детальні таблиці в розділі "Історія"`;
         alert(message);
@@ -702,13 +769,13 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center p-3 bg-white rounded border">
                     <div className="text-lg font-bold text-blue-700">
-                      {q1Value ? q1Value.toLocaleString() : '—'} тис. грн
+                      {q1Value ? q1Value.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—'} тис. грн
                     </div>
                     <div className="text-xs text-gray-600">Q₁ (Державні дороги)</div>
                   </div>
                   <div className="text-center p-3 bg-white rounded border">
                     <div className="text-lg font-bold text-green-700">
-                      {q2Value ? q2Value.toLocaleString() : '—'} тис. грн
+                      {q2Value ? q2Value.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—'} тис. грн
                     </div>
                     <div className="text-xs text-gray-600">Q₂ (Місцеві дороги)</div>
                   </div>
@@ -754,6 +821,22 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                   className={`${roadType === 'local' ? 'bg-green-600 hover:bg-green-700' : ''} text-sm md:text-base flex-1 sm:flex-initial`}
                 >
                   🏘️ Місцевого значення
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (confirm('Очистити всі завантажені дані та результати розрахунків?')) {
+                      dispatch(clearRegionalDataAction());
+                      setRegionalData([]);
+                      setRegionalResults([]);
+                      setRoadType('state');
+                      setUploadStatus('✓ Дані очищено');
+                      setTimeout(() => setUploadStatus(''), 3000);
+                    }
+                  }}
+                  variant="outline"
+                  className="bg-red-50 hover:bg-red-100 border-red-300 text-red-700 text-sm md:text-base flex-1 sm:flex-initial"
+                >
+                  🗑️ Очистити дані
                 </Button>
               </div>
             </div>
@@ -1530,9 +1613,9 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                 {roadType === 'state' ? 'Q₁ (Державні дороги)' : 'Q₂ (Місцеві дороги)'}
                               </div>
                               <div className="text-base sm:text-lg md:text-2xl font-bold text-blue-700 break-all">
-                                {roadType === 'state' ? 
-                                  (q1Value ? q1Value.toLocaleString() : '—') : 
-                                  (q2Value ? q2Value.toLocaleString() : '—')
+                                {roadType === 'state' ?
+                                  (q1Value ? q1Value.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—') :
+                                  (q2Value ? q2Value.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—')
                                 } тис. грн
                               </div>
                             </div>
@@ -1544,7 +1627,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                               <div className="text-base sm:text-lg md:text-2xl font-bold text-red-700 break-all">
                                 {regionalResults
                                   .filter(r => selectedRegion === 'all' || r.regionName === selectedRegion)
-                                  .reduce((sum, r) => sum + r.totalFunding, 0).toLocaleString()} тис. грн
+                                  .reduce((sum, r) => sum + r.totalFunding, 0).toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2})} тис. грн
                               </div>
                             </div>
                             
@@ -1566,7 +1649,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     .reduce((sum, r) => sum + r.totalFunding, 0);
                                   const available = roadType === 'state' ? (q1Value || 0) : (q2Value || 0);
                                   const remainder = available - totalEU;
-                                  return remainder.toLocaleString();
+                                  return remainder.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                                 })()} тис. грн
                               </div>
                             </div>
@@ -1628,7 +1711,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                   .reduce((sum, r) => sum + r.totalFunding, 0);
                                 const available = roadType === 'state' ? (q1Value || 0) : (q2Value || 0);
                                 const remainder = available - totalEU;
-                                return remainder.toLocaleString();
+                                return remainder.toLocaleString('uk-UA', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                               })()} тис. грн
                             </strong>
                           </div>

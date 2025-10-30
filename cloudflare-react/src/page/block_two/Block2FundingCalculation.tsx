@@ -125,6 +125,12 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
 
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
 
+  // ✅ ВІДСЛІДКОВУВАННЯ РЕЖИМУ РЕДАГУВАННЯ
+  useEffect(() => {
+    console.log('📝 isEditing змінено:', isEditing);
+    console.log('📝 Redux isEditingTable:', blockTwoState.isEditingTable);
+  }, [isEditing, blockTwoState.isEditingTable]);
+
   // ✅ СИНХРОНІЗАЦІЯ З REDUX (відслідковуємо зміни Redux state)
   useEffect(() => {
     try {
@@ -133,6 +139,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
       console.log('   savedRegionalResults:', savedRegionalResults.length, 'результатів');
       console.log('   savedRoadType:', savedRoadType);
       console.log('   savedSelectedRegion:', savedSelectedRegion);
+      console.log('   isEditing (з Redux):', blockTwoState.isEditingTable);
 
       // ✅ ПЕРЕВІРКА на некоректні дані (функції, undefined)
       const isDataValid = (data: any[]) => {
@@ -1106,7 +1113,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
               </Card>
 
               {/* 1. ЗАВАНТАЖЕНІ ДАНІ ПО ОБЛАСТЯХ - З РЕДАГУВАННЯМ */}
-              <Card className="bg-white">
+              <Card className={`${isEditing ? 'bg-orange-50 border-2 border-orange-400' : 'bg-white'}`}>
                 <CardHeader>
                   <div className="flex flex-col gap-3">
                     <div className="flex items-start justify-between">
@@ -1117,20 +1124,37 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                             ({roadType === 'state' ? 'державні дороги' : 'місцеві дороги'})
                           </span>
                         </CardTitle>
-                        {isEditing && (
-                          <p className="text-xs text-blue-600 mt-1">✏️ Режим редагування активний</p>
-                        )}
+                        <div className="text-xs mt-1 space-y-1">
+                          {isEditing ? (
+                            <p className="font-semibold text-orange-700">✏️ Режим редагування АКТИВНИЙ - клікніть на поле для зміни</p>
+                          ) : (
+                            <p className="text-gray-600">Режим перегляду (клікніть "Редагувати дані" для зміни)</p>
+                          )}
+                          <p className="text-gray-500">Redux state: isEditingTable = {blockTwoState.isEditingTable ? 'true' : 'false'}</p>
+                        </div>
                       </div>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <Button
-                        onClick={() => setIsEditing(!isEditing)}
-                        variant="outline"
-                        className="flex items-center gap-2 w-full sm:w-auto justify-center"
+                        onClick={() => {
+                          console.log('🖱️ Клік на кнопку редагування');
+                          console.log('   Поточний стан isEditing:', isEditing);
+                          console.log('   Redux isEditingTable:', blockTwoState.isEditingTable);
+                          const newEditingState = !isEditing;
+                          console.log('   Новий стан:', newEditingState);
+                          setIsEditing(newEditingState);
+                          console.log('🔄 Режим редагування:', newEditingState ? 'УВІМКНЕНО ✅' : 'ВИМКНЕНО ❌');
+                          // Перевіряємо через 100ms чи зміна застосувалась
+                          setTimeout(() => {
+                            console.log('   Перевірка через 100ms - isEditing:', blockTwoState.isEditingTable);
+                          }, 100);
+                        }}
+                        variant={isEditing ? "default" : "outline"}
+                        className={`flex items-center gap-2 w-full sm:w-auto justify-center ${isEditing ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
                       >
                         <Edit className="h-4 w-4" />
-                        <span className="hidden sm:inline">{isEditing ? 'Завершити редагування' : 'Редагувати дані'}</span>
-                        <span className="sm:hidden">{isEditing ? 'Завершити' : 'Редагувати'}</span>
+                        <span className="hidden sm:inline">{isEditing ? '✓ Завершити редагування' : '✏️ Редагувати дані'}</span>
+                        <span className="sm:hidden">{isEditing ? '✓ Завершити' : '✏️ Редагувати'}</span>
                       </Button>
                       <Button
                         type="button"
@@ -1139,10 +1163,24 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                         className="bg-green-600 hover:bg-green-700 w-full sm:w-auto justify-center"
                       >
                         <Calculator className="h-4 w-4 mr-2" />
-                        <span className="hidden sm:inline">{isCalculatingRegional ? 'Розраховуємо...' : 'Розрахувати обсяг коштів'}</span>
-                        <span className="sm:hidden">{isCalculatingRegional ? 'Розраховуємо...' : 'Розрахувати'}</span>
+                        <span className="hidden sm:inline">{isCalculatingRegional ? 'Розраховуємо...' : '🔄 Перерахувати обсяг коштів'}</span>
+                        <span className="sm:hidden">{isCalculatingRegional ? 'Розраховуємо...' : '🔄 Розрахувати'}</span>
                       </Button>
                     </div>
+                    {isEditing && (
+                      <Alert className="bg-orange-100 border-orange-400">
+                        <AlertDescription className="text-orange-800 text-sm">
+                          <div className="space-y-1">
+                            <div><strong>💡 Режим редагування:</strong></div>
+                            <ul className="list-disc list-inside text-xs space-y-1 ml-2">
+                              <li>Клікніть на будь-яке поле в таблиці для зміни значення</li>
+                              <li>Зміни автоматично зберігаються при переключенні вкладок</li>
+                              <li>Після редагування натисніть "Перерахувати обсяг коштів" для оновлення результатів</li>
+                            </ul>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -1209,10 +1247,24 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     type="number"
                                     value={region.lengthByCategory[cat]}
                                     onChange={(e) => {
-                                      const newData = [...regionalData];
-                                      newData[realIdx].lengthByCategory[cat] = parseNumberInput(e.target.value, 0);
-                                      newData[realIdx].totalLength = Object.values(newData[realIdx].lengthByCategory).reduce((sum, val) => sum + val, 0);
+                                      // ✅ ГЛИБОКЕ КОПІЮВАННЯ для уникнення read-only помилки з Redux
+                                      const newData = regionalData.map((r, idx) => 
+                                        idx === realIdx 
+                                          ? {
+                                              ...r,
+                                              lengthByCategory: {
+                                                ...r.lengthByCategory,
+                                                [cat]: parseNumberInput(e.target.value, 0)
+                                              },
+                                              totalLength: Object.values({
+                                                ...r.lengthByCategory,
+                                                [cat]: parseNumberInput(e.target.value, 0)
+                                              }).reduce((sum, val) => sum + val, 0)
+                                            }
+                                          : r
+                                      );
                                       setRegionalData(newData);
+                                      dispatch(setRegionalDataAction(newData)); // ✅ ЗБЕРІГАЄМО В REDUX
                                     }}
                                     onPaste={handleNativeInputPaste}
                                     className="w-full text-right p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded min-w-[50px]"
@@ -1233,9 +1285,11 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                     type="number"
                                     value={region.europeanIndexLength}
                                     onChange={(e) => {
-                                      const newData = [...regionalData];
-                                      newData[realIdx].europeanIndexLength = parseNumberInput(e.target.value, 0);
+                                      const newData = regionalData.map((r, idx) => 
+                                        idx === realIdx ? { ...r, europeanIndexLength: parseNumberInput(e.target.value, 0) } : r
+                                      );
                                       setRegionalData(newData);
+                                      dispatch(setRegionalDataAction(newData)); // ✅ ЗБЕРІГАЄМО В REDUX
                                     }}
                                     onPaste={handleNativeInputPaste}
                                     className="w-full text-right p-1 border-0 bg-orange-50 focus:bg-orange-100 rounded min-w-[50px]"
@@ -1253,9 +1307,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                   type="number"
                                   value={region.lengthByIntensity.medium}
                                   onChange={(e) => {
-                                    const newData = [...regionalData];
-                                    newData[realIdx].lengthByIntensity.medium = parseNumberInput(e.target.value, 0);
+                                    const newData = regionalData.map((r, idx) => 
+                                      idx === realIdx ? { 
+                                        ...r, 
+                                        lengthByIntensity: { ...r.lengthByIntensity, medium: parseNumberInput(e.target.value, 0) } 
+                                      } : r
+                                    );
                                     setRegionalData(newData);
+                                    dispatch(setRegionalDataAction(newData)); // ✅ ЗБЕРІГАЄМО В REDUX
                                   }}
                                   onPaste={handleNativeInputPaste}
                                   className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded min-w-[50px]"
@@ -1271,9 +1330,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                   type="number"
                                   value={region.lengthByIntensity.high}
                                   onChange={(e) => {
-                                    const newData = [...regionalData];
-                                    newData[realIdx].lengthByIntensity.high = parseNumberInput(e.target.value, 0);
+                                    const newData = regionalData.map((r, idx) => 
+                                      idx === realIdx ? { 
+                                        ...r, 
+                                        lengthByIntensity: { ...r.lengthByIntensity, high: parseNumberInput(e.target.value, 0) } 
+                                      } : r
+                                    );
                                     setRegionalData(newData);
+                                    dispatch(setRegionalDataAction(newData)); // ✅ ЗБЕРІГАЄМО В REDUX
                                   }}
                                   onPaste={handleNativeInputPaste}
                                   className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded min-w-[50px]"
@@ -1289,9 +1353,14 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                   type="number"
                                   value={region.lengthByIntensity.veryHigh}
                                   onChange={(e) => {
-                                    const newData = [...regionalData];
-                                    newData[realIdx].lengthByIntensity.veryHigh = parseNumberInput(e.target.value, 0);
+                                    const newData = regionalData.map((r, idx) => 
+                                      idx === realIdx ? { 
+                                        ...r, 
+                                        lengthByIntensity: { ...r.lengthByIntensity, veryHigh: parseNumberInput(e.target.value, 0) } 
+                                      } : r
+                                    );
                                     setRegionalData(newData);
+                                    dispatch(setRegionalDataAction(newData)); // ✅ ЗБЕРІГАЄМО В REDUX
                                   }}
                                   onPaste={handleNativeInputPaste}
                                   className="w-full text-right p-1 border-0 bg-yellow-50 focus:bg-yellow-100 rounded min-w-[50px]"
@@ -1310,9 +1379,11 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       type="number"
                                       value={region.borderCrossingLength}
                                       onChange={(e) => {
-                                        const newData = [...regionalData];
-                                        newData[realIdx].borderCrossingLength = parseNumberInput(e.target.value, 0);
+                                        const newData = regionalData.map((r, idx) => 
+                                          idx === realIdx ? { ...r, borderCrossingLength: parseNumberInput(e.target.value, 0) } : r
+                                        );
                                         setRegionalData(newData);
+                                        dispatch(setRegionalDataAction(newData)); // ✅ ЗБЕРІГАЄМО В REDUX
                                       }}
                                       onPaste={handleNativeInputPaste}
                                       className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded min-w-[50px]"
@@ -1328,9 +1399,11 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       type="number"
                                       value={region.lightingLength}
                                       onChange={(e) => {
-                                        const newData = [...regionalData];
-                                        newData[realIdx].lightingLength = parseNumberInput(e.target.value, 0);
+                                        const newData = regionalData.map((r, idx) => 
+                                          idx === realIdx ? { ...r, lightingLength: parseNumberInput(e.target.value, 0) } : r
+                                        );
                                         setRegionalData(newData);
+                                        dispatch(setRegionalDataAction(newData)); // ✅ ЗБЕРІГАЄМО В REDUX
                                       }}
                                       onPaste={handleNativeInputPaste}
                                       className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded min-w-[50px]"
@@ -1346,9 +1419,11 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       type="number"
                                       value={region.repairedLength}
                                       onChange={(e) => {
-                                        const newData = [...regionalData];
-                                        newData[realIdx].repairedLength = parseNumberInput(e.target.value, 0);
+                                        const newData = regionalData.map((r, idx) => 
+                                          idx === realIdx ? { ...r, repairedLength: parseNumberInput(e.target.value, 0) } : r
+                                        );
                                         setRegionalData(newData);
+                                        dispatch(setRegionalDataAction(newData)); // ✅ ЗБЕРІГАЄМО В REDUX
                                       }}
                                       onPaste={handleNativeInputPaste}
                                       className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded min-w-[50px]"
@@ -1364,9 +1439,11 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                       type="number"
                                       value={region.criticalInfraCount}
                                       onChange={(e) => {
-                                        const newData = [...regionalData];
-                                        newData[realIdx].criticalInfraCount = parseNumberInput(e.target.value, 0);
+                                        const newData = regionalData.map((r, idx) => 
+                                          idx === realIdx ? { ...r, criticalInfraCount: parseNumberInput(e.target.value, 0) } : r
+                                        );
                                         setRegionalData(newData);
+                                        dispatch(setRegionalDataAction(newData)); // ✅ ЗБЕРІГАЄМО В REDUX
                                       }}
                                       onPaste={handleNativeInputPaste}
                                       className="w-full text-right p-1 border-0 bg-green-50 focus:bg-green-100 rounded min-w-[50px]"
@@ -1393,19 +1470,30 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                   {/* 2. КОЕФІЦІЄНТИ */}
                   <Card className={roadType === 'state' ? 'bg-blue-50 border-2 border-blue-300' : 'bg-green-50 border-2 border-green-300'}>
                     <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className={roadType === 'state' ? 'text-blue-800 text-base' : 'text-green-800 text-base'}>
-                          📊 Середньозважені коригувальні коефіцієнти
-                        </CardTitle>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className={roadType === 'state' ? 'text-blue-800 text-base' : 'text-green-800 text-base'}>
+                            📊 Середньозважені коригувальні коефіцієнти
+                          </CardTitle>
+                          {isEditing && (
+                            <Button
+                              onClick={calculateRegionalFinancing}
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Calculator className="h-3 w-3 mr-1" />
+                              <span className="hidden sm:inline">Перерахувати з новими коефіцієнтами</span>
+                              <span className="sm:inline md:hidden">Перерахувати</span>
+                            </Button>
+                          )}
+                        </div>
                         {isEditing && (
-                          <Button
-                            onClick={calculateRegionalFinancing}
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <Calculator className="h-3 w-3 mr-1" />
-                            Перерахувати з новими коефіцієнтами
-                          </Button>
+                          <Alert className="bg-orange-100 border-orange-400">
+                            <AlertDescription className="text-orange-800 text-sm">
+                              ✏️ <strong>Режим редагування активний!</strong> Ви можете редагувати коефіцієнти. 
+                              Після внесення змін натисніть "Перерахувати" для оновлення результатів.
+                            </AlertDescription>
+                          </Alert>
                         )}
                       </div>
                     </CardHeader>
@@ -1482,11 +1570,20 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                             min="0"
                                             value={currentValue}
                                             onChange={(e) => {
-                                              const newResults = [...regionalResults];
-                                              const keyTyped = key as keyof typeof newResults[number]['coefficients'];
                                               const parsedValue = parseNumberInput(e.target.value, 1);
-                                              (newResults[realIdx].coefficients[keyTyped] as number) = parsedValue;
+                                              const keyTyped = key as keyof typeof result.coefficients;
+                                              // ✅ ГЛИБОКЕ КОПІЮВАННЯ для уникнення read-only помилки
+                                              const newResults = regionalResults.map((r, idx) => 
+                                                idx === realIdx ? {
+                                                  ...r,
+                                                  coefficients: {
+                                                    ...r.coefficients,
+                                                    [keyTyped]: parsedValue
+                                                  }
+                                                } : r
+                                              );
                                               setRegionalResults(newResults);
+                                              dispatch(setRegionalResultsAction(newResults)); // ✅ ЗБЕРІГАЄМО В REDUX
                                             }}
                                             onPaste={handleNativeInputPaste}
                                             className={`w-full text-center p-1 border-0 rounded min-w-[60px] ${roadType === 'state' ? 'bg-blue-50 focus:bg-blue-100' : 'bg-green-50 focus:bg-green-100'} ${isEdited ? 'border-yellow-300' : ''}`}
@@ -1515,11 +1612,20 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
                                             min="0"
                                             value={currentValue}
                                             onChange={(e) => {
-                                              const newResults = [...regionalResults];
-                                              const keyTyped = key as keyof typeof newResults[number]['coefficients'];
                                               const parsedValue = parseNumberInput(e.target.value, 1);
-                                              (newResults[realIdx].coefficients[keyTyped] as number) = parsedValue;
+                                              const keyTyped = key as keyof typeof result.coefficients;
+                                              // ✅ ГЛИБОКЕ КОПІЮВАННЯ для уникнення read-only помилки
+                                              const newResults = regionalResults.map((r, idx) => 
+                                                idx === realIdx ? {
+                                                  ...r,
+                                                  coefficients: {
+                                                    ...r.coefficients,
+                                                    [keyTyped]: parsedValue
+                                                  }
+                                                } : r
+                                              );
                                               setRegionalResults(newResults);
+                                              dispatch(setRegionalResultsAction(newResults)); // ✅ ЗБЕРІГАЄМО В REDUX
                                             }}
                                             onPaste={handleNativeInputPaste}
                                             className={`w-full text-center p-1 border-0 bg-blue-50 focus:bg-blue-100 rounded min-w-[60px] ${isEdited ? 'border-yellow-300' : ''}`}

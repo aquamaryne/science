@@ -52,7 +52,7 @@ const initialState: BlockTwoState = {
     category4: 0,
     category5: 0,
   },
-  selectedRegion: 'Вінницька',
+  selectedRegion: 'all', // ✅ За замовчуванням показуємо всі області
   inflationIndex: 1.25,
   fundingResults: null,
   worksheets: [],

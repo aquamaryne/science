@@ -108,6 +108,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
   const savedRegionalData = Array.isArray(blockTwoState.regionalData) ? blockTwoState.regionalData : [];
   const savedRegionalResults = Array.isArray(blockTwoState.regionalResults) ? blockTwoState.regionalResults : [];
   const savedRoadType = blockTwoState.regionalResultsRoadType || 'state';
+  const savedSelectedRegion = blockTwoState.selectedRegion || 'all';
 
   // ✅ ВИПРАВЛЕНО: НЕ ініціалізуємо з Redux, а тільки через useEffect
   const [roadType, setRoadType] = useState<RoadType>('state');
@@ -131,6 +132,7 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
       console.log('   savedRegionalData:', savedRegionalData.length, 'областей');
       console.log('   savedRegionalResults:', savedRegionalResults.length, 'результатів');
       console.log('   savedRoadType:', savedRoadType);
+      console.log('   savedSelectedRegion:', savedSelectedRegion);
 
       // ✅ ПЕРЕВІРКА на некоректні дані (функції, undefined)
       const isDataValid = (data: any[]) => {
@@ -169,11 +171,16 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
         console.log('   🔄 Оновлення roadType з Redux:', savedRoadType);
         setRoadType(savedRoadType);
       }
+
+      if (selectedRegion !== savedSelectedRegion) {
+        console.log('   🔄 Оновлення selectedRegion з Redux:', savedSelectedRegion);
+        setSelectedRegion(savedSelectedRegion);
+      }
     } catch (error) {
       console.error('❌ Помилка при синхронізації з Redux:', error);
       dispatch(clearRegionalDataAction());
     }
-  }, [savedRegionalData, savedRegionalResults, savedRoadType]); // ✅ ЗАЛЕЖНОСТІ: реагуємо на зміни Redux!
+  }, [savedRegionalData, savedRegionalResults, savedRoadType, savedSelectedRegion]); // ✅ ЗАЛЕЖНОСТІ: реагуємо на зміни Redux!
 
   // ==================== ДОПОМІЖНІ ФУНКЦІЇ ====================
 
@@ -848,11 +855,21 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
     }
   };
 
-  // Очищаємо результати при зміні типу доріг
+  // ✅ ВИПРАВЛЕНО: Очищаємо результати ТІЛЬКИ при ЗМІНІ типу доріг користувачем
+  // НЕ очищаємо при ініціалізації з Redux!
+  const prevRoadTypeRef = useRef<RoadType>(roadType);
   React.useEffect(() => {
-    setRegionalResults([]);
-    // ✅ ТАКОЖ ОЧИЩАЄМО В REDUX
-    dispatch(setRegionalResultsAction([]));
+    // Перевіряємо чи це справді зміна користувача, а не синхронізація з Redux
+    if (prevRoadTypeRef.current !== roadType && regionalResults.length > 0) {
+      const savedType = blockTwoState.regionalResultsRoadType;
+      // Очищаємо ТІЛЬКИ якщо новий тип не співпадає зі збереженим
+      if (savedType && savedType !== roadType) {
+        console.log('🗑️ Очищення результатів при зміні типу доріг:', prevRoadTypeRef.current, '->', roadType);
+        setRegionalResults([]);
+        dispatch(setRegionalResultsAction([]));
+      }
+    }
+    prevRoadTypeRef.current = roadType;
     dispatch(setRegionalResultsRoadTypeAction(roadType));
   }, [roadType, dispatch]);
 
@@ -922,14 +939,20 @@ const Block2FundingCalculation: React.FC<Block2FundingCalculationProps> = ({
               <div className="font-semibold text-purple-900 text-sm md:text-base">Оберіть тип доріг для розрахунку:</div>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <Button
-                  onClick={() => setRoadType('state')}
+                  onClick={() => {
+                    setRoadType('state');
+                    dispatch(setRegionalResultsRoadTypeAction('state')); // ✅ ЗБЕРІГАЄМО В REDUX
+                  }}
                   variant={roadType === 'state' ? 'default' : 'outline'}
                   className={`${roadType === 'state' ? 'bg-blue-600 hover:bg-blue-700' : ''} text-sm md:text-base flex-1 sm:flex-initial`}
                 >
                   🏛️ Державного значення
                 </Button>
                 <Button
-                  onClick={() => setRoadType('local')}
+                  onClick={() => {
+                    setRoadType('local');
+                    dispatch(setRegionalResultsRoadTypeAction('local')); // ✅ ЗБЕРІГАЄМО В REDUX
+                  }}
                   variant={roadType === 'local' ? 'default' : 'outline'}
                   className={`${roadType === 'local' ? 'bg-green-600 hover:bg-green-700' : ''} text-sm md:text-base flex-1 sm:flex-initial`}
                 >

@@ -17,9 +17,14 @@ import {
   type DetailedTechnicalCondition
 } from '@/modules/block_three';
 
-import { useAppDispatch } from '@/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setCalculatedRoads } from '@/store/roadDataSlice';
-import { setPage1Complete } from '@/redux/slices/blockThreeSlice';
+import { 
+  setPage1Complete,
+  setPage1InputRows,
+  setPage1ResultRows,
+  setPage1Calculated
+} from '@/redux/slices/blockThreeSlice';
 
 interface RoadTechnicalAssessmentProps {
   onCompleted?: () => void;
@@ -60,25 +65,35 @@ const WORK_TYPE_NAMES: Record<string, string> = {
 
 export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = ({ onCompleted }) => {
   const dispatch = useAppDispatch();
-  const [inputRows, setInputRows] = useState<InputRow[]>([
-    { 
-      id: '1', 
-      roadName: '', 
-      length: 0, 
-      category: 3,
-      actualIntensity: 0,
-      actualElasticModulus: 0,
-      actualSurfaceEvenness: 0,
-      actualRutDepth: 0,
-      actualFrictionValue: 0
-    }
-  ]);
   
-  const [resultRows, setResultRows] = useState<ResultRow[]>([]);
-  const [calculated, setCalculated] = useState(false);
+  // ✅ ЧИТАЄМО З REDUX (зберігається при переключенні сторінок)
+  const blockThreeState = useAppSelector(state => state.blockThree);
+  const savedInputRows = blockThreeState.page1InputRows || [];
+  const savedResultRows = blockThreeState.page1ResultRows || [];
+  const savedCalculated = blockThreeState.page1Calculated || false;
+  
+  const [inputRows, setInputRows] = useState<InputRow[]>(savedInputRows);
+  const [resultRows, setResultRows] = useState<ResultRow[]>(savedResultRows);
+  const [calculated, setCalculated] = useState(savedCalculated);
   const [error, setError] = useState<string>('');
-  const [showResults, setShowResults] = useState(false);
+  const [showResults, setShowResults] = useState(savedCalculated);
   const [dataTransferred, setDataTransferred] = useState(false);
+  
+  // ✅ СИНХРОНІЗАЦІЯ З REDUX при зміні даних
+  React.useEffect(() => {
+    console.log('🔄 Сторінка 1: синхронізація з Redux');
+    console.log('   savedInputRows:', savedInputRows.length, 'рядків');
+    console.log('   savedCalculated:', savedCalculated);
+    
+    if (savedInputRows.length > 0) {
+      setInputRows(savedInputRows);
+    }
+    if (savedResultRows.length > 0) {
+      setResultRows(savedResultRows);
+    }
+    setCalculated(savedCalculated);
+    setShowResults(savedCalculated);
+  }, []);
 
   const addInputRow = () => {
     const newRow: InputRow = {
@@ -92,21 +107,33 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
       actualRutDepth: 0,
       actualFrictionValue: 0
     };
-    setInputRows([...inputRows, newRow]);
+    const newRows = [...inputRows, newRow];
+    setInputRows(newRows);
+    // ✅ ЗБЕРІГАЄМО В REDUX
+    dispatch(setPage1InputRows(newRows));
   };
 
   const deleteInputRow = (id: string) => {
-    setInputRows(inputRows.filter(row => row.id !== id));
+    const newRows = inputRows.filter(row => row.id !== id);
+    setInputRows(newRows);
+    // ✅ ЗБЕРІГАЄМО В REDUX
+    dispatch(setPage1InputRows(newRows));
     setCalculated(false);
+    dispatch(setPage1Calculated(false));
     setResultRows([]);
-    setDataTransferred(false); // ← ДОДАНО
+    dispatch(setPage1ResultRows([]));
+    setDataTransferred(false);
   };
 
   const updateInputRow = (id: string, field: keyof InputRow, value: any) => {
-    setInputRows(inputRows.map(row => 
+    const newRows = inputRows.map(row => 
       row.id === id ? { ...row, [field]: value } : row
-    ));
+    );
+    setInputRows(newRows);
+    // ✅ ЗБЕРІГАЄМО В REDUX
+    dispatch(setPage1InputRows(newRows));
     setCalculated(false);
+    dispatch(setPage1Calculated(false));
     setDataTransferred(false);
   };
 
@@ -205,6 +232,11 @@ export const RoadTechnicalAssessment: React.FC<RoadTechnicalAssessmentProps> = (
       setResultRows(results);
       setCalculated(true);
       setShowResults(true);
+      
+      // ✅ ЗБЕРІГАЄМО РЕЗУЛЬТАТИ В REDUX
+      dispatch(setPage1ResultRows(results));
+      dispatch(setPage1Calculated(true));
+      
       transferDataToRedux(results);
       
       // ✅ Позначаємо сторінку як завершену та викликаємо callback

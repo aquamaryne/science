@@ -274,9 +274,8 @@ export const Block3MultiPageApp: React.FC = () => {
       {currentPage === 1 && (
         <RoadTechnicalAssessment 
           onCompleted={() => {
-            // ✅ Автоматично переходимо на наступну сторінку після розрахунку
-            setTimeout(() => setCurrentPage(2), 700);
-            setTimeout(() => appDispatch(setCurrentPageAction(2)), 700);
+            // ✅ Розрахунок завершено, залишаємось на поточній сторінці
+            // Користувач сам перейде на наступну сторінку, коли буде готовий
           }}
         />
       )}

@@ -60,6 +60,19 @@ export interface ENPVResult {
   calculatedAt: number; // timestamp
 }
 
+// ✅ ВХІДНІ ДАНІ ДЛЯ СТОРІНКИ 1
+export interface InputRow {
+  id: string;
+  roadName: string;
+  length: number;
+  category: 1 | 2 | 3 | 4 | 5;
+  actualIntensity: number;
+  actualElasticModulus: number;
+  actualSurfaceEvenness: number;
+  actualRutDepth: number;
+  actualFrictionValue: number;
+}
+
 export interface BlockThreeState {
   sections: RoadSectionUI[];
   costStandards: CostStandards;
@@ -71,6 +84,10 @@ export interface BlockThreeState {
   page4Complete: boolean;
   // ✅ Результати ENPV розрахунків
   enpvResults: ENPVResult[];
+  // ✅ ВХІДНІ ДАНІ СТОРІНКИ 1 (зберігаються при переключенні)
+  page1InputRows: InputRow[];
+  page1ResultRows: any[];
+  page1Calculated: boolean;
 }
 
 const initialState: BlockThreeState = {
@@ -86,6 +103,19 @@ const initialState: BlockThreeState = {
   page3Complete: false,
   page4Complete: false,
   enpvResults: [],
+  page1InputRows: [{
+    id: '1',
+    roadName: '',
+    length: 0,
+    category: 3,
+    actualIntensity: 0,
+    actualElasticModulus: 0,
+    actualSurfaceEvenness: 0,
+    actualRutDepth: 0,
+    actualFrictionValue: 0
+  }],
+  page1ResultRows: [],
+  page1Calculated: false,
 };
 
 const blockThreeSlice = createSlice({
@@ -153,6 +183,16 @@ const blockThreeSlice = createSlice({
       state.enpvResults = [];
       state.page3Complete = false;
     },
+    // ✅ ACTIONS ДЛЯ СТОРІНКИ 1
+    setPage1InputRows: (state, action: PayloadAction<InputRow[]>) => {
+      state.page1InputRows = JSON.parse(JSON.stringify(action.payload));
+    },
+    setPage1ResultRows: (state, action: PayloadAction<any[]>) => {
+      state.page1ResultRows = JSON.parse(JSON.stringify(action.payload));
+    },
+    setPage1Calculated: (state, action: PayloadAction<boolean>) => {
+      state.page1Calculated = action.payload;
+    },
     resetBlockThree: () => initialState,
   },
 });
@@ -173,6 +213,9 @@ export const {
   addENPVResult,
   removeENPVResult,
   clearENPVResults,
+  setPage1InputRows,
+  setPage1ResultRows,
+  setPage1Calculated,
   resetBlockThree,
 } = blockThreeSlice.actions;
 
